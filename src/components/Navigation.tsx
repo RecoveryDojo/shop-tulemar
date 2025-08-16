@@ -8,8 +8,7 @@ export const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
-    { name: "Meals", path: "/" },
-    { name: "Shop", path: "/shop" },
+    { name: "Home", path: "/" },
     { name: "Menu", path: "/menu" },
     { name: "How It Works", path: "/how-it-works" },
     { name: "About", path: "/about" },
