@@ -1,4 +1,4 @@
-import { Navigation } from "@/components/Navigation";
+import { ShopLayout } from "@/components/shop/ShopLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Coffee, Apple, Fish, Beef, ShoppingBag, Wine, Baby, Leaf } from "lucide-react";
@@ -65,8 +65,8 @@ export default function ShopCategories() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <ShopLayout>
+      <div className="bg-background">
       
       {/* Header */}
       <section className="bg-gradient-tropical text-white py-16">
@@ -130,7 +130,8 @@ export default function ShopCategories() {
             </Button>
           </div>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </ShopLayout>
   );
 }

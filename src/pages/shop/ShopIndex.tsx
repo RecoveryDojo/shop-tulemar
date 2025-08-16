@@ -1,5 +1,5 @@
-import { Navigation } from "@/components/Navigation";
 import { ShopHero } from "@/components/shop/ShopHero";
+import { ShopLayout } from "@/components/shop/ShopLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple } from "lucide-react";
@@ -50,9 +50,9 @@ export default function ShopIndex() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <ShopHero />
+    <ShopLayout>
+      <div className="bg-background">
+        <ShopHero />
       
       {/* Features Section */}
       <section className="py-20 px-4">
@@ -196,7 +196,8 @@ export default function ShopIndex() {
             </Button>
           </div>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </ShopLayout>
   );
 }

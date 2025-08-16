@@ -1,4 +1,4 @@
-import { Navigation } from "@/components/Navigation";
+import { ShopLayout } from "@/components/shop/ShopLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, MapPin, Clock, CheckCircle, Truck, Refrigerator } from "lucide-react";
@@ -78,10 +78,10 @@ export default function ShopHowItWorks() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      {/* Header */}
+    <ShopLayout>
+      <div className="bg-background">
+        
+        {/* Header */}
       <section className="bg-gradient-tropical text-white py-16">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -214,7 +214,8 @@ export default function ShopHowItWorks() {
             </Button>
           </div>
         </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </ShopLayout>
   );
 }
