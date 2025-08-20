@@ -28,8 +28,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const decrementQuantity = () => setQuantity(prev => Math.max(1, prev - 1));
 
   return (
-    <Card className="group hover:shadow-tropical transition-all duration-300 border-border">
-      <CardContent className="p-4">
+    <Card className="group hover:shadow-tropical transition-all duration-300 border-border w-full max-w-full">
+      <CardContent className="p-3 sm:p-4">
         <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden h-32 sm:h-40 md:h-48">
           <img
             src={product.image}
