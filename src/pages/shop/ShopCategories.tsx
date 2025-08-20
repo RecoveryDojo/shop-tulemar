@@ -7,59 +7,67 @@ import { Link } from "react-router-dom";
 export default function ShopCategories() {
   const categories = [
     {
+      id: "fresh-produce",
       icon: Apple,
       name: "Fresh Produce",
       description: "Tropical fruits, vegetables, and herbs",
-      items: "50+ items",
+      items: "10+ items",
       color: "from-green-500 to-emerald-600"
     },
     {
+      id: "coffee-beverages",
       icon: Coffee,
       name: "Coffee & Beverages",
       description: "Premium Costa Rican coffee, teas, and juices",
-      items: "30+ items",
+      items: "10+ items",
       color: "from-amber-600 to-orange-600"
     },
     {
+      id: "fresh-seafood",
       icon: Fish,
       name: "Fresh Seafood",
       description: "Daily catch from Pacific and Caribbean coasts",
-      items: "25+ items",
+      items: "10+ items",
       color: "from-blue-500 to-cyan-600"
     },
     {
+      id: "meat-poultry",
       icon: Beef,
       name: "Meat & Poultry",
       description: "Locally sourced beef, pork, and chicken",
-      items: "40+ items",
+      items: "10+ items",
       color: "from-red-500 to-pink-600"
     },
     {
+      id: "bakery-grains",
       icon: ShoppingBag,
       name: "Bakery & Grains",
       description: "Fresh bread, rice, pasta, and cereals",
-      items: "35+ items",
+      items: "10+ items",
       color: "from-yellow-500 to-amber-600"
     },
     {
+      id: "wines-spirits",
       icon: Wine,
       name: "Wines & Spirits",
       description: "Local and imported alcoholic beverages",
-      items: "60+ items",
+      items: "10+ items",
       color: "from-purple-500 to-indigo-600"
     },
     {
+      id: "baby-family",
       icon: Baby,
       name: "Baby & Family",
       description: "Baby food, diapers, and family essentials",
-      items: "45+ items",
+      items: "10+ items",
       color: "from-pink-400 to-rose-500"
     },
     {
+      id: "organic-health",
       icon: Leaf,
       name: "Organic & Health",
       description: "Organic products and health supplements",
-      items: "35+ items",
+      items: "10+ items",
       color: "from-emerald-400 to-green-500"
     }
   ];
@@ -101,7 +109,7 @@ export default function ShopCategories() {
                 </CardHeader>
                 <CardContent className="text-center">
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link to={`/shop/category/${category.name.toLowerCase().replace(/[& ]/g, '-')}`}>
+                    <Link to={`/shop/category/${category.id}`}>
                       Browse {category.name}
                     </Link>
                   </Button>

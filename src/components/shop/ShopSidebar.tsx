@@ -1,5 +1,7 @@
 import { Home, Grid, Package, Info, ShoppingCart } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/contexts/CartContext";
 
 import {
   Sidebar,
@@ -16,6 +18,7 @@ import {
 const items = [
   { title: "Shop Home", url: "/shop", icon: Home },
   { title: "Browse Categories", url: "/shop/categories", icon: Grid },
+  { title: "Shopping Cart", url: "/shop/cart", icon: ShoppingCart, showBadge: true },
   { title: "Place Order", url: "/shop/order", icon: Package },
   { title: "How It Works", url: "/shop/how-it-works", icon: Info },
 ];
@@ -24,6 +27,7 @@ export function ShopSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  const { itemCount } = useCart();
 
   const isActive = (path: string) => currentPath === path;
   const isCollapsed = state === "collapsed";
@@ -65,8 +69,17 @@ export function ShopSidebar() {
                       end={item.url === "/shop"}
                       className={({ isActive }) => getNavCls({ isActive })}
                     >
-                      <item.icon className="mr-3 h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      <div className="flex items-center relative">
+                        <item.icon className="mr-3 h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                        {item.showBadge && itemCount > 0 && (
+                          <Badge 
+                            className="ml-auto h-5 w-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs"
+                          >
+                            {itemCount}
+                          </Badge>
+                        )}
+                      </div>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
