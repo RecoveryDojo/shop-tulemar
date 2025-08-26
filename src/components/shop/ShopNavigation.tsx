@@ -45,42 +45,17 @@ export function ShopNavigation() {
         </div>
       </div>
 
-      {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-2">
-        {navigationItems.map((item) => (
-          <NavLink
-            key={item.title}
-            to={item.url}
-            end={item.url === "/"}
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
-                isActive
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`
-            }
-          >
-            <item.icon className="h-4 w-4" />
-            <span className="whitespace-nowrap">{item.title}</span>
-            {item.showBadge && itemCount > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs">
-                {itemCount}
-              </Badge>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Mobile Dropdown */}
-      <div className="md:hidden">
+      {/* Dropdown Navigation for All Devices */}
+      <div>
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="relative">
+            <Button variant="outline" className="relative">
               {isOpen ? (
                 <X className="h-4 w-4" />
               ) : (
                 <Menu className="h-4 w-4" />
               )}
+              <span className="ml-2 hidden sm:inline">Menu</span>
               {itemCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs">
                   {itemCount}
