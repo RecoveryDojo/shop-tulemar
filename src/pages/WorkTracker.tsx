@@ -12,6 +12,7 @@ import { TaskKanbanBoard } from "@/components/work-tracker/TaskKanbanBoard";
 import { ProjectAnalytics } from "@/components/work-tracker/ProjectAnalytics";
 import { GanttChart } from "@/components/work-tracker/GanttChart";
 import { TimeTracker } from "@/components/work-tracker/TimeTracker";
+import { WorkTrackerHeader } from "@/components/work-tracker/WorkTrackerHeader";
 
 interface Project {
   id: string;
@@ -106,16 +107,6 @@ export default function WorkTracker() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": return "bg-green-500";
-      case "active": return "bg-blue-500";
-      case "on_hold": return "bg-yellow-500";
-      case "cancelled": return "bg-red-500";
-      default: return "bg-gray-500";
-    }
-  };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "critical": return "bg-red-500";
@@ -124,16 +115,6 @@ export default function WorkTracker() {
       case "low": return "bg-green-500";
       default: return "bg-gray-500";
     }
-  };
-
-  const calculateProjectProgress = () => {
-    if (!features.length) return 0;
-    const totalCompletion = features.reduce((sum, feature) => sum + feature.completion_percentage, 0);
-    return Math.round(totalCompletion / features.length);
-  };
-
-  const getTasksByStatus = (status: string) => {
-    return tasks.filter(task => task.status === status);
   };
 
   if (loading) {
@@ -153,11 +134,11 @@ export default function WorkTracker() {
     <ShopLayout>
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Work Tracker</h1>
+            <h1 className="text-2xl font-bold text-foreground">Work Tracker</h1>
             <p className="text-muted-foreground mt-2">
-              Advanced project management for Tulemar Instacart Development
+              Project management for development tracking
             </p>
           </div>
           <Button onClick={() => setShowCreateProject(true)} className="gap-2">
@@ -184,66 +165,12 @@ export default function WorkTracker() {
 
         {selectedProject ? (
           <>
-            {/* Project Overview */}
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {selectedProject.name}
-                      <Badge className={`${getStatusColor(selectedProject.status)} text-white`}>
-                        {selectedProject.status}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription className="mt-2">
-                      {selectedProject.description}
-                    </CardDescription>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Client: {selectedProject.client_name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary">
-                      {calculateProjectProgress()}%
-                    </div>
-                    <p className="text-sm text-muted-foreground">Complete</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Progress value={calculateProjectProgress()} className="mb-4" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-blue-500" />
-                    <div>
-                      <p className="text-sm font-medium">{features.length}</p>
-                      <p className="text-xs text-muted-foreground">Features</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium">{getTasksByStatus("done").length}</p>
-                      <p className="text-xs text-muted-foreground">Completed</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-orange-500" />
-                    <div>
-                      <p className="text-sm font-medium">{getTasksByStatus("in_progress").length}</p>
-                      <p className="text-xs text-muted-foreground">In Progress</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                    <div>
-                      <p className="text-sm font-medium">{getTasksByStatus("blocked").length}</p>
-                      <p className="text-xs text-muted-foreground">Blocked</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <WorkTrackerHeader 
+              project={selectedProject}
+              features={features}
+              tasks={tasks}
+              onBackToHome={() => window.location.href = "/"}
+            />
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
