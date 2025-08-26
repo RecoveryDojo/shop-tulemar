@@ -54,20 +54,20 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-foreground">Quick Links</h4>
             <div className="space-y-2">
-              <Link to="/menu" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                Restaurant Menu
+              <Link to="/" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                Shop Home
               </Link>
-              <Link to="/shop" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                Grocery Shop
+              <Link to="/categories" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                Browse Categories
               </Link>
               <Link to="/how-it-works" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 How It Works
               </Link>
-              <Link to="/about" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                About Us
+              <Link to="/cart" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                Shopping Cart
               </Link>
-              <Link to="/contact" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                Contact
+              <Link to="/order" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                Place Order
               </Link>
             </div>
           </div>
@@ -76,19 +76,19 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-foreground">Shop Categories</h4>
             <div className="space-y-2">
-              <Link to="/shop/category/fresh-produce" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/category/fresh-produce" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Fresh Produce
               </Link>
-              <Link to="/shop/category/coffee-beverages" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/category/coffee-beverages" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Coffee & Beverages
               </Link>
-              <Link to="/shop/category/fresh-seafood" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/category/fresh-seafood" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Fresh Seafood
               </Link>
-              <Link to="/shop/category/meat-poultry" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/category/meat-poultry" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Meat & Poultry
               </Link>
-              <Link to="/shop/cart" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/cart" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Shopping Cart
               </Link>
             </div>
@@ -134,6 +134,9 @@ export function Footer() {
           </div>
           
           <div className="flex gap-6 text-sm">
+            <Link to="/sitemap" className="text-muted-foreground hover:text-primary transition-colors">
+              Sitemap
+            </Link>
             <button className="text-muted-foreground hover:text-primary transition-colors">
               Privacy Policy
             </button>
