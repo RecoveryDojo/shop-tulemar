@@ -201,7 +201,7 @@ export default function ShopOrder() {
                   ))}
                 </div>
                 <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                  <Link to="/shop/categories">Browse All Categories</Link>
+                  <Link to="/categories">Browse All Categories</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -255,7 +255,7 @@ export default function ShopOrder() {
               </CardHeader>
               <CardContent>
                 <Button variant="secondary" size="sm" className="w-full" asChild>
-                  <Link to="/contact">Contact Support</Link>
+                  <Link to="/order">Contact Support</Link>
                 </Button>
               </CardContent>
             </Card>

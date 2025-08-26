@@ -109,7 +109,7 @@ export default function ShopCategories() {
                 </CardHeader>
                 <CardContent className="text-center">
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link to={`/shop/category/${category.id}`}>
+                    <Link to={`/category/${category.id}`}>
                       Browse {category.name}
                     </Link>
                   </Button>
@@ -131,10 +131,10 @@ export default function ShopCategories() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="hero" size="lg" asChild>
-              <Link to="/shop/order">Start Custom Order</Link>
+              <Link to="/order">Start Custom Order</Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link to="/contact">Contact Us</Link>
+              <Link to="/order">Contact Us</Link>
             </Button>
           </div>
         </div>

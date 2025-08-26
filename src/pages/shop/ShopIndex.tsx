@@ -117,7 +117,7 @@ export default function ShopIndex() {
           
           <div className="text-center">
             <Button variant="hero" size="lg" asChild>
-              <Link to="/shop/categories">Browse All Categories</Link>
+              <Link to="/categories">Browse All Categories</Link>
             </Button>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function ShopIndex() {
               </div>
               <div className="mt-8">
                 <Button variant="outline" size="lg" asChild>
-                  <Link to="/shop/how-it-works">Learn More</Link>
+                  <Link to="/how-it-works">Learn More</Link>
                 </Button>
               </div>
             </div>
@@ -189,10 +189,10 @@ export default function ShopIndex() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="secondary" size="lg" asChild>
-              <Link to="/shop/categories">Browse Categories</Link>
+              <Link to="/categories">Browse Categories</Link>
             </Button>
             <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
-              <Link to="/shop/order">Start Shopping</Link>
+              <Link to="/order">Start Shopping</Link>
             </Button>
           </div>
         </div>
