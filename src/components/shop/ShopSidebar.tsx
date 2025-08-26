@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Shop Home", url: "/shop", icon: Home },
-  { title: "Browse Categories", url: "/shop/categories", icon: Grid },
-  { title: "Shopping Cart", url: "/shop/cart", icon: ShoppingCart, showBadge: true },
-  { title: "Place Order", url: "/shop/order", icon: Package },
-  { title: "How It Works", url: "/shop/how-it-works", icon: Info },
+  { title: "Shop Home", url: "/", icon: Home },
+  { title: "Browse Categories", url: "/categories", icon: Grid },
+  { title: "Shopping Cart", url: "/cart", icon: ShoppingCart, showBadge: true },
+  { title: "Place Order", url: "/order", icon: Package },
+  { title: "How It Works", url: "/how-it-works", icon: Info },
 ];
 
 export function ShopSidebar() {
@@ -64,9 +64,9 @@ export function ShopSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
+                     <NavLink 
                       to={item.url} 
-                      end={item.url === "/shop"}
+                      end={item.url === "/"}
                       className={({ isActive }) => getNavCls({ isActive })}
                     >
                       <div className="flex items-center relative">

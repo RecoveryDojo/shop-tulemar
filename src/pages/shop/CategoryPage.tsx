@@ -34,7 +34,7 @@ export default function CategoryPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-4">Category Not Found</h1>
-            <Link to="/shop/categories">
+            <Link to="/categories">
               <Button>Back to Categories</Button>
             </Link>
           </div>
@@ -48,7 +48,7 @@ export default function CategoryPage() {
       <div className="container mx-auto px-4 py-4 sm:py-8 max-w-full overflow-hidden">
         {/* Header */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-8">
-          <Link to="/shop/categories">
+          <Link to="/categories">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -67,7 +67,7 @@ export default function CategoryPage() {
             </div>
             
             <div className="w-full sm:w-auto">
-              <Link to="/shop/cart" className="block">
+              <Link to="/cart" className="block">
                 <Button className="w-full sm:w-auto bg-gradient-tropical hover:opacity-90 text-white relative">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">View Cart</span>
