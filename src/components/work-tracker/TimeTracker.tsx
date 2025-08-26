@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Square, Clock, Plus } from "lucide-react";
+import { Play, Pause, Square, Clock, Plus, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -184,6 +184,32 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
     return timeEntries.reduce((total, entry) => total + entry.hours, 0);
   };
 
+  const updateTaskHours = async (taskId: string, newHours: number) => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ actual_hours: newHours })
+        .eq("id", taskId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Hours updated",
+        description: "Task hours have been updated successfully.",
+      });
+
+      // Reload to reflect changes
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating hours:", error);
+      toast({
+        title: "Error updating hours",
+        description: "There was an error updating the task hours.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Active Timer */}
@@ -310,7 +336,7 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
             {tasks.map((task) => {
               const loggedHours = getTotalHoursForTask(task.id);
               const progressPercentage = task.estimated_hours > 0 
-                ? Math.min((loggedHours / task.estimated_hours) * 100, 100)
+                ? Math.min((task.actual_hours / task.estimated_hours) * 100, 100)
                 : 0;
 
               return (
@@ -322,13 +348,27 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
                         {task.status.replace("_", " ")}
                       </Badge>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {loggedHours.toFixed(2)}h / {task.estimated_hours}h
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <div className="font-medium">
+                          {task.actual_hours.toFixed(1)}h / {task.estimated_hours}h
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {progressPercentage.toFixed(0)}% of estimate
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {progressPercentage.toFixed(0)}% of estimate
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const newHours = prompt(`Enter new actual hours for "${task.title}":`, task.actual_hours.toString());
+                          if (newHours && !isNaN(parseFloat(newHours))) {
+                            updateTaskHours(task.id, parseFloat(newHours));
+                          }
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -339,6 +379,11 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
                       style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                     />
                   </div>
+                  {progressPercentage > 100 && (
+                    <p className="text-sm text-red-500 mt-1">
+                      Over estimate by {(progressPercentage - 100).toFixed(0)}%
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -365,7 +410,7 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium">{entry.hours}h</div>
+                    <div className="font-medium">{entry.hours.toFixed(2)}h</div>
                     <div className="text-sm text-muted-foreground">
                       {new Date(entry.date).toLocaleDateString()}
                     </div>
