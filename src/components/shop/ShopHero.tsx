@@ -37,13 +37,13 @@ export const ShopHero = () => {
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Button variant="hero" size="lg" className="bg-gradient-tropical hover:shadow-glow" asChild>
-            <Link to="/shop/categories" className="flex items-center gap-2">
+            <Link to="/categories" className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />
               Start Shopping
             </Link>
           </Button>
           <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
-            <Link to="/shop/how-it-works">How It Works</Link>
+            <Link to="/how-it-works">How It Works</Link>
           </Button>
         </div>
         
