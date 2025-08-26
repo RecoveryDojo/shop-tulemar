@@ -13,6 +13,7 @@ import { ProjectAnalytics } from "@/components/work-tracker/ProjectAnalytics";
 import { GanttChart } from "@/components/work-tracker/GanttChart";
 import { TimeTracker } from "@/components/work-tracker/TimeTracker";
 import { WorkTrackerHeader } from "@/components/work-tracker/WorkTrackerHeader";
+import { FeatureTracking } from "@/components/work-tracker/FeatureTracking";
 
 interface Project {
   id: string;
@@ -174,10 +175,14 @@ export default function WorkTracker() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
+                </TabsTrigger>
+                <TabsTrigger value="features" className="gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Features
                 </TabsTrigger>
                 <TabsTrigger value="kanban" className="gap-2">
                   <CheckCircle2 className="h-4 w-4" />
@@ -234,6 +239,15 @@ export default function WorkTracker() {
                     </Card>
                   )}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="features">
+                <FeatureTracking 
+                  projectId={selectedProject.id}
+                  features={features}
+                  tasks={tasks}
+                  onUpdate={() => loadProjectData(selectedProject.id)}
+                />
               </TabsContent>
 
               <TabsContent value="kanban">
