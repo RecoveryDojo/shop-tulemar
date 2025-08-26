@@ -12,6 +12,7 @@ import ShopOrder from "./pages/shop/ShopOrder";
 import ShopHowItWorks from "./pages/shop/ShopHowItWorks";
 import CategoryPage from "./pages/shop/CategoryPage";
 import ShopCart from "./pages/shop/ShopCart";
+import WorkTracker from "./pages/WorkTracker";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/cart" element={<ShopCart />} />
             <Route path="/order" element={<ShopOrder />} />
             <Route path="/how-it-works" element={<ShopHowItWorks />} />
+            <Route path="/work-tracker" element={<WorkTracker />} />
             <Route path="/sitemap" element={<Sitemap />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
