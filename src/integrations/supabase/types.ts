@@ -182,6 +182,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          access_token: string | null
           arrival_date: string | null
           created_at: string | null
           customer_email: string
@@ -203,6 +204,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          access_token?: string | null
           arrival_date?: string | null
           created_at?: string | null
           customer_email: string
@@ -224,6 +226,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          access_token?: string | null
           arrival_date?: string | null
           created_at?: string | null
           customer_email?: string
@@ -296,21 +299,27 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          email: string | null
           id: string
+          phone: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id: string
+          phone?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -633,14 +642,50 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_order_by_token: {
+        Args: { order_token: string }
+        Returns: Json
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_sysadmin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "driver" | "client" | "concierge" | "sysadmin"
       priority_level: "low" | "medium" | "high" | "critical"
       project_status:
         | "planning"
@@ -791,6 +836,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "driver", "client", "concierge", "sysadmin"],
       priority_level: ["low", "medium", "high", "critical"],
       project_status: [
         "planning",
