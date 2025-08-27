@@ -59,6 +59,44 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
     return () => clearInterval(interval);
   }, [isTracking, startTime]);
 
+  // Realtime updates for time entries and task hour changes
+  useEffect(() => {
+    console.log('[Realtime] Subscribing to time entry changes for project', projectId);
+    const channel = supabase
+      .channel(`time-entries-${projectId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'time_entries' },
+        (payload) => {
+          try {
+            const changedTaskId = (payload.new as any)?.task_id || (payload.old as any)?.task_id;
+            const taskIds = tasks.map(t => t.id);
+            if (!changedTaskId || !taskIds.includes(changedTaskId)) return;
+            console.log('[Realtime] time_entries changed for task', changedTaskId, payload.eventType);
+            loadTimeEntries();
+          } catch (e) {
+            console.log('[Realtime] error handling time_entries change', e);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          const changedTaskId = (payload.new as any)?.id || (payload.old as any)?.id;
+          const taskIds = tasks.map(t => t.id);
+          if (!changedTaskId || !taskIds.includes(changedTaskId)) return;
+          console.log('[Realtime] tasks changed; reloading time entries');
+          loadTimeEntries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing time entry channel');
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, tasks]);
   const loadTimeEntries = async () => {
     try {
       const taskIds = tasks.map(task => task.id);

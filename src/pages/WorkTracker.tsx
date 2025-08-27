@@ -71,6 +71,36 @@ export default function WorkTracker() {
     }
   }, [selectedProject]);
 
+  // Realtime updates for features and tasks in the selected project
+  useEffect(() => {
+    if (!selectedProject) return;
+    console.log('[Realtime] Subscribing to project changes', selectedProject.id);
+
+    const channel = supabase
+      .channel(`work-tracker-${selectedProject.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'features', filter: `project_id=eq.${selectedProject.id}` },
+        () => {
+          console.log('[Realtime] features changed');
+          loadProjectData(selectedProject.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `project_id=eq.${selectedProject.id}` },
+        () => {
+          console.log('[Realtime] tasks changed');
+          loadProjectData(selectedProject.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing channel');
+      supabase.removeChannel(channel);
+    };
+  }, [selectedProject]);
   const loadProjects = async () => {
     try {
       const { data, error } = await supabase
