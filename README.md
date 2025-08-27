@@ -71,3 +71,27 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+---
+
+## Work Tracker: E-commerce Shopping Cart System (2025-08-27)
+
+The following project and tasks have been documented in the in-app Work Tracker (/work-tracker):
+
+- Database Integration & Migration — done
+- Product Management System — done
+- Enhanced Shopping Cart — done
+- Checkout Flow Implementation — done
+- Order Processing & Success — done
+- Search & Navigation — done
+- User Experience & Polish — done
+
+Quick test routes:
+- Shop home: /shop
+- Search: /shop/search
+- Category: /shop/category/:id
+- Cart: /shop/cart
+- Checkout: /shop/checkout
+- Order success: /shop/order/success?orderId=...
+
+Security note: Supabase linter reports an OTP expiry warning (platform setting). Review and adjust in your Supabase Dashboard if needed: https://supabase.com/docs/guides/platform/going-into-prod#security
