@@ -41,6 +41,62 @@ export type Database = {
         }
         Relationships: []
       }
+      documentation: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          priority: string | null
+          project_id: string
+          status: string
+          tags: string[] | null
+          title: string
+          type: string
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          project_id: string
+          status?: string
+          tags?: string[] | null
+          title: string
+          type: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          project_id?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       features: {
         Row: {
           actual_hours: number | null

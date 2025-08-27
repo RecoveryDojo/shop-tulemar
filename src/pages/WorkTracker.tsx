@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CheckCircle2, Clock, AlertCircle, Target, Users, Calendar, TrendingUp } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertCircle, Target, Users, Calendar, TrendingUp, FileText } from "lucide-react";
 import { CreateProjectDialog } from "@/components/work-tracker/CreateProjectDialog";
 import { TaskKanbanBoard } from "@/components/work-tracker/TaskKanbanBoard";
 import { ProjectAnalytics } from "@/components/work-tracker/ProjectAnalytics";
@@ -14,6 +14,7 @@ import { GanttChart } from "@/components/work-tracker/GanttChart";
 import { TimeTracker } from "@/components/work-tracker/TimeTracker";
 import { WorkTrackerHeader } from "@/components/work-tracker/WorkTrackerHeader";
 import { FeatureTracking } from "@/components/work-tracker/FeatureTracking";
+import { DocumentationManager } from "@/components/work-tracker/DocumentationManager";
 
 interface Project {
   id: string;
@@ -205,7 +206,7 @@ export default function WorkTracker() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
@@ -229,6 +230,10 @@ export default function WorkTracker() {
                 <TabsTrigger value="time" className="gap-2">
                   <Clock className="h-4 w-4" />
                   Time
+                </TabsTrigger>
+                <TabsTrigger value="docs" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Documentation
                 </TabsTrigger>
               </TabsList>
 
@@ -303,6 +308,12 @@ export default function WorkTracker() {
                 <TimeTracker 
                   projectId={selectedProject.id}
                   tasks={tasks}
+                />
+              </TabsContent>
+
+              <TabsContent value="docs">
+                <DocumentationManager 
+                  projectId={selectedProject.id}
                 />
               </TabsContent>
             </Tabs>
