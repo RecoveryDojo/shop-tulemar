@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useProducts } from '@/hooks/useProducts';
 import groceryBasket from "@/assets/grocery-basket.jpg";
 import deliveryTruck from "@/assets/delivery-truck.jpg";
 
 export default function ShopIndex() {
+  const { categories } = useProducts();
+  
   const features = [
     {
       icon: ShoppingCart,
@@ -31,7 +34,7 @@ export default function ShopIndex() {
     }
   ];
 
-  const categories = [
+  const categoryPreviews = [
     {
       icon: Coffee,
       name: "Coffee & Beverages",
@@ -100,7 +103,7 @@ export default function ShopIndex() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8 mb-12">
-            {categories.map((category, index) => (
+            {categoryPreviews.map((category, index) => (
               <Card key={index} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale">
                 <CardHeader className="text-center">
                   <div className="bg-gradient-tropical p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
@@ -116,9 +119,11 @@ export default function ShopIndex() {
           </div>
           
           <div className="text-center">
-            <Button variant="hero" size="lg" asChild>
-              <Link to="/categories">Browse All Categories</Link>
-            </Button>
+            <Link to="/categories">
+              <Button className="bg-gradient-tropical hover:opacity-90 text-white" size="lg">
+                Browse All Categories
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -161,9 +166,11 @@ export default function ShopIndex() {
                 </div>
               </div>
               <div className="mt-8">
-                <Button variant="outline" size="lg" asChild>
-                  <Link to="/how-it-works">Learn More</Link>
-                </Button>
+                <Link to="/how-it-works">
+                  <Button variant="outline" size="lg">
+                    Learn More
+                  </Button>
+                </Link>
               </div>
             </div>
             <div className="order-first md:order-last">
@@ -188,12 +195,24 @@ export default function ShopIndex() {
             Your vacation starts the moment you arrive.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="secondary" size="lg" asChild>
-              <Link to="/categories">Browse Categories</Link>
-            </Button>
-            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
-              <Link to="/order">Start Shopping</Link>
-            </Button>
+            <Link to="/categories">
+              <Button 
+                variant="secondary" 
+                size="lg"
+                className="bg-white text-primary hover:bg-white/90"
+              >
+                Browse Categories
+              </Button>
+            </Link>
+            <Link to="/order">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="border-white text-white hover:bg-white hover:text-primary"
+              >
+                Start Shopping
+              </Button>
+            </Link>
           </div>
         </div>
         </section>

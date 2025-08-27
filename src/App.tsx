@@ -13,6 +13,7 @@ import ShopHowItWorks from "./pages/shop/ShopHowItWorks";
 import CategoryPage from "./pages/shop/CategoryPage";
 import ShopCart from "./pages/shop/ShopCart";
 import ShopCheckout from "./pages/shop/ShopCheckout";
+import ShopSearch from "./pages/shop/ShopSearch";
 import OrderSuccess from "./pages/shop/OrderSuccess";
 import WorkTracker from "./pages/WorkTracker";
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<ShopIndex />} />
             <Route path="/categories" element={<ShopCategories />} />
             <Route path="/category/:categoryId" element={<CategoryPage />} />
+            <Route path="/search" element={<ShopSearch />} />
             <Route path="/cart" element={<ShopCart />} />
             <Route path="/checkout" element={<ShopCheckout />} />
             <Route path="/order-success/:orderId" element={<OrderSuccess />} />
