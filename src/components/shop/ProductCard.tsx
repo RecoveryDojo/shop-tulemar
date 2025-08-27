@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
-import { Product, useCart } from '@/contexts/CartContext';
+import { useCart } from '@/contexts/CartContext';
+import { Product } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProductCardProps {
@@ -32,8 +33,8 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardContent className="p-3 sm:p-4">
         <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden h-32 sm:h-40 md:h-48">
           <img
-            src={product.image}
-            alt={product.name}
+          src={product.image_url || '/placeholder.svg'}
+          alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </div>

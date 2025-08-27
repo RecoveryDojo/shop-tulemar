@@ -61,9 +61,9 @@ export default function ShopCart() {
                   <CardContent className="p-6">
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.image}
-                          alt={item.name}
+                         <img
+                           src={item.image_url || '/placeholder.svg'}
+                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -160,9 +160,11 @@ export default function ShopCart() {
                 </div>
                 
                 <div className="space-y-3 pt-4">
-                  <Button className="w-full bg-gradient-tropical hover:opacity-90 text-white" size="lg">
-                    Proceed to Checkout
-                  </Button>
+                  <Link to="/checkout" className="block">
+                    <Button className="w-full bg-gradient-tropical hover:opacity-90 text-white" size="lg">
+                      Proceed to Checkout
+                    </Button>
+                  </Link>
                   
                   <Link to="/categories" className="block">
                     <Button variant="outline" className="w-full" size="lg">
