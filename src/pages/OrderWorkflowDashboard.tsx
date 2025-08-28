@@ -25,6 +25,8 @@ import { OrderStatusTracker } from "@/components/workflow/OrderStatusTracker";
 import { StakeholderCommunications } from "@/components/workflow/StakeholderCommunications";
 import { RoleBasedDashboard } from "@/components/workflow/RoleBasedDashboard";
 import { WorkflowAnalytics } from "@/components/workflow/WorkflowAnalytics";
+import { RealTimeStatusTracker } from "@/components/workflow/RealTimeStatusTracker";
+import { WorkflowAutomationPanel } from "@/components/workflow/WorkflowAutomationPanel";
 
 interface Order {
   id: string;
