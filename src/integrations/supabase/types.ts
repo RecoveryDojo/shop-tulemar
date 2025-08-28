@@ -236,6 +236,112 @@ export type Database = {
           },
         ]
       }
+      order_notifications: {
+        Row: {
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          message_content: string | null
+          metadata: Json | null
+          notification_type: string
+          order_id: string
+          recipient_identifier: string
+          recipient_type: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          metadata?: Json | null
+          notification_type: string
+          order_id: string
+          recipient_identifier: string
+          recipient_type: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          metadata?: Json | null
+          notification_type?: string
+          order_id?: string
+          recipient_identifier?: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_workflow_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          id: string
+          metadata: Json | null
+          new_status: string | null
+          notes: string | null
+          order_id: string
+          phase: string
+          previous_status: string | null
+          timestamp: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          notes?: string | null
+          order_id: string
+          phase: string
+          previous_status?: string | null
+          timestamp?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          notes?: string | null
+          order_id?: string
+          phase?: string
+          previous_status?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_workflow_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           access_token: string | null
@@ -421,6 +527,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      stakeholder_assignments: {
+        Row: {
+          accepted_at: string | null
+          assigned_at: string
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string
+          role: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          role: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stakeholder_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subtasks: {
         Row: {

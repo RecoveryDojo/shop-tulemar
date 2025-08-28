@@ -15,6 +15,7 @@ import ShopOrder from "@/pages/shop/ShopOrder";
 import ShopSearch from "@/pages/shop/ShopSearch";
 import ShopHowItWorks from "@/pages/shop/ShopHowItWorks";
 import WorkTracker from "@/pages/WorkTracker";
+import OrderWorkflowDashboard from "@/pages/OrderWorkflowDashboard";
 import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => {
                 <Route path="/search" element={<ShopSearch />} />
                 <Route path="/how-it-works" element={<ShopHowItWorks />} />
                 <Route path="/work-tracker" element={<WorkTracker />} />
+                <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/sitemap" element={<Sitemap />} />
