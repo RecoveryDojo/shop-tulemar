@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target } from "lucide-react";
+import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const navigationItems = [
   { title: "Shopping Cart", url: "/cart", icon: ShoppingCart, showBadge: true },
   { title: "Place Order", url: "/order", icon: Package },
   { title: "How It Works", url: "/how-it-works", icon: Info },
+  { title: "Workflow Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Work Tracker", url: "/work-tracker", icon: Target },
 ];
 
@@ -91,7 +92,7 @@ export function ShopNavigation() {
                     )}
                   </NavLink>
                 </DropdownMenuItem>
-                {index < navigationItems.length - 1 && index === 2 && (
+                {index < navigationItems.length - 1 && (index === 2 || index === 5) && (
                   <DropdownMenuSeparator />
                 )}
               </div>
