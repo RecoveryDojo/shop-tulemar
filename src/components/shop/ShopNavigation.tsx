@@ -56,7 +56,6 @@ export function ShopNavigation() {
         {!user ? (
           <div className="flex items-center gap-2">
             <div className="hidden md:flex flex-col text-right text-xs">
-              <span className="text-muted-foreground">Join 500+ guests</span>
               <span className="text-primary font-medium">Free delivery today!</span>
             </div>
             <Button 
@@ -67,7 +66,7 @@ export function ShopNavigation() {
             >
               <NavLink to="/auth" className="flex items-center gap-2 px-4 py-2">
                 <Zap className="h-4 w-4 group-hover:animate-pulse" />
-                <span className="font-medium">Start Ordering</span>
+                <span className="font-medium">Sign In</span>
                 <div className="absolute inset-0 bg-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
               </NavLink>
             </Button>
