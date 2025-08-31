@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard } from "lucide-react";
+import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard, Star, Zap } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "@/components/auth/UserMenu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,7 @@ export function ShopNavigation() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { itemCount } = useCart();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -47,8 +50,33 @@ export function ShopNavigation() {
         </div>
       </div>
 
-      {/* Dropdown Navigation for All Devices */}
-      <div>
+      
+      {/* Sign In CTA & Menu */}
+      <div className="flex items-center gap-3">
+        {!user ? (
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex flex-col text-right text-xs">
+              <span className="text-muted-foreground">Join 500+ guests</span>
+              <span className="text-primary font-medium">Free delivery today!</span>
+            </div>
+            <Button 
+              variant="default" 
+              size="sm"
+              className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 group relative overflow-hidden"
+              asChild
+            >
+              <NavLink to="/auth" className="flex items-center gap-2 px-4 py-2">
+                <Zap className="h-4 w-4 group-hover:animate-pulse" />
+                <span className="font-medium">Start Ordering</span>
+                <div className="absolute inset-0 bg-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+              </NavLink>
+            </Button>
+          </div>
+        ) : (
+          <UserMenu />
+        )}
+        
+        {/* Dropdown Navigation */}
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="relative">

@@ -2,15 +2,10 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import groceryHero from "@/assets/grocery-hero.jpg";
-import UserMenu from "@/components/auth/UserMenu";
 
 export const ShopHero = () => {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      {/* Top Navigation */}
-      <div className="absolute top-6 right-6 z-20">
-        <UserMenu />
-      </div>
       
       {/* Background Image */}
       <div 
