@@ -213,6 +213,15 @@ export default function ShopIndex() {
                 Start Shopping
               </Button>
             </Link>
+            <Link to="/auth">
+              <Button 
+                variant="ghost" 
+                size="lg" 
+                className="text-white hover:bg-white/10"
+              >
+                Sign In
+              </Button>
+            </Link>
           </div>
         </div>
         </section>
