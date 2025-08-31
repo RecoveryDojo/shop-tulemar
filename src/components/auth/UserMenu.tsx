@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, LogOut, Shield, Settings, ChefHat } from 'lucide-react';
+import { User, LogOut, Shield, Settings, ChefHat, LayoutDashboard, Workflow } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const UserMenu = () => {
@@ -91,6 +91,14 @@ const UserMenu = () => {
             <DropdownMenuItem onClick={() => navigate('/admin')}>
               <Shield className="mr-2 h-4 w-4" />
               <span>Admin Panel</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Main Dashboard</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/order-workflow')}>
+              <Workflow className="mr-2 h-4 w-4" />
+              <span>Order Workflow</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

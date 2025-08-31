@@ -2,17 +2,14 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import groceryHero from "@/assets/grocery-hero.jpg";
+import UserMenu from "@/components/auth/UserMenu";
 
 export const ShopHero = () => {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      {/* Top Login Button */}
+      {/* Top Navigation */}
       <div className="absolute top-6 right-6 z-20">
-        <Link to="/auth">
-          <Button variant="outline" className="border-white text-white hover:bg-white hover:text-primary">
-            Sign In
-          </Button>
-        </Link>
+        <UserMenu />
       </div>
       
       {/* Background Image */}
@@ -53,6 +50,9 @@ export const ShopHero = () => {
           </Button>
           <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
             <Link to="/how-it-works">How It Works</Link>
+          </Button>
+          <Button variant="ghost" size="lg" className="text-white hover:bg-white/10" asChild>
+            <Link to="/navigation">Navigation</Link>
           </Button>
         </div>
         

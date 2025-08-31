@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShopLayout } from "@/components/shop/ShopLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,7 @@ interface Task {
   created_at: string;
 }
 
-export default function WorkTracker() {
+function WorkTrackerContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [features, setFeatures] = useState<Feature[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -341,5 +342,13 @@ export default function WorkTracker() {
         />
       </div>
     </ShopLayout>
+  );
+}
+
+export default function WorkTracker() {
+  return (
+    <ProtectedRoute requireAuth={true}>
+      <WorkTrackerContent />
+    </ProtectedRoute>
   );
 }

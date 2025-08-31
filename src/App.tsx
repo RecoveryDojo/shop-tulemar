@@ -21,6 +21,7 @@ import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 import Sitemap from "@/pages/Sitemap";
+import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => {
                 <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/navigation" element={<Navigation />} />
                 <Route path="/sitemap" element={<Sitemap />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

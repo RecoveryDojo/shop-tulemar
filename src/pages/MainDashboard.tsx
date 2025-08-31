@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ interface DashboardTab {
   features: string[];
 }
 
-export default function MainDashboard() {
+function MainDashboardContent() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const workflowTabs: DashboardTab[] = [
@@ -361,5 +362,13 @@ export default function MainDashboard() {
         </div>
       </div>
     </ShopLayout>
+  );
+}
+
+export default function MainDashboard() {
+  return (
+    <ProtectedRoute requireAuth={true} requiredRoles={['admin', 'sysadmin']}>
+      <MainDashboardContent />
+    </ProtectedRoute>
   );
 }

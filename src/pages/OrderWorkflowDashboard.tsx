@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShopLayout } from "@/components/shop/ShopLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -161,7 +162,7 @@ const WORKFLOW_PHASES = [
   }
 ];
 
-export default function OrderWorkflowDashboard() {
+function OrderWorkflowDashboardContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [assignments, setAssignments] = useState<StakeholderAssignment[]>([]);
   const [workflowLogs, setWorkflowLogs] = useState<WorkflowLog[]>([]);
@@ -455,5 +456,13 @@ export default function OrderWorkflowDashboard() {
         </Tabs>
       </div>
     </ShopLayout>
+  );
+}
+
+export default function OrderWorkflowDashboard() {
+  return (
+    <ProtectedRoute requireAuth={true} requiredRoles={['admin', 'sysadmin']}>
+      <OrderWorkflowDashboardContent />
+    </ProtectedRoute>
   );
 }
