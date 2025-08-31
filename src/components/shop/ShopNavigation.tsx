@@ -40,7 +40,7 @@ export function ShopNavigation() {
   return (
     <header className="h-16 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 px-4">
       {/* Logo */}
-      <div className="flex items-center gap-3">
+      <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
         <div className="bg-gradient-tropical p-2 rounded-lg">
           <ShoppingCart className="h-6 w-6 text-white" />
         </div>
@@ -48,7 +48,7 @@ export function ShopNavigation() {
           <h1 className="font-bold text-xl text-foreground">Tulemar Shop</h1>
           <p className="text-sm text-muted-foreground hidden sm:block">Grocery Delivery</p>
         </div>
-      </div>
+      </NavLink>
 
       
       {/* Sign In CTA & Menu */}
