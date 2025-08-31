@@ -6,6 +6,15 @@ import groceryHero from "@/assets/grocery-hero.jpg";
 export const ShopHero = () => {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+      {/* Top Login Button */}
+      <div className="absolute top-6 right-6 z-20">
+        <Link to="/auth">
+          <Button variant="outline" className="border-white text-white hover:bg-white hover:text-primary">
+            Sign In
+          </Button>
+        </Link>
+      </div>
+      
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
