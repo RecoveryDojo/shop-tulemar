@@ -9,15 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
-import { useOrders } from '@/hooks/useOrders';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export default function ShopCheckout() {
   const { items, total, clearCart } = useCart();
-  const { createOrder, loading } = useOrders();
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -58,25 +59,65 @@ export default function ShopCheckout() {
     
     if (items.length === 0) return;
 
-    const orderItems = items.map(item => ({
-      product_id: item.id,
-      quantity: item.quantity,
-      unit_price: item.price,
-      total_price: item.price * item.quantity
-    }));
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare order data for Stripe
+      const orderData = {
+        customerName: formData.customer_name,
+        customerEmail: formData.customer_email,
+        customerPhone: formData.customer_phone,
+        propertyAddress: formData.property_address,
+        arrivalDate: formData.arrival_date,
+        departureDate: formData.departure_date,
+        guestCount: formData.guest_count ? parseInt(formData.guest_count) : null,
+        dietaryRestrictions: formData.dietary_restrictions.length > 0 ? formData.dietary_restrictions : null,
+        specialInstructions: formData.special_instructions,
+        subtotal: subtotal,
+        taxAmount: tax,
+        deliveryFee: deliveryFee,
+        totalAmount: finalTotal,
+      };
 
-    const orderData = {
-      ...formData,
-      guest_count: formData.guest_count ? parseInt(formData.guest_count) : undefined,
-      dietary_restrictions: formData.dietary_restrictions.length > 0 ? formData.dietary_restrictions : null,
-      items: orderItems
-    };
+      // Prepare items data
+      const orderItems = items.map(item => ({
+        productId: item.id,
+        name: item.name,
+        description: item.description,
+        imageUrl: item.image_url,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        totalPrice: item.price * item.quantity
+      }));
 
-    const orderId = await createOrder(orderData);
-    
-    if (orderId) {
+      console.log("Creating payment session...");
+      
+      // Create payment with Stripe
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { orderData, items: orderItems }
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to create payment session");
+      }
+
+      if (!data?.url) {
+        throw new Error("No payment URL received");
+      }
+
+      console.log("Payment session created, redirecting to Stripe...");
+      
+      // Clear cart before redirecting to Stripe
       clearCart();
-      navigate(`/order-success/${orderId}`);
+      
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+      
+    } catch (error) {
+      console.error("Order placement failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to place order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -297,10 +338,10 @@ export default function ShopCheckout() {
                       type="submit"
                       className="w-full bg-gradient-tropical hover:opacity-90 text-white"
                       size="lg"
-                      disabled={loading}
+                      disabled={isSubmitting}
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
-                      {loading ? 'Processing...' : 'Place Order'}
+                      {isSubmitting ? 'Creating Payment...' : 'Proceed to Payment'}
                     </Button>
 
                     <div className="text-xs text-muted-foreground mt-4">

@@ -1,40 +1,81 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Package, Clock, MapPin, Phone, Mail } from 'lucide-react';
-import { useOrders } from '@/hooks/useOrders';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export default function OrderSuccess() {
-  const { orderId } = useParams<{ orderId: string }>();
-  const { getOrderById, getOrderItems } = useOrders();
+  const [searchParams] = useSearchParams();
   const [order, setOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const sessionId = searchParams.get('session_id');
+  const orderId = searchParams.get('order_id');
 
   useEffect(() => {
-    const fetchOrderDetails = async () => {
-      if (!orderId) return;
+    const verifyPaymentAndFetchOrder = async () => {
+      if (!sessionId || !orderId) {
+        setLoading(false);
+        return;
+      }
       
       try {
-        const [orderData, itemsData] = await Promise.all([
-          getOrderById(orderId),
-          getOrderItems(orderId)
-        ]);
+        console.log("Verifying payment for session:", sessionId);
         
-        setOrder(orderData);
-        setOrderItems(itemsData);
+        // Verify payment status
+        const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-payment', {
+          body: { sessionId, orderId }
+        });
+
+        if (verificationError) {
+          console.error("Payment verification error:", verificationError);
+          toast.error("Payment verification failed");
+          return;
+        }
+
+        if (verificationData?.success) {
+          setOrder(verificationData.order);
+          
+          // Fetch order items
+          const { data: items, error: itemsError } = await supabase
+            .from('order_items')
+            .select(`
+              *,
+              products:product_id (
+                name,
+                description,
+                origin,
+                unit,
+                image_url
+              )
+            `)
+            .eq('order_id', orderId);
+
+          if (itemsError) {
+            console.error("Error fetching order items:", itemsError);
+          } else {
+            setOrderItems(items || []);
+          }
+          
+          toast.success("Payment confirmed! Your order has been placed.");
+        } else {
+          toast.error("Payment was not successful");
+        }
       } catch (error) {
-        console.error('Error fetching order details:', error);
+        console.error('Error verifying payment:', error);
+        toast.error("Error verifying payment status");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrderDetails();
-  }, [orderId]);
+    verifyPaymentAndFetchOrder();
+  }, [sessionId, orderId]);
 
   if (loading) {
     return (
