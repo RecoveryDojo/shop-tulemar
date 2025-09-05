@@ -33,12 +33,23 @@ const BulkInventoryManager = () => {
   const { categories, refetch } = useProducts();
 
   const downloadTemplate = () => {
+    console.log('Downloading template, categories available:', categories.length);
+    
+    if (!categories || categories.length === 0) {
+      toast({
+        title: "Categories Loading",
+        description: "Please wait for categories to load before downloading the template.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const template = [
       {
         name: 'Organic Bananas',
         description: 'Fresh organic bananas from local farms',
         price: 2.99,
-        category_id: 'Select category ID from categories list',
+        category_id: categories[0]?.id || 'category-id-here',
         unit: 'lb',
         origin: 'Costa Rica',
         image_url: 'https://example.com/banana.jpg',
@@ -48,7 +59,7 @@ const BulkInventoryManager = () => {
         name: 'Premium Coffee Beans',
         description: 'Single-origin Arabica coffee beans',
         price: 15.99,
-        category_id: 'Select category ID from categories list',
+        category_id: categories[1]?.id || categories[0]?.id || 'category-id-here',
         unit: 'bag',
         origin: 'Colombia',
         image_url: 'https://example.com/coffee.jpg',
@@ -111,8 +122,24 @@ const BulkInventoryManager = () => {
   };
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File upload triggered');
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+    
+    if (!categories || categories.length === 0) {
+      console.log('Categories not loaded yet:', categories);
+      toast({
+        title: "Error",
+        description: "Categories are still loading. Please wait and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setFileName(file.name);
     setIsUploading(true);
@@ -120,34 +147,53 @@ const BulkInventoryManager = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
+        console.log('File reader loaded, processing...');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
+        console.log('Workbook created, sheet names:', workbook.SheetNames);
+        
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        console.log('JSON data extracted:', jsonData.length, 'rows');
 
-        const validatedProducts = jsonData.map((row, index) => 
-          validateProduct(row, index + 2) // +2 because Excel is 1-indexed and has header
-        );
+        const validatedProducts = jsonData.map((row, index) => {
+          console.log(`Validating row ${index + 2}:`, row);
+          return validateProduct(row, index + 2); // +2 because Excel is 1-indexed and has header
+        });
 
+        console.log('Validation complete:', validatedProducts);
         setExcelData(validatedProducts);
         
         const validCount = validatedProducts.filter(p => p.status === 'validated').length;
         const errorCount = validatedProducts.filter(p => p.status === 'error').length;
+        
+        console.log(`Processing complete: ${validCount} valid, ${errorCount} errors`);
         
         toast({
           title: "File Processed",
           description: `${validCount} valid products, ${errorCount} with errors`,
         });
       } catch (error) {
+        console.error('Error processing file:', error);
         toast({
           title: "Error",
-          description: "Failed to process Excel file. Please check the format.",
+          description: `Failed to process Excel file: ${error instanceof Error ? error.message : 'Please check the format.'}`,
           variant: "destructive",
         });
       } finally {
         setIsUploading(false);
       }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('File reader error:', error);
+      setIsUploading(false);
+      toast({
+        title: "Error",
+        description: "Failed to read the file. Please try again.",
+        variant: "destructive",
+      });
     };
     
     reader.readAsArrayBuffer(file);
@@ -254,19 +300,32 @@ const BulkInventoryManager = () => {
             </Button>
             
             <div className="flex items-center gap-2">
-              <Label htmlFor="excel-upload" className="cursor-pointer">
-                <Input
-                  id="excel-upload"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button variant="default" className="flex items-center gap-2" disabled={isUploading}>
-                  <Upload className="h-4 w-4" />
-                  {isUploading ? 'Processing...' : 'Upload Excel File'}
-                </Button>
-              </Label>
+              <Input
+                id="excel-upload"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button 
+                variant="default" 
+                className="flex items-center gap-2" 
+                disabled={isUploading || !categories || categories.length === 0}
+                onClick={() => {
+                  console.log('Upload button clicked');
+                  const fileInput = document.getElementById('excel-upload') as HTMLInputElement;
+                  if (fileInput) {
+                    fileInput.click();
+                  } else {
+                    console.error('File input not found');
+                  }
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                {isUploading ? 'Processing...' : 
+                 !categories || categories.length === 0 ? 'Loading categories...' : 
+                 'Upload Excel File'}
+              </Button>
             </div>
 
             {excelData.length > 0 && (
