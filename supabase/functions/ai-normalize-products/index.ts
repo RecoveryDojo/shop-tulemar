@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,94 @@ interface Category {
   id: string;
   name: string;
   icon: string;
+}
+
+const MAX_IMAGE_DIMENSION = 1024;
+
+function slugify(input: string): string {
+  return (input || 'product')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 60);
+}
+
+function isExternalUrl(u?: string): boolean {
+  if (!u) return false;
+  try {
+    const url = new URL(u);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+async function processAndUploadImage(
+  supabase: any,
+  userId: string,
+  productName: string,
+  imageUrl: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) {
+      console.warn('Failed to fetch image:', imageUrl, res.status);
+      return null;
+    }
+    const arrayBuf = await res.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuf);
+
+    const img = await Image.decode(bytes);
+    let w = img.width;
+    let h = img.height;
+    if (w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION) {
+      if (w >= h) {
+        h = Math.round((h * MAX_IMAGE_DIMENSION) / w);
+        w = MAX_IMAGE_DIMENSION;
+      } else {
+        w = Math.round((w * MAX_IMAGE_DIMENSION) / h);
+        h = MAX_IMAGE_DIMENSION;
+      }
+      img.resize(w, h);
+    }
+
+    const webp = await img.encodeWEBP(85);
+    const filePath = `${userId}/${Date.now()}-${slugify(productName)}.webp`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, webp, { contentType: 'image/webp', upsert: true });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError.message);
+      return null;
+    }
+
+    const { data: pub } = supabase.storage.from('product-images').getPublicUrl(filePath);
+    return pub?.publicUrl || null;
+  } catch (e) {
+    console.error('processAndUploadImage error:', e);
+    return null;
+  }
+}
+
+async function processProductImages(
+  products: NormalizedProduct[],
+  supabase: any,
+  userId: string
+): Promise<void> {
+  for (const p of products) {
+    if (p.image_url && isExternalUrl(p.image_url)) {
+      const uploadedUrl = await processAndUploadImage(supabase, userId, p.name, p.image_url);
+      if (uploadedUrl) {
+        p.image_url = uploadedUrl;
+        p.suggestions = [...(p.suggestions || []), 'Image resized and uploaded to CDN'];
+      } else {
+        p.errors = [...(p.errors || []), 'Image processing/upload failed'];
+        if (p.status !== 'error') p.status = 'suggested';
+      }
+    }
+  }
 }
 
 serve(async (req) => {
@@ -98,9 +187,11 @@ serve(async (req) => {
       (existingProducts || []).map(p => p.name.toLowerCase().trim())
     );
 
-    // Process rows with AI assistance
-    const normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames);
+// Process rows with AI assistance
+let normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames);
 
+// Resize and upload images to storage, updating image_url to CDN URL
+await processProductImages(normalizedProducts, supabase, user.id);
     // Create import job
     const { data: importJob, error: jobError } = await supabase
       .from('import_jobs')
