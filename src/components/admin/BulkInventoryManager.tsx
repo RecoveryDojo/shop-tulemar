@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye, Check, X, AlertCircle, Package } from 'lucide-react';
+import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { useProducts } from '@/hooks/useProducts';
 
 interface ExcelProduct {
+  id?: string;
   name: string;
   description: string;
   price: number;
@@ -21,15 +22,19 @@ interface ExcelProduct {
   image_url?: string;
   stock_quantity?: number;
   rowIndex: number;
-  status: 'pending' | 'validated' | 'error' | 'published';
+  status: 'pending' | 'validated' | 'error' | 'published' | 'suggested' | 'ready';
   errors: string[];
+  suggestions?: string[];
+  original_data?: any;
 }
 
 const BulkInventoryManager = () => {
   const [excelData, setExcelData] = useState<ExcelProduct[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [importJobId, setImportJobId] = useState<string | null>(null);
   const { categories, refetch } = useProducts();
 
   const downloadTemplate = () => {
@@ -199,8 +204,71 @@ const BulkInventoryManager = () => {
     reader.readAsArrayBuffer(file);
   }, [categories]);
 
+  const processWithAI = async () => {
+    if (!excelData || excelData.length === 0) {
+      toast({
+        title: "No Data",
+        description: "Please upload an Excel file first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessingAI(true);
+    
+    try {
+      const rawData = excelData.map(product => product.original_data || {
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category_id: product.category_id,
+        unit: product.unit,
+        origin: product.origin,
+        image_url: product.image_url,
+        stock_quantity: product.stock_quantity
+      });
+
+      const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
+        body: { 
+          rows: rawData,
+          filename: fileName
+        }
+      });
+
+      if (error) throw error;
+
+      const { jobId, summary, items } = data;
+      
+      // Transform AI results to match our interface
+      const transformedItems = items.map((item: any, index: number) => ({
+        ...item,
+        rowIndex: index + 2, // Excel row numbering
+        stock_quantity: item.stock_quantity || 0
+      }));
+
+      setExcelData(transformedItems);
+      setImportJobId(jobId);
+
+      toast({
+        title: "AI Processing Complete",
+        description: `${summary.ready} ready, ${summary.suggested} need review, ${summary.errors} errors`,
+        variant: summary.errors > 0 ? "destructive" : "default",
+      });
+
+    } catch (error: any) {
+      console.error('AI processing error:', error);
+      toast({
+        title: "AI Processing Failed",
+        description: error.message || "Please try again or use manual upload.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingAI(false);
+    }
+  };
+
   const publishProducts = async () => {
-    const validProducts = excelData.filter(p => p.status === 'validated');
+    const validProducts = excelData.filter(p => p.status === 'validated' || p.status === 'ready');
     if (validProducts.length === 0) {
       toast({
         title: "No Valid Products",
@@ -271,6 +339,16 @@ const BulkInventoryManager = () => {
         return <Badge variant="secondary">Pending</Badge>;
       case 'validated':
         return <Badge variant="default" className="bg-green-100 text-green-800">Valid</Badge>;
+      case 'ready':
+        return <Badge variant="default" className="bg-green-100 text-green-800">
+          <Check className="h-3 w-3 mr-1" />
+          Ready
+        </Badge>;
+      case 'suggested':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+          <Bot className="h-3 w-3 mr-1" />
+          AI Suggested
+        </Badge>;
       case 'error':
         return <Badge variant="destructive">Error</Badge>;
       case 'published':
@@ -328,21 +406,38 @@ const BulkInventoryManager = () => {
               </Button>
             </div>
 
+            {excelData.length > 0 && !importJobId && (
+              <Button 
+                onClick={processWithAI}
+                disabled={isProcessingAI}
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Sparkles className="h-4 w-4" />
+                {isProcessingAI ? 'AI Processing...' : 'Auto-clean with AI'}
+              </Button>
+            )}
+
             {excelData.length > 0 && (
               <Button 
                 onClick={publishProducts} 
-                disabled={isPublishing || excelData.filter(p => p.status === 'validated').length === 0}
+                disabled={isPublishing || excelData.filter(p => p.status === 'validated' || p.status === 'ready').length === 0}
                 className="flex items-center gap-2"
               >
                 <Check className="h-4 w-4" />
-                {isPublishing ? 'Publishing...' : `Publish ${excelData.filter(p => p.status === 'validated').length} Products`}
+                {isPublishing ? 'Publishing...' : `Publish ${excelData.filter(p => p.status === 'validated' || p.status === 'ready').length} Products`}
               </Button>
             )}
           </div>
 
           {fileName && (
-            <div className="text-sm text-muted-foreground">
-              File: {fileName} ({excelData.length} rows)
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>File: {fileName} ({excelData.length} rows)</span>
+              {importJobId && (
+                <span className="flex items-center gap-1">
+                  <Bot className="h-3 w-3" />
+                  AI Job: {importJobId.slice(0, 8)}...
+                </span>
+              )}
             </div>
           )}
         </CardContent>
@@ -371,6 +466,7 @@ const BulkInventoryManager = () => {
                     <TableHead>Category</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Stock</TableHead>
+                    <TableHead>AI Suggestions</TableHead>
                     <TableHead>Errors</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -398,6 +494,14 @@ const BulkInventoryManager = () => {
                         </TableCell>
                         <TableCell>{product.unit}</TableCell>
                         <TableCell>{product.stock_quantity}</TableCell>
+                        <TableCell>
+                          {product.suggestions && product.suggestions.length > 0 && (
+                            <div className="flex items-center gap-1 text-blue-600">
+                              <Sparkles className="h-3 w-3" />
+                              <span className="text-xs">{product.suggestions.join(', ')}</span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {product.errors.length > 0 && (
                             <div className="flex items-center gap-1 text-red-600">
