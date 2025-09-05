@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Users, Package, ShoppingCart, UserPlus, UserMinus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import ProductManager from '@/components/admin/ProductManager';
 
 interface UserWithRoles {
   id: string;
@@ -104,9 +106,21 @@ const Admin = () => {
             Admin Panel
           </h1>
           <p className="text-muted-foreground mt-2">
-            Manage users, roles, and system settings
+            Manage users, roles, inventory, and system settings
           </p>
         </div>
+
+        <Tabs defaultValue="inventory" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
+            <TabsTrigger value="users">User Management</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inventory">
+            <ProductManager />
+          </TabsContent>
+
+          <TabsContent value="users">
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card>
@@ -225,6 +239,8 @@ const Admin = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </ProtectedRoute>
   );
