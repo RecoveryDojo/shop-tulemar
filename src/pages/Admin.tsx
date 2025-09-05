@@ -106,7 +106,7 @@ const Admin = () => {
             Admin Panel
           </h1>
           <p className="text-muted-foreground mt-2">
-            Manage users, roles, inventory, and system settings
+            Manage users, roles, AI-powered inventory management, and system settings
           </p>
         </div>
 

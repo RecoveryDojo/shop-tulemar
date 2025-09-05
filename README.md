@@ -85,6 +85,7 @@ The following project and tasks have been documented in the in-app Work Tracker 
 - Order Processing & Success — done
 - Search & Navigation — done
 - User Experience & Polish — done
+- AI Inventory System — done
 
 Quick test routes:
 - Shop home: /shop

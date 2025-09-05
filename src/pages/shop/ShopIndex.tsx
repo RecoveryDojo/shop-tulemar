@@ -34,6 +34,14 @@ export default function ShopIndex() {
     }
   ];
 
+  const aiFeatures = [
+    {
+      icon: ShoppingCart,
+      title: "AI Inventory Management",
+      description: "Smart product categorization and automated image processing for seamless inventory management"
+    }
+  ];
+
   const categoryPreviews = [
     {
       icon: Coffee,

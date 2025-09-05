@@ -50,7 +50,8 @@ function MainDashboardContent() {
         "9-Phase workflow tracking",
         "Real-time status updates", 
         "Stakeholder notifications",
-        "Complete workflow documentation"
+        "Complete workflow documentation",
+        "AI Inventory System integration"
       ]
     },
     {
