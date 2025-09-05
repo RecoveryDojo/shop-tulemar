@@ -147,6 +147,122 @@ export type Database = {
           },
         ]
       }
+      import_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          errors: string[] | null
+          id: string
+          image_url: string | null
+          job_id: string
+          name: string | null
+          normalized: Json | null
+          origin: string | null
+          price: number | null
+          product_id: string | null
+          raw: Json
+          row_index: number | null
+          status: string
+          stock_quantity: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          errors?: string[] | null
+          id?: string
+          image_url?: string | null
+          job_id: string
+          name?: string | null
+          normalized?: Json | null
+          origin?: string | null
+          price?: number | null
+          product_id?: string | null
+          raw: Json
+          row_index?: number | null
+          status?: string
+          stock_quantity?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          errors?: string[] | null
+          id?: string
+          image_url?: string | null
+          job_id?: string
+          name?: string | null
+          normalized?: Json | null
+          origin?: string | null
+          price?: number | null
+          product_id?: string | null
+          raw?: Json
+          row_index?: number | null
+          status?: string
+          stock_quantity?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_jobs: {
+        Row: {
+          column_mapping: Json | null
+          created_at: string
+          created_by: string
+          id: string
+          original_headers: Json | null
+          settings: Json | null
+          source_filename: string | null
+          stats_error_rows: number | null
+          stats_total_rows: number | null
+          stats_valid_rows: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          column_mapping?: Json | null
+          created_at?: string
+          created_by: string
+          id?: string
+          original_headers?: Json | null
+          settings?: Json | null
+          source_filename?: string | null
+          stats_error_rows?: number | null
+          stats_total_rows?: number | null
+          stats_valid_rows?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          column_mapping?: Json | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          original_headers?: Json | null
+          settings?: Json | null
+          source_filename?: string | null
+          stats_error_rows?: number | null
+          stats_total_rows?: number | null
+          stats_valid_rows?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       milestones: {
         Row: {
           completion_date: string | null
