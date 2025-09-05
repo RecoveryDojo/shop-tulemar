@@ -306,39 +306,91 @@ async function processBatchWithAI(
   openaiApiKey: string
 ): Promise<NormalizedProduct[]> {
   
+  // First, detect if this is an Excel format with headers and category rows
+  const firstRow = batch[0] || {};
+  const hasExcelColumnNames = Object.keys(firstRow).some(k => k.startsWith('__EMPTY'));
+  
+  let headerMapping: Record<string, string> = {};
+  let cleanedBatch = batch;
+  
+  if (hasExcelColumnNames) {
+    // Look for header row - typically contains column names like "Item", "Price", etc.
+    const headerRow = batch.find(row => {
+      const values = Object.values(row);
+      return values.some(v => 
+        typeof v === 'string' && 
+        (v.toLowerCase().includes('item') || 
+         v.toLowerCase().includes('price') || 
+         v.toLowerCase().includes('brand'))
+      );
+    });
+    
+    if (headerRow) {
+      // Create mapping from __EMPTY_X to actual column names
+      Object.entries(headerRow).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) {
+          headerMapping[key] = value.toLowerCase().trim();
+        }
+      });
+      
+      // Filter out header rows and category-only rows
+      cleanedBatch = batch.filter(row => {
+        const values = Object.values(row).filter(v => v !== undefined && v !== null && v !== '');
+        if (values.length <= 1) return false; // Category header or empty row
+        
+        // Check if this looks like a product row (has price data)
+        const hasPrice = Object.entries(row).some(([key, value]) => {
+          const mappedKey = headerMapping[key];
+          return (mappedKey?.includes('price') || mappedKey?.includes('cost')) && 
+                 value && String(value).match(/[\$₡\d]/);
+        });
+        
+        return hasPrice;
+      });
+    }
+  }
+  
   const prompt = `You are an AI assistant helping to normalize and clean product data from messy Excel imports. 
 
 Available categories:
 ${categories.map(c => `- ${c.id}: "${c.name}" (${c.icon})`).join('\n')}
 
+EXCEL FORMAT DETECTED: The data uses Excel column names like __EMPTY, __EMPTY_1, etc.
+Header mapping detected: ${JSON.stringify(headerMapping)}
+
 INSTRUCTIONS:
-1. Map messy column headers to standard fields: name, description, price, category_id, unit, origin, image_url, stock_quantity
+1. Map Excel columns to standard fields using the header mapping:
+   - Find the column that contains product names (usually mapped to "item" or "product")
+   - Find price columns (look for "price", "cost", may have $ or ₡ symbols)
+   - Extract brand information if available
+   - Look for image URLs in designated columns
 2. Clean and normalize the data:
-   - Standardize units (e.g., "lb", "lbs", "pound" → "lb")
-   - Fix price formatting (remove $, commas)
+   - Parse prices correctly (₡1,700 = colones, $3 = USD - prefer USD if both available)
+   - Standardize units (e.g., "115g", "1L", "1kg" → extract unit)
    - Match products to appropriate category_id based on name/description
-   - Generate descriptions if missing
-   - Set reasonable stock_quantity if missing (default: 10)
-3. Mark status as:
-   - "ready": Complete, valid data
+   - Generate concise descriptions based on name and brand
+   - Set reasonable stock_quantity (default: 10)
+3. Skip rows that are category headers or have insufficient data
+4. Mark status as:
+   - "ready": Complete, valid data with price and name
    - "suggested": Needs review (guessed category, generated description, etc.)
    - "error": Missing critical data or invalid
 
-Common column mappings:
-- "cost", "msrp", "$ price", "retail" → price
-- "qty", "inventory", "stock" → stock_quantity  
-- "type", "dept", "section" → category_id
-- "size", "measurement" → unit
+IMPORTANT: Look for these patterns in the data:
+- Product names in columns mapped to "item" or similar
+- Prices in USD format ($3) or colones (₡1,700) - prefer USD
+- Brand information in separate columns
+- Category groupings (Dairy, Cheese, Breads, etc.)
 
-Return JSON array with this exact structure for each product:
+Return JSON array with this exact structure for each valid product:
 {
   "id": "temp-id-1",
   "name": "cleaned name",
-  "description": "description or generated one",
+  "description": "brand and size if available",
   "price": 9.99,
   "category_id": "matching category id",
-  "unit": "normalized unit",
-  "origin": "origin if available",
+  "unit": "extracted unit (g, L, etc.)",
+  "origin": "brand if available",
   "image_url": "url if available", 
   "stock_quantity": 10,
   "status": "ready|suggested|error",
@@ -348,9 +400,12 @@ Return JSON array with this exact structure for each product:
 }
 
 Process these products:
-${JSON.stringify(batch, null, 2)}`;
+${JSON.stringify(cleanedBatch, null, 2)}`;
 
   try {
+    console.log(`Processing batch of ${cleanedBatch.length} cleaned rows (from ${batch.length} original)`);
+    console.log('Header mapping:', headerMapping);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -360,11 +415,11 @@ ${JSON.stringify(batch, null, 2)}`;
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
         messages: [
-          { role: 'system', content: 'You are a data normalization expert. Always return valid JSON arrays.' },
+          { role: 'system', content: 'You are a data normalization expert specializing in Excel product imports. Always return valid JSON arrays. Focus on extracting product names, prices, and categories accurately.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 4000,
+        temperature: 0.2,
+        max_tokens: 6000,
       }),
     });
 
@@ -415,21 +470,47 @@ ${JSON.stringify(batch, null, 2)}`;
   } catch (error) {
     console.error('AI processing error:', error);
     
-    // Fallback: basic processing without AI
-    return batch.map((row, index) => ({
-      id: `fallback-${Date.now()}-${index}`,
-      name: row.name || row.product || row.title || 'Unknown Product',
-      description: row.description || row.desc || '',
-      price: parseFloat(String(row.price || row.cost || row.msrp || '0').replace(/[^0-9.]/g, '')) || 0,
-      category_id: categories[0]?.id || '',
-      unit: row.unit || row.size || 'each',
-      origin: row.origin || '',
-      image_url: row.image_url || row.image || '',
-      stock_quantity: parseInt(String(row.stock_quantity || row.qty || row.inventory || '10')) || 10,
-      status: 'error' as const,
-      errors: ['AI processing failed - manual review required'],
-      suggestions: [],
-      original_data: row
-    }));
+    // Fallback: basic processing without AI using cleaned batch and header mapping
+    return cleanedBatch.map((row, index) => {
+      // Try to extract data using header mapping
+      let name = 'Unknown Product';
+      let price = 0;
+      let brand = '';
+      
+      Object.entries(row).forEach(([key, value]) => {
+        const mappedHeader = headerMapping[key];
+        if (mappedHeader?.includes('item') && value) {
+          name = String(value);
+        } else if ((mappedHeader?.includes('price') || mappedHeader?.includes('cost')) && value) {
+          // Try to extract USD price first
+          const strValue = String(value);
+          if (strValue.includes('$')) {
+            price = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
+          } else {
+            // Convert colones to USD (rough estimate: 500 colones = 1 USD)
+            const colonesPrice = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
+            price = Math.round((colonesPrice / 500) * 100) / 100;
+          }
+        } else if (mappedHeader?.includes('brand') && value) {
+          brand = String(value);
+        }
+      });
+      
+      return {
+        id: `fallback-${Date.now()}-${index}`,
+        name,
+        description: brand ? `${brand} brand` : '',
+        price,
+        category_id: categories[0]?.id || '',
+        unit: 'each',
+        origin: brand,
+        image_url: '',
+        stock_quantity: 10,
+        status: 'error' as const,
+        errors: ['AI processing failed - basic extraction used'],
+        suggestions: ['Review and verify all data'],
+        original_data: row
+      };
+    });
   }
 }
