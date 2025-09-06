@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, CheckCircle2, Clock, AlertCircle, Target, Users, Calendar, TrendingUp, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { CreateProjectDialog } from "@/components/work-tracker/CreateProjectDialog";
 import { TaskKanbanBoard } from "@/components/work-tracker/TaskKanbanBoard";
 import { ProjectAnalytics } from "@/components/work-tracker/ProjectAnalytics";
@@ -55,6 +56,7 @@ interface Task {
 }
 
 function WorkTrackerContent() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [features, setFeatures] = useState<Feature[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -174,10 +176,20 @@ function WorkTrackerContent() {
               Project management for development tracking
             </p>
           </div>
-          <Button onClick={() => setShowCreateProject(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/feature-showcase")}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Feature Showcase
+            </Button>
+            <Button onClick={() => setShowCreateProject(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Project
+            </Button>
+          </div>
         </div>
 
         {/* Project Selector */}
