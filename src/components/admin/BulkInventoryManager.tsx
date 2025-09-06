@@ -708,19 +708,20 @@ console.log('Filtered data:', filteredData.length, 'product rows');
           <CardContent>
             <div className="rounded-md border overflow-x-auto">
               <Table>
-<TableHeader>
-  <TableRow>
-    <TableHead>Status</TableHead>
-    <TableHead>Row</TableHead>
-    <TableHead>Name</TableHead>
-    <TableHead>Description</TableHead>
-    <TableHead>Price</TableHead>
-    <TableHead>Category</TableHead>
-    <TableHead>Stock</TableHead>
-    <TableHead>AI Suggestions</TableHead>
-    <TableHead>Errors</TableHead>
-  </TableRow>
-</TableHeader>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Row</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>AI Suggestions</TableHead>
+                    <TableHead>Errors</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   {excelData.map((product, index) => {
                     const category = categories.find(cat => cat.id === product.category_id);
@@ -741,15 +742,27 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                           {product.description || 'None'}
                         </TableCell>
                         <TableCell>${product.price.toFixed(2)}</TableCell>
-<TableCell>
-  {product.category_hint ? (
-    <Badge variant="secondary">{product.category_hint}</Badge>
-  ) : (
-    <span className="text-muted-foreground text-xs">—</span>
-  )}
-</TableCell>
-<TableCell>{product.unit}</TableCell>
-<TableCell>{product.stock_quantity}</TableCell>
+                        <TableCell>
+                          {product.category_hint ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {product.category_hint}
+                            </Badge>
+                          ) : product.category_id ? (
+                            <Badge variant="default" className="text-xs">
+                              {categories.find(cat => cat.id === product.category_id)?.name || 'Unknown'}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Not assigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                            {product.unit || 'each'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-medium">{product.stock_quantity || 0}</span>
+                        </TableCell>
 <TableCell>
   {product.suggestions && product.suggestions.length > 0 && (
     <div className="flex items-center gap-1 text-blue-600">
