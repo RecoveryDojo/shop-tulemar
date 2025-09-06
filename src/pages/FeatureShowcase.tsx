@@ -40,182 +40,182 @@ interface FeatureItem {
 
 const FEATURE_DATA: FeatureItem[] = [
   {
-    name: "Enhanced AI Learning & Data Enrichment System",
-    description: "Complete AI-powered product data processing system with machine learning, external data enrichment, quality scoring, and intelligent pattern recognition.",
+    name: "AI-Powered Bulk Data Upload System",
+    description: "Upload large Excel files with embedded images and have them processed perfectly by AI for rapid scaling into new markets.",
     category: "AI Core",
     benefits: [
-      "90% reduction in manual data entry time",
-      "Automatic product categorization with 95% accuracy",
-      "Real-time learning from user corrections",
-      "Scalable processing for thousands of products",
-      "Integrated quality scoring and validation"
+      "Upload Excel files with thousands of products and embedded images",
+      "AI automatically extracts, categorizes, and processes all product data",
+      "Perfect data completion without manual intervention",
+      "Enables rapid expansion into new geographical areas and markets",
+      "Scale product catalog additions from days to minutes"
     ],
-    businessValue: "Saves 20+ hours per week on inventory management, reduces data errors by 85%, enables faster product launches",
-    technicalSpecs: "OpenAI GPT-5 integration, 13 AI pattern types, multi-stage processing pipeline, RESTful APIs",
-    userExperience: "One-click AI processing, intuitive error correction, real-time progress tracking, smart suggestions",
-    roi: "300% ROI within 3 months through labor savings and error reduction",
+    businessValue: "Enables us to scale into new areas and markets faster by perfectly processing large product data files automatically",
+    technicalSpecs: "Excel parsing with image extraction, GPT-4 processing, automated categorization, bulk database operations",
+    userExperience: "Drag-and-drop Excel upload, watch AI process everything automatically, review and approve results",
+    roi: "Enables market expansion that was previously impossible due to manual data entry bottlenecks",
     status: "completed",
     icon: <Brain className="h-5 w-5" />
   },
   {
-    name: "AI Pattern Recognition Engine", 
-    description: "Advanced pattern matching system with 13 different AI pattern types for product categorization, unit extraction, brand detection, and data normalization.",
-    category: "AI Core",
+    name: "Complete Order Lifecycle Tracking",
+    description: "Every order gets tracked from placement to delivery completion with automatic stakeholder coordination.",
+    category: "Workflow",
     benefits: [
-      "13 specialized AI pattern types",
-      "Self-improving through machine learning",
-      "Confidence scoring for reliability",
-      "Pattern success/failure tracking",
-      "Customizable pattern categories"
+      "Complete visibility of every order from start to finish",
+      "Customers know exactly what's happening with their order at all times",
+      "Concierge, shopper, and driver all know what to do next automatically",
+      "No orders fall through the cracks or get forgotten",
+      "Real-time updates eliminate the need for phone calls and texts"
     ],
-    businessValue: "Eliminates need for manual product classification, ensures consistent data quality, adapts to business changes",
-    technicalSpecs: "PostgreSQL pattern storage, confidence algorithms, validation triggers, audit logging",
-    userExperience: "Automatic pattern detection, visual confidence indicators, easy pattern management interface",
-    roi: "250% ROI through classification automation and data consistency",
-    status: "completed",
-    icon: <Zap className="h-5 w-5" />
-  },
-  {
-    name: "External Data Source Integration",
-    description: "Integration with external APIs including Open Food Facts, image search services, and other product databases for automated data enrichment.",
-    category: "Integration",
-    benefits: [
-      "Open Food Facts nutrition data integration",
-      "Automated image sourcing and optimization",
-      "Rate limiting and reliability scoring",
-      "Extensible framework for new sources",
-      "Cached responses for performance"
-    ],
-    businessValue: "Enriches product data without manual research, provides comprehensive nutrition information, enhances customer experience",
-    technicalSpecs: "RESTful API integrations, rate limiting, caching layer, reliability monitoring, error handling",
-    userExperience: "Automatic data enrichment, visual indicators for enriched products, source attribution",
-    roi: "180% ROI through enhanced product information and reduced research time",
-    status: "completed",
-    icon: <Database className="h-5 w-5" />
-  },
-  {
-    name: "Multi-Stage AI Processing Pipeline",
-    description: "Three-stage configurable processing: cleanup/normalization, external enrichment, and quality validation with independent stage controls.",
-    category: "Processing",
-    benefits: [
-      "Configurable processing stages",
-      "Parallel processing capabilities", 
-      "Stage-specific error handling",
-      "Performance optimization",
-      "Detailed processing metrics"
-    ],
-    businessValue: "Flexible processing approach, faster bulk operations, detailed control over data quality processes",
-    technicalSpecs: "Supabase Edge Functions, async processing, stage orchestration, metrics collection",
-    userExperience: "Progress tracking, stage selection, real-time feedback, detailed results",
-    roi: "200% ROI through processing efficiency and quality improvements",
+    businessValue: "Provides complete order lifecycle tracking so stakeholders know exactly what to do next and customers get real-time updates",
+    technicalSpecs: "Real-time Supabase subscriptions, automated status transitions, role-based notifications",
+    userExperience: "Live order status for customers, clear task lists for staff, automatic progress updates",
+    roi: "Eliminates lost orders and reduces coordination overhead between team members",
     status: "completed",
     icon: <Workflow className="h-5 w-5" />
   },
   {
-    name: "Comprehensive Order Workflow Management",
-    description: "Complete order lifecycle management with real-time status tracking, stakeholder assignments, automated notifications, and workflow analytics.",
-    category: "Workflow",
+    name: "Multi-Role Dashboard System",
+    description: "Tailored interfaces for each stakeholder showing only what they need to see and do.",
+    category: "Interface",
     benefits: [
-      "Real-time order status tracking",
-      "Automated stakeholder assignments",
-      "Smart notification system",
-      "Workflow analytics and reporting",
-      "Role-based dashboards"
+      "Admin sees overall system management and analytics",
+      "Concierge sees incoming orders and client communications",
+      "Shopper sees shopping lists and store navigation",
+      "Driver sees delivery routes and completion tracking",
+      "Customers see their order status and delivery updates"
     ],
-    businessValue: "Streamlines operations, reduces order processing time by 60%, improves customer communication",
-    technicalSpecs: "Real-time Supabase subscriptions, role-based access control, automated triggers",
-    userExperience: "Intuitive dashboards, automated notifications, clear status indicators, mobile-responsive",
-    roi: "400% ROI through operational efficiency and customer satisfaction",
+    businessValue: "Each stakeholder gets their own tailored interface showing only relevant information, eliminating confusion and improving efficiency",
+    technicalSpecs: "Role-based access control, dynamic UI rendering, personalized dashboards",
+    userExperience: "Clean, focused interfaces that show only what each person needs to do their job",
+    roi: "Reduces training time and eliminates confusion about what each person should be doing",
     status: "completed",
     icon: <Users className="h-5 w-5" />
   },
   {
-    name: "Advanced Bulk Inventory Management",
-    description: "Excel-based bulk import system with embedded image extraction, AI-powered categorization, and comprehensive error handling.",
-    category: "Inventory",
+    name: "Automated Stakeholder Assignment",
+    description: "Orders automatically get assigned to available team members based on their roles and current workload.",
+    category: "Automation",
     benefits: [
-      "Excel file support with image extraction",
-      "Bulk AI processing capabilities",
-      "Comprehensive error handling",
-      "Flexible column mapping",
-      "Preview before import"
+      "Orders automatically assigned to available concierge staff",
+      "Shopping tasks distributed to shoppers based on location and availability",
+      "Delivery routes optimized and assigned to drivers",
+      "No manual coordination needed between team members",
+      "Workload balancing prevents any one person from being overwhelmed"
     ],
-    businessValue: "Enables rapid inventory updates, supports complex product catalogs, reduces setup time by 80%",
-    technicalSpecs: "XLSX parsing, image extraction, bulk API operations, transaction handling",
-    userExperience: "Drag-and-drop upload, visual preview, progress tracking, detailed error reports",
-    roi: "350% ROI through rapid inventory setup and reduced manual work",
+    businessValue: "Orders automatically get assigned to available team members, removing the need for manual coordination and preventing orders from being forgotten",
+    technicalSpecs: "Automated assignment algorithms, availability tracking, workload balancing",
+    userExperience: "Staff see new tasks appear automatically, managers see balanced workload distribution",
+    roi: "Eliminates bottlenecks from manual assignment and ensures optimal resource utilization",
     status: "completed",
-    icon: <ChartBar className="h-5 w-5" />
+    icon: <Target className="h-5 w-5" />
   },
   {
-    name: "Project & Task Management System",
-    description: "Comprehensive project tracking with Gantt charts, time tracking, milestone management, and team collaboration features.",
+    name: "Real-Time Communication System",
+    description: "Everyone involved can see live order progress without calling or texting.",
+    category: "Communication",
+    benefits: [
+      "Live order status visible to all stakeholders simultaneously",
+      "Customers get automatic updates when status changes",
+      "Staff can leave notes and updates that everyone sees instantly",
+      "Eliminates phone tag and miscommunication",
+      "Complete audit trail of all order communications"
+    ],
+    businessValue: "Everyone involved can see live order progress without calling or texting, reducing communication overhead and improving customer experience",
+    technicalSpecs: "Real-time database subscriptions, instant notifications, message threading",
+    userExperience: "Live updates appear instantly, clear communication history, no need for phone calls",
+    roi: "Reduces time spent on coordination calls and improves customer satisfaction with transparency",
+    status: "completed",
+    icon: <Zap className="h-5 w-5" />
+  },
+  {
+    name: "Intelligent Product Data Normalization",
+    description: "AI automatically standardizes product information from any source into consistent, searchable data.",
+    category: "AI Core",
+    benefits: [
+      "Takes messy product data from any format and makes it consistent",
+      "Automatically extracts unit sizes, brand names, and categories",
+      "Enriches products with nutritional data and images from external sources",
+      "Creates searchable, filterable product catalogs automatically",
+      "Learns from corrections to improve future processing"
+    ],
+    businessValue: "Automatically standardizes product information from any source, enabling consistent catalogs across different markets and suppliers",
+    technicalSpecs: "13 AI pattern types, external API integrations, machine learning feedback loops",
+    userExperience: "Upload any product data format, AI cleans and standardizes everything automatically",
+    roi: "Enables working with any supplier's data format without manual standardization work",
+    status: "completed",
+    icon: <Database className="h-5 w-5" />
+  },
+  {
+    name: "Project Management & Time Tracking",
+    description: "Complete visibility into all development work with time tracking and progress monitoring.",
     category: "Management",
     benefits: [
-      "Visual Gantt chart project planning",
-      "Detailed time tracking and analytics",
-      "Milestone and deadline management",
-      "Team collaboration features", 
-      "Resource allocation tracking"
+      "Visual Gantt charts show exactly what's being worked on and when",
+      "Time tracking on all development tasks for accurate project costing",
+      "Milestone tracking ensures projects stay on schedule",
+      "Resource allocation prevents team member overcommit",
+      "Analytics show productivity trends and bottlenecks"
     ],
-    businessValue: "Improves project delivery times by 40%, enhances team productivity, provides clear progress visibility",
-    technicalSpecs: "React-based Gantt charts, time entry system, analytics engine, notification system",
-    userExperience: "Interactive timelines, intuitive time entry, progress visualization, team dashboards",
-    roi: "280% ROI through improved project efficiency and resource utilization",
+    businessValue: "Provides complete visibility into development work with accurate time tracking and progress monitoring for better project planning",
+    technicalSpecs: "Interactive Gantt charts, time entry system, milestone tracking, analytics dashboard",
+    userExperience: "Visual project timelines, easy time entry, progress indicators, team workload views",
+    roi: "Improves project delivery predictability and enables accurate cost estimation for new features",
     status: "completed",
     icon: <Clock className="h-5 w-5" />
   },
   {
     name: "E-commerce Shopping Platform",
-    description: "Full-featured online shopping experience with product catalogs, shopping cart, checkout, and order management.",
+    description: "Complete online shopping experience that generates direct revenue 24/7.",
     category: "E-commerce",
     benefits: [
-      "Responsive product catalogs",
-      "Secure payment processing",
-      "Order tracking and management",
-      "Customer account system",
-      "Mobile-optimized experience"
+      "Customers can browse and order products anytime online",
+      "Secure payment processing with Stripe integration",
+      "Mobile-responsive design works on all devices",
+      "Automatic order processing feeds into workflow system",
+      "Product search and categorization for easy shopping"
     ],
-    businessValue: "Generates direct revenue, expands market reach, provides 24/7 sales capability",
-    technicalSpecs: "Stripe payment integration, responsive design, secure authentication, order processing",
-    userExperience: "Intuitive shopping flow, secure checkout, order tracking, account management",
-    roi: "500% ROI through direct sales and market expansion",
+    businessValue: "Generates direct revenue through online sales while providing 24/7 ordering capability for customers",
+    technicalSpecs: "React e-commerce platform, Stripe payments, responsive design, order management integration",
+    userExperience: "Intuitive shopping experience, secure checkout, order tracking, mobile-friendly",
+    roi: "Creates new revenue stream and reduces order-taking overhead for staff",
     status: "completed",
     icon: <DollarSign className="h-5 w-5" />
   },
   {
-    name: "Smart Q&A Bot System",
-    description: "AI-powered customer support bot with context-aware responses and seamless handoff to human agents.",
+    name: "AI Customer Support Bot",
+    description: "24/7 automated customer support with intelligent responses and seamless human handoff.",
     category: "Customer Support",
     benefits: [
-      "24/7 automated customer support",
-      "Context-aware response generation",
-      "Seamless human agent handoff",
-      "Support ticket management",
-      "Performance analytics"
+      "Provides instant answers to common customer questions",
+      "Available 24/7 without human staff involvement",
+      "Understands context and provides relevant responses",
+      "Seamlessly transfers complex issues to human agents",
+      "Learns from interactions to improve responses"
     ],
-    businessValue: "Reduces support costs by 70%, improves response times, enhances customer satisfaction",
-    technicalSpecs: "OpenAI integration, context management, ticket routing, analytics tracking",
-    userExperience: "Instant responses, natural conversations, easy escalation, help documentation",
-    roi: "320% ROI through support cost reduction and improved satisfaction",
+    businessValue: "Provides 24/7 customer support without requiring human staff, improving response times while reducing support costs",
+    technicalSpecs: "OpenAI integration, context management, escalation logic, support ticket creation",
+    userExperience: "Instant responses to questions, natural conversation flow, easy escalation when needed",
+    roi: "Reduces support staff workload while improving customer response times",
     status: "completed",
     icon: <Shield className="h-5 w-5" />
   },
   {
-    name: "Comprehensive Admin Dashboard",
-    description: "Centralized admin interface for managing all system components, users, analytics, and configurations.",
+    name: "Centralized Admin Control System",
+    description: "Single dashboard to manage all system components, users, and configurations.",
     category: "Administration",
     benefits: [
-      "Centralized system management",
-      "User role and permission control",
-      "System analytics and reporting", 
-      "Configuration management",
-      "Audit trail and logging"
+      "Manage all users and their roles from one place",
+      "Monitor system performance and usage analytics",
+      "Configure system settings and automation rules",
+      "View audit trails and system logs",
+      "Control access permissions and security settings"
     ],
-    businessValue: "Streamlines administration, provides operational insights, ensures security compliance",
-    technicalSpecs: "Role-based access control, real-time analytics, audit logging, configuration APIs",
-    userExperience: "Intuitive admin interface, comprehensive dashboards, easy user management",
-    roi: "220% ROI through administrative efficiency and operational insights",
+    businessValue: "Provides centralized control over all system components, ensuring security and enabling efficient administration",
+    technicalSpecs: "Role-based access control, system monitoring, configuration management, audit logging",
+    userExperience: "Clean admin interface, comprehensive dashboards, easy user management",
+    roi: "Reduces administrative overhead and ensures proper system security and monitoring",
     status: "completed",
     icon: <Settings className="h-5 w-5" />
   }
@@ -223,47 +223,47 @@ const FEATURE_DATA: FeatureItem[] = [
 
 const PROJECT_STATUS: ProjectStatus[] = [
   {
-    category: "Core AI & Machine Learning",
+    category: "AI & Data Processing",
     items: [
       {
-        name: "Enhanced AI Learning System",
-        description: "Complete AI-powered product processing with GPT-5 integration",
+        name: "AI-Powered Bulk Data Upload System",
+        description: "Upload Excel files with thousands of products and have AI process them perfectly",
         status: "completed",
         priority: "critical",
         estimatedHours: 45,
         completedDate: "2025-01-06",
-        benefits: ["90% reduction in manual processing", "Real-time learning capabilities", "Quality scoring automation"],
-        notes: "Fully operational with 13 AI pattern types and external data enrichment"
+        benefits: ["Upload large files with embedded images", "Perfect data completion without manual work", "Enables rapid scaling into new markets", "Process thousands of products in minutes"],
+        notes: "Enables market expansion that was previously impossible due to manual data entry bottlenecks"
       },
       {
-        name: "AI Pattern Recognition Engine", 
-        description: "13 specialized AI pattern types for automated classification",
+        name: "Intelligent Product Data Normalization", 
+        description: "AI automatically standardizes product information from any source",
         status: "completed",
         priority: "high",
         estimatedHours: 35,
         completedDate: "2025-01-06",
-        benefits: ["Automatic product categorization", "Self-improving algorithms", "95% accuracy rate"],
-        notes: "All pattern types implemented and learning from user feedback"
+        benefits: ["Standardizes data from any supplier format", "Extracts units, brands, categories automatically", "Enriches with nutritional data and images", "Creates consistent searchable catalogs"],
+        notes: "13 AI pattern types working with external API integrations for data enrichment"
       },
       {
         name: "External Data Source Integration",
-        description: "Open Food Facts and image search API integrations",
+        description: "Automatic enrichment from Open Food Facts and image databases",
         status: "completed", 
         priority: "medium",
         estimatedHours: 25,
         completedDate: "2025-01-06",
-        benefits: ["Automated nutrition data", "Product image sourcing", "Data enrichment"],
-        notes: "Currently supports Open Food Facts, extensible for additional sources"
+        benefits: ["Automated nutrition data lookup", "Product image sourcing", "Extensible for new data sources", "Cached responses for performance"],
+        notes: "Enables working with any supplier's data without manual research"
       },
       {
         name: "Multi-Stage Processing Pipeline",
-        description: "Configurable 3-stage AI processing workflow",
+        description: "Configurable cleanup, enrichment, and validation workflow",
         status: "completed",
         priority: "high", 
         estimatedHours: 30,
         completedDate: "2025-01-06",
-        benefits: ["Flexible processing control", "Stage-specific optimization", "Parallel processing"],
-        notes: "Cleanup, enrichment, and validation stages fully operational"
+        benefits: ["Flexible processing control", "Handle different data quality levels", "Parallel processing for speed", "Stage-specific error handling"],
+        notes: "Allows customizing processing based on data source quality and requirements"
       }
     ]
   },
@@ -271,14 +271,14 @@ const PROJECT_STATUS: ProjectStatus[] = [
     category: "E-commerce Platform",
     items: [
       {
-        name: "Complete Shopping Platform",
-        description: "Full-featured online grocery shopping experience",
+        name: "E-commerce Shopping Platform",
+        description: "Complete online shopping experience that generates direct revenue",
         status: "completed",
         priority: "critical",
         estimatedHours: 80,
         completedDate: "2024-12-15",
-        benefits: ["Direct revenue generation", "24/7 sales capability", "Mobile-responsive design"],
-        notes: "Product catalogs, shopping cart, checkout, and order management complete"
+        benefits: ["Customers can order online 24/7", "Direct revenue generation", "Mobile-responsive for all devices", "Reduces order-taking overhead for staff"],
+        notes: "Creates new revenue stream while providing self-service capability for customers"
       },
       {
         name: "Stripe Payment Integration",
@@ -303,17 +303,17 @@ const PROJECT_STATUS: ProjectStatus[] = [
     ]
   },
   {
-    category: "Workflow & Operations",
+    category: "Workflow & Stakeholder Coordination",
     items: [
       {
-        name: "Order Workflow Management",
-        description: "Complete order lifecycle automation with stakeholder assignments",
+        name: "Complete Order Lifecycle Tracking",
+        description: "Every order tracked from placement to delivery with automatic coordination",
         status: "completed",
         priority: "high",
         estimatedHours: 60,
         completedDate: "2024-12-25",
-        benefits: ["60% faster order processing", "Automated assignments", "Real-time tracking"],
-        notes: "Role-based dashboards for concierge, shopper, and driver roles"
+        benefits: ["Complete visibility of every order", "Stakeholders know what to do next automatically", "No orders fall through cracks", "Real-time updates eliminate phone calls"],
+        notes: "Provides complete order lifecycle tracking so everyone knows exactly what's happening"
       },
       {
         name: "Automated Notification System",
@@ -326,14 +326,14 @@ const PROJECT_STATUS: ProjectStatus[] = [
         notes: "Email and system notifications with customizable templates"
       },
       {
-        name: "Stakeholder Role Management",
-        description: "Role-based access control and assignment system",
+        name: "Multi-Role Dashboard System",
+        description: "Tailored interfaces for each stakeholder showing only relevant information",
         status: "completed",
         priority: "high",
         estimatedHours: 30,
         completedDate: "2024-12-25",
-        benefits: ["Secure access control", "Efficient task distribution", "Clear responsibilities"],
-        notes: "Admin, concierge, shopper, driver, and client roles implemented"
+        benefits: ["Each role sees only what they need", "Eliminates confusion about responsibilities", "Improves efficiency through focused interfaces", "Reduces training time"],
+        notes: "Admin, concierge, shopper, driver, and customer interfaces each optimized for their needs"
       },
       {
         name: "Workflow Automation Engine",
