@@ -317,8 +317,8 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
         ? Object.keys(drawingsFolder.files).filter((n) => n.endsWith('.xml'))
         : [];
 
-      // Use anchor mapping when drawings exist; we'll filter to Column E anchors
-      const useAnchorMapping = drawingFiles.length > 0 && !!drawingsRelsFolder;
+      // Disable anchor mapping entirely - use only sequential mapping
+      const useAnchorMapping = false;
 
       if (useAnchorMapping) {
         // Build rels map: rId -> media target (e.g., ../media/image1.png)
@@ -611,20 +611,15 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Prefer row-based Column E mapping; fallback to sequential; never override if Column E text URL exists
-            if (!product.image_url) {
-              const rowImage = (imageMapping as any)[originalRowIndex];
-              if (rowImage) {
-                product.image_url = rowImage;
+            // Use sequential mapping: image 0 → product 0, image 1 → product 1, etc.
+            if ('__sequentialImages' in imageMapping) {
+              const sequentialImages = (imageMapping as any).__sequentialImages as string[];
+              if (index < sequentialImages.length) {
+                product.image_url = sequentialImages[index];
                 product.hasEmbeddedImage = true;
-                console.log(`✅ Column E row ${originalRowIndex} → ${product.name}: ${rowImage.split('/').pop()}`);
-              } else if ('__sequentialImages' in imageMapping) {
-                const sequentialImages = (imageMapping as any).__sequentialImages as string[];
-                if (index < sequentialImages.length) {
-                  product.image_url = sequentialImages[index];
-                  product.hasEmbeddedImage = true;
-                  console.log(`✅ Sequential fallback ${index + 1} → ${product.name}: ${sequentialImages[index].split('/').pop()}`);
-                }
+                console.log(`✅ Sequential mapping ${index + 1}: ${product.name} → ${sequentialImages[index].split('/').pop()}`);
+              } else {
+                console.log(`❌ No image for product ${index + 1} (${product.name}) - only ${sequentialImages.length} images available`);
               }
             }
             
