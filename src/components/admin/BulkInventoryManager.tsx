@@ -285,7 +285,7 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     };
 };
 
-  const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string }> => {
+  const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string } | { __sequentialImages: string[] }> => {
     // Parses Excel drawing anchors to map each embedded image to its exact worksheet row
     // Falls back to sequential order if anchors aren't available
     try {
@@ -419,15 +419,51 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
         }
       }
 
-      // Fallback: sequential mapping to rows starting at 2 (after header)
+      // NEW APPROACH: Extract images sequentially and store them for later mapping
       const mediaFolder = zip.folder('xl/media');
       if (!mediaFolder) {
         console.log('No media folder found in Excel file');
-        return imageMapping;
+        return { __sequentialImages: [] };
       }
 
       const imageFiles = Object.keys(mediaFolder.files).filter((name) => name.match(/\.(jpg|jpeg|png|gif)$/i));
-      console.log(`Found ${imageFiles.length} embedded images (fallback mode)`);
+      console.log(`🔄 Extracting ${imageFiles.length} images sequentially (ignoring Excel anchors)`);
+      
+      const sequentialImages = [];
+      
+      for (let i = 0; i < imageFiles.length; i++) {
+        const fileName = imageFiles[i];
+        console.log(`📸 Processing image ${i + 1}/${imageFiles.length}: ${fileName}`);
+        
+        try {
+          const imageFile = mediaFolder.files[fileName];
+          const imageData = await imageFile.async('arraybuffer');
+          const imageBlob = new Blob([imageData], { type: 'image/jpeg' });
+          
+          const uploadName = `bulk-upload/${Date.now()}-${i}-${fileName.split('/').pop()}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(uploadName, imageBlob, { upsert: true });
+            
+          if (uploadError) {
+            console.error(`❌ Error uploading image ${i + 1}:`, uploadError);
+            continue;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(uploadName);
+
+          sequentialImages.push(publicUrl);
+          console.log(`✅ Uploaded image ${i + 1}: ${publicUrl.split('/').pop()}`);
+        } catch (error) {
+          console.error(`❌ Error processing image ${i + 1}:`, error);
+        }
+      }
+      
+      console.log(`🎯 Successfully extracted ${sequentialImages.length} images in sequence`);
+      return { __sequentialImages: sequentialImages };
 
       for (let i = 0; i < imageFiles.length; i++) {
         const imageFile = mediaFolder.files[imageFiles[i]];
@@ -538,21 +574,32 @@ const filteredData = processedRows;
 console.log('Filtered data:', filteredData.length, 'product rows');
 
           const parsedProducts = filteredData.map((row, index) => {
-            // The key fix: use the ORIGINAL row index from Excel, not the filtered array position
-            const originalRowIndex = (row.__rowNum__ || (index + 2)); // Use original Excel row if available
-            console.log(`🔍 Processing product at Excel row ${originalRowIndex}:`, row.col_0 || 'unnamed');
+            const originalRowIndex = (row.__rowNum__ || (index + 2));
+            console.log(`🔍 Processing product ${index + 1}/${filteredData.length}: ${row.col_0 || 'unnamed'}`);
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Map image using the original Excel row number
-            const imageUrl = imageMapping[originalRowIndex];
-            if (imageUrl) {
-              product.image_url = imageUrl;
-              product.hasEmbeddedImage = true;
-              console.log(`✅ Image FOUND for row ${originalRowIndex} (${product.name})`);
+            // NEW SEQUENTIAL IMAGE MAPPING APPROACH
+            if ('__sequentialImages' in imageMapping) {
+              // Use sequential mapping: image index matches product index
+              const sequentialImages = imageMapping.__sequentialImages;
+              if (index < sequentialImages.length) {
+                product.image_url = sequentialImages[index];
+                product.hasEmbeddedImage = true;
+                console.log(`🎯 Sequential image ${index + 1} → ${product.name}: ${sequentialImages[index].split('/').pop()}`);
+              } else {
+                console.log(`📷 No image available for product ${index + 1} (${product.name}) - only ${sequentialImages.length} images extracted`);
+              }
             } else {
-              console.log(`❌ Image MISSING for row ${originalRowIndex} (${product.name})`);
-              console.log(`Available image rows:`, Object.keys(imageMapping));
+              // Fallback to old row-based mapping (if anchor mapping worked)
+              const imageUrl = imageMapping[originalRowIndex];
+              if (imageUrl) {
+                product.image_url = imageUrl;
+                product.hasEmbeddedImage = true;
+                console.log(`✅ Row-based image for ${product.name}: ${imageUrl.split('/').pop()}`);
+              } else {
+                console.log(`❌ No image for row ${originalRowIndex} (${product.name})`);
+              }
             }
             
             return product;
@@ -564,7 +611,7 @@ console.log('Filtered data:', filteredData.length, 'product rows');
           
           const validCount = parsedProducts.filter(p => p.status !== 'error').length;
           const errorCount = parsedProducts.filter(p => p.status === 'error').length;
-          const imageCount = Object.keys(imageMapping).length;
+          const imageCount = '__sequentialImages' in imageMapping ? imageMapping.__sequentialImages.length : Object.keys(imageMapping).length;
           
           console.log(`Processing complete: ${validCount} valid, ${errorCount} errors, ${imageCount} images`);
           
