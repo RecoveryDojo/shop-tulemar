@@ -713,8 +713,6 @@ const { data, error } = await supabase.functions.invoke('ai-normalize-products',
     <TableHead>Description</TableHead>
     <TableHead>Price</TableHead>
     <TableHead>Category</TableHead>
-    <TableHead>Hint</TableHead>
-    <TableHead>Unit</TableHead>
     <TableHead>Stock</TableHead>
     <TableHead>AI Suggestions</TableHead>
     <TableHead>Errors</TableHead>
@@ -740,16 +738,6 @@ const { data, error } = await supabase.functions.invoke('ai-normalize-products',
                           {product.description || 'None'}
                         </TableCell>
                         <TableCell>${product.price.toFixed(2)}</TableCell>
-<TableCell>
-  {category ? (
-    <div className="flex items-center gap-1">
-      <span>{category.icon}</span>
-      <span className="text-sm">{category.name}</span>
-    </div>
-  ) : (
-    <span className="text-red-500 text-sm">Invalid ID</span>
-  )}
-</TableCell>
 <TableCell>
   {product.category_hint ? (
     <Badge variant="secondary">{product.category_hint}</Badge>
