@@ -534,8 +534,9 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     }
 
     try {
-      // Use Column E URLs directly - no embedded image extraction
-      console.log('🔄 Using Column E image URLs directly (no extraction)');
+      // Extract embedded images from Column E and upload them
+      const imageMapping = await extractEmbeddedImages(file);
+      console.log('Extracted embedded images from Column E:', imageMapping);
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -597,8 +598,15 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Column E URLs are already set in parseColumnAEData - no processing needed
-            console.log(`✅ Product: ${product.name} → Column E: ${product.image_url || 'no image'}`);
+            // Map extracted images from Column E to products sequentially
+            if ('__sequentialImages' in imageMapping) {
+              const sequentialImages = imageMapping.__sequentialImages;
+              if (index < sequentialImages.length) {
+                product.image_url = sequentialImages[index];
+                product.hasEmbeddedImage = true;
+                console.log(`✅ Column E image ${index + 1}: ${product.name} → ${sequentialImages[index].split('/').pop()}`);
+              }
+            }
             
             return product;
           });
