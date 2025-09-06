@@ -424,8 +424,7 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
           { role: 'system', content: 'You are a product data specialist. Parse Excel data into valid JSON format. Prioritize USD prices, accurate categorization, and data quality. Return only valid JSON arrays.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1,
-        max_tokens: 8000,
+        max_completion_tokens: 4000,
       }),
     });
 
@@ -556,22 +555,6 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
         status: (name === 'Unknown Product' || price === 0) ? 'error' : 'suggested',
         errors: name === 'Unknown Product' || price === 0 ? ['Fallback processing - missing data'] : [],
         suggestions: ['Processed without AI - please review'],
-        original_data: row
-      };
-    });
-  }
-}
-        name,
-        description: brand ? `${brand} brand` : '',
-        price,
-        category_id: categories[0]?.id || '',
-        unit: 'each',
-        origin: brand,
-        image_url: '',
-        stock_quantity: 10,
-        status: 'error' as const,
-        errors: ['AI processing failed - basic extraction used'],
-        suggestions: ['Review and verify all data'],
         original_data: row
       };
     });
