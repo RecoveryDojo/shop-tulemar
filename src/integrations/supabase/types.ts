@@ -231,6 +231,113 @@ export type Database = {
         }
         Relationships: []
       }
+      code_activity_log: {
+        Row: {
+          activity_type: string
+          change_description: string | null
+          component_name: string | null
+          created_at: string
+          file_path: string | null
+          id: string
+          impact_level: string | null
+          metadata: Json | null
+          session_id: string | null
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          change_description?: string | null
+          component_name?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          impact_level?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          change_description?: string | null
+          component_name?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          impact_level?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_activity_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "work_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_summaries: {
+        Row: {
+          blockers: string[] | null
+          created_at: string
+          date: string
+          documentation_created: number | null
+          features_completed: number | null
+          highlights: string[] | null
+          id: string
+          notes: string | null
+          productivity_score: number | null
+          projects_worked_on: Json | null
+          session_count: number
+          tasks_completed: number | null
+          tasks_created: number | null
+          total_hours: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blockers?: string[] | null
+          created_at?: string
+          date: string
+          documentation_created?: number | null
+          features_completed?: number | null
+          highlights?: string[] | null
+          id?: string
+          notes?: string | null
+          productivity_score?: number | null
+          projects_worked_on?: Json | null
+          session_count?: number
+          tasks_completed?: number | null
+          tasks_created?: number | null
+          total_hours?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blockers?: string[] | null
+          created_at?: string
+          date?: string
+          documentation_created?: number | null
+          features_completed?: number | null
+          highlights?: string[] | null
+          id?: string
+          notes?: string | null
+          productivity_score?: number | null
+          projects_worked_on?: Json | null
+          session_count?: number
+          tasks_completed?: number | null
+          tasks_created?: number | null
+          total_hours?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documentation: {
         Row: {
           created_at: string | null
@@ -1247,11 +1354,66 @@ export type Database = {
         }
         Relationships: []
       }
+      work_sessions: {
+        Row: {
+          activity_summary: string | null
+          commits_made: number | null
+          created_at: string
+          end_time: string | null
+          features_worked_on: Json | null
+          files_modified: Json | null
+          id: string
+          lines_added: number | null
+          lines_removed: number | null
+          project_id: string | null
+          session_type: string
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_summary?: string | null
+          commits_made?: number | null
+          created_at?: string
+          end_time?: string | null
+          features_worked_on?: Json | null
+          files_modified?: Json | null
+          id?: string
+          lines_added?: number | null
+          lines_removed?: number | null
+          project_id?: string | null
+          session_type?: string
+          start_time?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_summary?: string | null
+          commits_made?: number | null
+          created_at?: string
+          end_time?: string | null
+          features_worked_on?: Json | null
+          files_modified?: Json | null
+          id?: string
+          lines_added?: number | null
+          lines_removed?: number | null
+          project_id?: string | null
+          session_type?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_daily_summary: {
+        Args: { summary_date: string; summary_user_id: string }
+        Returns: string
+      }
       get_ai_pattern_suggestion: {
         Args: {
           input_pattern_param: string

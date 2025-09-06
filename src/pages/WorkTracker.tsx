@@ -17,6 +17,9 @@ import { TimeTracker } from "@/components/work-tracker/TimeTracker";
 import { WorkTrackerHeader } from "@/components/work-tracker/WorkTrackerHeader";
 import { FeatureTracking } from "@/components/work-tracker/FeatureTracking";
 import { DocumentationManager } from "@/components/work-tracker/DocumentationManager";
+import { AutomatedWorkTracker } from "@/components/work-tracker/AutomatedWorkTracker";
+import { DailyWorkSummary } from "@/components/work-tracker/DailyWorkSummary";
+import { WorkHistoryBackfill } from "@/components/work-tracker/WorkHistoryBackfill";
 
 interface Project {
   id: string;
@@ -219,7 +222,7 @@ function WorkTrackerContent() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-7">
+              <TabsList className="grid w-full grid-cols-10">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
@@ -247,6 +250,18 @@ function WorkTrackerContent() {
                 <TabsTrigger value="docs" className="gap-2">
                   <FileText className="h-4 w-4" />
                   Documentation
+                </TabsTrigger>
+                <TabsTrigger value="automation" className="gap-2">
+                  <Clock className="h-4 w-4" />
+                  Automation
+                </TabsTrigger>
+                <TabsTrigger value="daily" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Daily
+                </TabsTrigger>
+                <TabsTrigger value="backfill" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Backfill
                 </TabsTrigger>
               </TabsList>
 
@@ -328,6 +343,21 @@ function WorkTrackerContent() {
                 <DocumentationManager 
                   projectId={selectedProject.id}
                 />
+              </TabsContent>
+
+              <TabsContent value="automation">
+                <AutomatedWorkTracker 
+                  projects={projects}
+                  selectedProject={selectedProject}
+                />
+              </TabsContent>
+
+              <TabsContent value="daily">
+                <DailyWorkSummary />
+              </TabsContent>
+
+              <TabsContent value="backfill">
+                <WorkHistoryBackfill />
               </TabsContent>
             </Tabs>
           </>
