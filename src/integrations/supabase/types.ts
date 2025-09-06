@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_learning_patterns: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          failure_count: number | null
+          id: string
+          input_pattern: string
+          last_used_at: string | null
+          metadata: Json | null
+          output_value: string
+          pattern_type: string
+          success_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          input_pattern: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          output_value: string
+          pattern_type: string
+          success_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          input_pattern?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          output_value?: string
+          pattern_type?: string
+          success_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_processing_feedback: {
+        Row: {
+          ai_suggestion: string | null
+          confidence_score: number | null
+          created_at: string
+          field_name: string
+          id: string
+          import_job_id: string | null
+          metadata: Json | null
+          processing_time_ms: number | null
+          product_name: string
+          user_correction: string | null
+          was_accepted: boolean | null
+        }
+        Insert: {
+          ai_suggestion?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          field_name: string
+          id?: string
+          import_job_id?: string | null
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          product_name: string
+          user_correction?: string | null
+          was_accepted?: boolean | null
+        }
+        Update: {
+          ai_suggestion?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          import_job_id?: string | null
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          product_name?: string
+          user_correction?: string | null
+          was_accepted?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_processing_feedback_import_job_id_fkey"
+            columns: ["import_job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -993,6 +1085,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_ai_pattern_suggestion: {
+        Args: {
+          input_pattern_param: string
+          min_confidence?: number
+          pattern_type_param: string
+        }
+        Returns: {
+          confidence_score: number
+          output_value: string
+          usage_count: number
+        }[]
+      }
       get_order_by_token: {
         Args: { order_token: string }
         Returns: Json
@@ -1007,6 +1111,15 @@ export type Database = {
       is_admin_or_sysadmin: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      record_ai_pattern_success: {
+        Args: {
+          confidence_param?: number
+          input_pattern_param: string
+          output_value_param: string
+          pattern_type_param: string
+        }
+        Returns: string
       }
     }
     Enums: {
