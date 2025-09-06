@@ -534,8 +534,8 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     }
 
     try {
-      // Skip embedded image extraction - use Column E URLs directly
-      const imageMapping = {};
+      // Use Column E URLs directly - no embedded image extraction
+      console.log('🔄 Using Column E image URLs directly (no extraction)');
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -597,8 +597,8 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Column E contains the image URL directly - no extraction needed
-            console.log(`✅ Direct mapping: ${product.name} → Column E: ${product.image_url || 'no image'}`);
+            // Column E URLs are already set in parseColumnAEData - no processing needed
+            console.log(`✅ Product: ${product.name} → Column E: ${product.image_url || 'no image'}`);
             
             return product;
           });
