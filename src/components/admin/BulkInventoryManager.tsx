@@ -319,7 +319,19 @@ const BulkInventoryManager = () => {
     try {
       const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
         body: { 
-          rows: excelData.map(p => p.original_data),
+          rows: excelData.map(p => ({
+            // Send properly structured A-E data
+            col_0: p.name,
+            col_1: p.origin, // brand
+            col_2: '', // CRC price (we already converted)
+            col_3: p.price, // USD price
+            col_4: p.image_url,
+            name: p.name,
+            brand: p.origin,
+            price: p.price,
+            image_url: p.image_url,
+            original_data: p.original_data
+          })),
           filename: fileName,
           settings: {
             columnFormat: 'A-E',

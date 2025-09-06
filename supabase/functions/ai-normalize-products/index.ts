@@ -318,8 +318,16 @@ async function processBatchWithAI(
   if (isAEFormat) {
     // Handle pre-parsed A-E format from frontend
     cleanedBatch = batch.filter(row => {
-      const values = Object.values(row);
-      return values.some(v => v !== undefined && v !== null && String(v).trim() !== '');
+      // For A-E format, check if we have meaningful data in the first few columns
+      const keys = Object.keys(row);
+      if (keys.length === 0) return false;
+      
+      // Check columns A (name) and either C (CRC) or D (USD) for price
+      const hasName = row[keys[0]] && String(row[keys[0]]).trim() !== '';
+      const hasPrice = (row[keys[2]] && String(row[keys[2]]).match(/[\d.,]+/)) ||
+                      (row[keys[3]] && String(row[keys[3]]).match(/[\d.,]+/));
+      
+      return hasName && hasPrice;
     });
   } else {
     // Legacy auto-detection logic
@@ -367,11 +375,14 @@ PROCESSING INSTRUCTIONS:
    - Convert CRC to USD using rate ₡${exchangeRate} = $1.00
    `}
 
-2. **Data Extraction**:
-   - Extract product name from ${isAEFormat ? 'col_0' : 'name/item columns'}
-   - Use brand from ${isAEFormat ? 'col_1' : 'brand columns'} for origin and description enhancement
-   - Extract unit from name (115g, 1L, 500ml, etc.) 
-   - Use image URL from ${isAEFormat ? 'col_4' : 'image columns'} if provided
+2. **Data Extraction for A-E Format**:
+   - Column A (name): Extract clean product name
+   - Column B (brand): Use for origin and description enhancement  
+   - Column C (CRC price): Costa Rica Colones price
+   - Column D (USD price): US Dollar price (preferred)
+   - Column E (image_url): Image URL if provided
+   - Extract unit from name (115g, 1L, 500ml, etc.)
+   - Convert CRC to USD using exchange rate ${exchangeRate} if USD not available
 
 3. **Category Matching**:
    - Intelligently match products to categories based on name
@@ -410,7 +421,8 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
 
   try {
     console.log(`Processing batch of ${cleanedBatch.length} cleaned rows (from ${batch.length} original)`);
-    console.log('Header mapping:', headerMapping);
+    console.log('Column format:', isAEFormat ? 'A-E' : 'auto-detect');
+    console.log('Sample data:', JSON.stringify(cleanedBatch.slice(0, 2), null, 2));
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
