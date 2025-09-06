@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3 } from 'lucide-react';
+import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import { useProducts } from '@/hooks/useProducts';
 
 interface ExcelProduct {
@@ -26,6 +27,7 @@ interface ExcelProduct {
   errors: string[];
   suggestions?: string[];
   original_data?: any;
+  hasEmbeddedImage?: boolean;
   ai_suggestions?: {
     confidence_score?: number;
     learned_patterns?: string[];
@@ -204,7 +206,61 @@ const BulkInventoryManager = () => {
     };
   };
 
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string }> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const zip = new JSZip();
+      await zip.loadAsync(arrayBuffer);
+      
+      const imageMapping: { [rowIndex: number]: string } = {};
+      
+      // Look for embedded images in xl/media/ folder
+      const mediaFolder = zip.folder('xl/media');
+      if (!mediaFolder) {
+        console.log('No media folder found in Excel file');
+        return imageMapping;
+      }
+      
+      // Get all image files
+      const imageFiles = Object.keys(mediaFolder.files).filter(name => 
+        name.match(/\.(jpg|jpeg|png|gif)$/i)
+      );
+      
+      console.log(`Found ${imageFiles.length} embedded images`);
+      
+      for (let i = 0; i < imageFiles.length; i++) {
+        const imageFile = mediaFolder.files[imageFiles[i]];
+        if (!imageFile) continue;
+        
+        const imageBlob = await imageFile.async('blob');
+        const fileName = `excel-image-${Date.now()}-${i}.${imageFiles[i].split('.').pop()}`;
+        
+        // Upload to Supabase storage
+        const { data, error } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, imageBlob);
+          
+        if (error) {
+          console.error('Error uploading image:', error);
+          continue;
+        }
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+          
+        // Map to row index (starting from row 2, so i+2)
+        imageMapping[i + 2] = publicUrl;
+      }
+      
+      return imageMapping;
+    } catch (error) {
+      console.error('Error extracting embedded images:', error);
+      return {};
+    }
+  };
+
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('File upload triggered');
     const file = event.target.files?.[0];
     if (!file) {
@@ -217,96 +273,121 @@ const BulkInventoryManager = () => {
     setFileName(file.name);
     setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        console.log('File reader loaded, processing...');
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        console.log('Workbook created, sheet names:', workbook.SheetNames);
-        
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[];
-        console.log('Raw data extracted:', rawData.length, 'rows');
+    try {
+      // First extract embedded images
+      const imageMapping = await extractEmbeddedImages(file);
+      console.log('Extracted image mapping:', imageMapping);
 
-        // Convert to object format and skip header/empty rows
-        const filteredData = rawData
-          .slice(1) // Skip header row
-          .filter((row: any) => {
-            // Filter out empty rows and category header rows
-            const hasData = row && Array.isArray(row) && row.some((cell: any) => 
-              cell !== undefined && cell !== null && String(cell).trim() !== ''
-            );
-            
-            // Skip if this looks like a category header (only has text in first column)
-            if (hasData && row.length > 1) {
-              const nonEmptyColumns = row.filter((cell: any) => 
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          console.log('File reader loaded, processing...');
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          console.log('Workbook created, sheet names:', workbook.SheetNames);
+          
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[];
+          console.log('Raw data extracted:', rawData.length, 'rows');
+
+          // Convert to object format and skip header/empty rows
+          const filteredData = rawData
+            .slice(1) // Skip header row
+            .filter((row: any) => {
+              // Filter out empty rows and category header rows
+              const hasData = row && Array.isArray(row) && row.some((cell: any) => 
                 cell !== undefined && cell !== null && String(cell).trim() !== ''
-              ).length;
+              );
               
-              // If only one column has data, it's probably a category header
-              if (nonEmptyColumns === 1) return false;
-              
-              // Check if this has price-like data (numbers, currency symbols)
-              const hasPriceData = row.some((cell: any) => 
-                cell && String(cell).match(/[\$₡\d]/));
-              
-              return hasPriceData;
-            }
-            return hasData;
-          })
-          .map((row: any, index: number) => {
-            // Convert array to object with consistent keys
-            const obj: any = {};
-            row.forEach((cell: any, colIndex: number) => {
-              obj[`col_${colIndex}`] = cell;
+              // Skip if this looks like a category header (only has text in first column)
+              if (hasData && row.length > 1) {
+                const nonEmptyColumns = row.filter((cell: any) => 
+                  cell !== undefined && cell !== null && String(cell).trim() !== ''
+                ).length;
+                
+                // If only one column has data, it's probably a category header
+                if (nonEmptyColumns === 1) return false;
+                
+                // Check if this has price-like data (numbers, currency symbols)
+                const hasPriceData = row.some((cell: any) => 
+                  cell && String(cell).match(/[\$₡\d]/));
+                
+                return hasPriceData;
+              }
+              return hasData;
+            })
+            .map((row: any, index: number) => {
+              // Convert array to object with consistent keys
+              const obj: any = {};
+              row.forEach((cell: any, colIndex: number) => {
+                obj[`col_${colIndex}`] = cell;
+              });
+              return obj;
             });
-            return obj;
+
+          console.log('Filtered data:', filteredData.length, 'product rows');
+
+          const parsedProducts = filteredData.map((row, index) => {
+            console.log(`Parsing A-E row ${index + 2}:`, row);
+            const product = parseColumnAEData(row, index + 2);
+            
+            // Check if this row has an embedded image
+            const actualRowIndex = index + 2;
+            const imageUrl = imageMapping[actualRowIndex];
+            if (imageUrl) {
+              product.image_url = imageUrl;
+              product.hasEmbeddedImage = true;
+            }
+            
+            return product;
           });
 
-        console.log('Filtered data:', filteredData.length, 'product rows');
-
-        const parsedProducts = filteredData.map((row, index) => {
-          console.log(`Parsing A-E row ${index + 2}:`, row);
-          return parseColumnAEData(row, index + 2);
-        });
-
-        console.log('Parsing complete:', parsedProducts);
-        setExcelData(parsedProducts);
-        
-        const validCount = parsedProducts.filter(p => p.status !== 'error').length;
-        const errorCount = parsedProducts.filter(p => p.status === 'error').length;
-        
-        console.log(`Processing complete: ${validCount} valid, ${errorCount} errors`);
-        
-        toast({
-          title: "A-E Format Processed",
-          description: `${validCount} products parsed, ${errorCount} with errors. Use AI processing for categorization.`,
-        });
-      } catch (error) {
-        console.error('Error processing file:', error);
+          console.log('Parsing complete:', parsedProducts);
+          setExcelData(parsedProducts);
+          
+          const validCount = parsedProducts.filter(p => p.status !== 'error').length;
+          const errorCount = parsedProducts.filter(p => p.status === 'error').length;
+          const imageCount = Object.keys(imageMapping).length;
+          
+          console.log(`Processing complete: ${validCount} valid, ${errorCount} errors, ${imageCount} images`);
+          
+          toast({
+            title: "A-E Format Processed",
+            description: `${validCount} products parsed${imageCount > 0 ? `, ${imageCount} embedded images` : ''}, ${errorCount} with errors. Use AI processing for categorization.`,
+          });
+        } catch (error) {
+          console.error('Error processing file:', error);
+          toast({
+            title: "Error",
+            description: `Failed to process Excel file: ${error instanceof Error ? error.message : 'Please check the A-E format.'}`,
+            variant: "destructive",
+          });
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      
+      reader.onerror = (error) => {
+        console.error('File reader error:', error);
+        setIsUploading(false);
         toast({
           title: "Error",
-          description: `Failed to process Excel file: ${error instanceof Error ? error.message : 'Please check the A-E format.'}`,
+          description: "Failed to read the file. Please try again.",
           variant: "destructive",
         });
-      } finally {
-        setIsUploading(false);
-      }
-    };
-    
-    reader.onerror = (error) => {
-      console.error('File reader error:', error);
+      };
+      
+      reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('Error during file upload:', error);
       setIsUploading(false);
       toast({
         title: "Error",
-        description: "Failed to read the file. Please try again.",
+        description: "Failed to process the file. Please try again.",
         variant: "destructive",
       });
-    };
-    
-    reader.readAsArrayBuffer(file);
+    }
   }, [exchangeRate]);
 
   const processWithAI = async (dryRun = false) => {
@@ -641,7 +722,12 @@ const BulkInventoryManager = () => {
                         <TableCell>{getStatusBadge(product.status)}</TableCell>
                         <TableCell>{product.rowIndex}</TableCell>
                         <TableCell className="font-medium max-w-[200px] truncate">
-                          {product.name}
+                          <div className="flex items-center gap-2">
+                            {product.hasEmbeddedImage && (
+                              <Image className="h-4 w-4 text-blue-600" />
+                            )}
+                            {product.name}
+                          </div>
                         </TableCell>
                         <TableCell>${product.price.toFixed(2)}</TableCell>
                         <TableCell>

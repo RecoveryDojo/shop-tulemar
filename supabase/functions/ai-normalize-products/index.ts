@@ -122,15 +122,25 @@ async function processProductImages(
   userId: string
 ): Promise<void> {
   for (const p of products) {
-    if (p.image_url && isExternalUrl(p.image_url)) {
-      const uploadedUrl = await processAndUploadImage(supabase, userId, p.name, p.image_url);
-      if (uploadedUrl) {
-        p.image_url = uploadedUrl;
-        p.suggestions = [...(p.suggestions || []), 'Image resized and uploaded to CDN'];
-        p.auto_fixes = [...(p.auto_fixes || []), 'image_optimization'];
-      } else {
-        p.errors = [...(p.errors || []), 'Image processing/upload failed'];
-        if (p.status !== 'error') p.status = 'suggested';
+    if (p.image_url) {
+      // Skip processing if image is already in our storage bucket
+      if (p.image_url.includes('product-images')) {
+        console.log(`Skipping already uploaded image for product: ${p.name}`);
+        p.suggestions = [...(p.suggestions || []), 'Embedded image uploaded from Excel'];
+        continue;
+      }
+      
+      // Only process external URLs
+      if (isExternalUrl(p.image_url)) {
+        const uploadedUrl = await processAndUploadImage(supabase, userId, p.name, p.image_url);
+        if (uploadedUrl) {
+          p.image_url = uploadedUrl;
+          p.suggestions = [...(p.suggestions || []), 'Image resized and uploaded to CDN'];
+          p.auto_fixes = [...(p.auto_fixes || []), 'image_optimization'];
+        } else {
+          p.errors = [...(p.errors || []), 'Image processing/upload failed'];
+          if (p.status !== 'error') p.status = 'suggested';
+        }
       }
     }
   }
