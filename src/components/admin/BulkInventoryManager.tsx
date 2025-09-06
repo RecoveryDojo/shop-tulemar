@@ -286,52 +286,161 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
 };
 
   const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string }> => {
+    // Parses Excel drawing anchors to map each embedded image to its exact worksheet row
+    // Falls back to sequential order if anchors aren't available
     try {
       const arrayBuffer = await file.arrayBuffer();
       const zip = new JSZip();
       await zip.loadAsync(arrayBuffer);
-      
+
       const imageMapping: { [rowIndex: number]: string } = {};
-      
-      // Look for embedded images in xl/media/ folder
+
+      // Helper: safe XML parse
+      const parseXml = (xml: string) => new DOMParser().parseFromString(xml, 'application/xml');
+
+      // Try to read first drawing file (drawing1.xml) and its relationships
+      const drawingsFolder = zip.folder('xl/drawings');
+      const drawingsRelsFolder = zip.folder('xl/drawings/_rels');
+
+      const drawingFiles = drawingsFolder
+        ? Object.keys(drawingsFolder.files).filter((n) => n.endsWith('.xml'))
+        : [];
+
+      const useAnchorMapping = drawingFiles.length > 0 && !!drawingsRelsFolder;
+
+      if (useAnchorMapping) {
+        // Build rels map: rId -> media target (e.g., ../media/image1.png)
+        const relsFileName = 'drawing1.xml.rels';
+        const drawingXmlName = 'drawing1.xml';
+
+        // Prefer drawing1; if missing, pick the first
+        const chosenDrawing = drawingFiles.includes(drawingXmlName)
+          ? drawingXmlName
+          : drawingFiles[0];
+        const chosenRels = relsFileName;
+
+        const drawingXmlEntry = drawingsFolder!.files[`xl/drawings/${chosenDrawing}`];
+        const relsXmlEntry = drawingsRelsFolder!.files[`xl/drawings/_rels/${chosenRels}`] ||
+          drawingsRelsFolder!.files[`xl/drawings/_rels/${chosenDrawing}.rels`];
+
+        if (drawingXmlEntry && relsXmlEntry) {
+          const drawingXml = await drawingXmlEntry.async('string');
+          const relsXml = await relsXmlEntry.async('string');
+
+          const drawingDoc = parseXml(drawingXml);
+          const relsDoc = parseXml(relsXml);
+
+          const relsMap = new Map<string, string>();
+          Array.from(relsDoc.getElementsByTagName('Relationship')).forEach((rel: any) => {
+            const id = rel.getAttribute('Id');
+            const target = rel.getAttribute('Target');
+            if (id && target) relsMap.set(id, target);
+          });
+
+          // Collect anchors -> (row, rId)
+          const anchors: { row: number; rId: string }[] = [];
+          const allNodes = drawingDoc.getElementsByTagName('*');
+          for (let i = 0; i < allNodes.length; i++) {
+            const node = allNodes[i] as Element;
+            const local = (node as any).localName || node.tagName; // handle namespaces
+            if (local === 'twoCellAnchor' || local === 'oneCellAnchor') {
+              // find <from><row>
+              let rowNum: number | null = null;
+              let rId: string | null = null;
+
+              // find descendant with localName 'from' then 'row'
+              const descendants = node.getElementsByTagName('*');
+              for (let j = 0; j < descendants.length; j++) {
+                const d = descendants[j] as Element;
+                const dl = (d as any).localName || d.tagName;
+                if (dl === 'row' && rowNum === null) {
+                  const val = parseInt((d.textContent || '0').trim(), 10);
+                  if (!isNaN(val)) rowNum = val; // zero-based
+                }
+                if (dl === 'blip' && !rId) {
+                  // attributes can be r:embed or similar
+                  const attrs = Array.from(d.attributes);
+                  const embedAttr = attrs.find((a) => a.name.endsWith(':embed') || a.name === 'embed');
+                  if (embedAttr) rId = embedAttr.value;
+                }
+                if (rowNum !== null && rId) break;
+              }
+
+              if (rowNum !== null && rId) {
+                anchors.push({ row: rowNum, rId });
+              }
+            }
+          }
+
+          // Map anchors to media files via rels
+          for (const { row, rId } of anchors) {
+            const target = relsMap.get(rId);
+            if (!target) continue;
+            // Normalize target path to xl/media/<file>
+            const clean = target.replace(/^\.\//, '').replace(/^\.\.\//, '');
+            const fileName = clean.startsWith('media/') ? clean.substring('media/'.length) : clean;
+            const mediaPath = `xl/media/${fileName}`;
+
+            const imgEntry = zip.file(mediaPath);
+            if (!imgEntry) continue;
+            const imageBlob = await imgEntry.async('blob');
+
+            const ext = fileName.split('.').pop() || 'png';
+            const uploadName = `excel-image-${Date.now()}-${row}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('product-images')
+              .upload(uploadName, imageBlob, { upsert: true });
+            if (uploadError) {
+              console.error('Error uploading image:', uploadError);
+              continue;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('product-images')
+              .getPublicUrl(uploadName);
+
+            // Excel rows are zero-based in drawings; convert to 1-based for sheet rows
+            const sheetRowIndex = row + 1;
+            // Only set first image per row
+            if (!imageMapping[sheetRowIndex]) {
+              imageMapping[sheetRowIndex] = publicUrl;
+            }
+          }
+
+          // If we successfully mapped some rows, return mapping
+          if (Object.keys(imageMapping).length > 0) {
+            console.log(`Mapped ${Object.keys(imageMapping).length} images via anchors`);
+            return imageMapping;
+          }
+        }
+      }
+
+      // Fallback: sequential mapping to rows starting at 2 (after header)
       const mediaFolder = zip.folder('xl/media');
       if (!mediaFolder) {
         console.log('No media folder found in Excel file');
         return imageMapping;
       }
-      
-      // Get all image files
-      const imageFiles = Object.keys(mediaFolder.files).filter(name => 
-        name.match(/\.(jpg|jpeg|png|gif)$/i)
-      );
-      
-      console.log(`Found ${imageFiles.length} embedded images`);
-      
+
+      const imageFiles = Object.keys(mediaFolder.files).filter((name) => name.match(/\.(jpg|jpeg|png|gif)$/i));
+      console.log(`Found ${imageFiles.length} embedded images (fallback mode)`);
+
       for (let i = 0; i < imageFiles.length; i++) {
         const imageFile = mediaFolder.files[imageFiles[i]];
         if (!imageFile) continue;
-        
         const imageBlob = await imageFile.async('blob');
         const fileName = `excel-image-${Date.now()}-${i}.${imageFiles[i].split('.').pop()}`;
-        
-        // Upload to Supabase storage
-        const { data, error } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, imageBlob);
-          
+        const { error } = await supabase.storage.from('product-images').upload(fileName, imageBlob, { upsert: true });
         if (error) {
           console.error('Error uploading image:', error);
           continue;
         }
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName);
-          
+        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
         // Map to row index (starting from row 2, so i+2)
         imageMapping[i + 2] = publicUrl;
       }
-      
+
       return imageMapping;
     } catch (error) {
       console.error('Error extracting embedded images:', error);
