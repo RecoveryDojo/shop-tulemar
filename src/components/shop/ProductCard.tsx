@@ -9,12 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 
 // Function to get appropriate product image based on category
 const getProductImage = (product: Product): string => {
+  // Debug logging
+  console.log('Product:', product.name, 'Image URL:', product.image_url);
+  
   // Always use the product's image URL if it exists
   if (product.image_url && product.image_url.trim() !== '') {
-    // Add cache busting parameter to force refresh
-    return `${product.image_url}?v=${Date.now()}`;
+    console.log('Using product image:', product.image_url);
+    return product.image_url;
   }
   
+  console.log('Using fallback image for category:', product.category_id);
   // Fallback to category-based default images
   const categoryImages: Record<string, string> = {
     'fresh-produce': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop',
