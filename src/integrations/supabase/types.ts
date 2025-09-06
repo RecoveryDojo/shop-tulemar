@@ -18,43 +18,141 @@ export type Database = {
         Row: {
           confidence_score: number | null
           created_at: string
+          data_source: string | null
+          external_reference: string | null
           failure_count: number | null
           id: string
           input_pattern: string
           last_used_at: string | null
           metadata: Json | null
           output_value: string
+          pattern_category: string | null
           pattern_type: string
+          quality_score: number | null
           success_count: number | null
           updated_at: string
+          validation_status: string | null
         }
         Insert: {
           confidence_score?: number | null
           created_at?: string
+          data_source?: string | null
+          external_reference?: string | null
           failure_count?: number | null
           id?: string
           input_pattern: string
           last_used_at?: string | null
           metadata?: Json | null
           output_value: string
+          pattern_category?: string | null
           pattern_type: string
+          quality_score?: number | null
           success_count?: number | null
           updated_at?: string
+          validation_status?: string | null
         }
         Update: {
           confidence_score?: number | null
           created_at?: string
+          data_source?: string | null
+          external_reference?: string | null
           failure_count?: number | null
           id?: string
           input_pattern?: string
           last_used_at?: string | null
           metadata?: Json | null
           output_value?: string
+          pattern_category?: string | null
           pattern_type?: string
+          quality_score?: number | null
           success_count?: number | null
           updated_at?: string
+          validation_status?: string | null
         }
         Relationships: []
+      }
+      ai_pattern_types: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
+      ai_processing_audit: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          data_source: string | null
+          error_message: string | null
+          id: string
+          import_job_id: string | null
+          input_data: Json | null
+          metadata: Json | null
+          output_data: Json | null
+          pattern_type: string
+          processing_stage: string
+          processing_time_ms: number | null
+          success: boolean | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          error_message?: string | null
+          id?: string
+          import_job_id?: string | null
+          input_data?: Json | null
+          metadata?: Json | null
+          output_data?: Json | null
+          pattern_type: string
+          processing_stage: string
+          processing_time_ms?: number | null
+          success?: boolean | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          error_message?: string | null
+          id?: string
+          import_job_id?: string | null
+          input_data?: Json | null
+          metadata?: Json | null
+          output_data?: Json | null
+          pattern_type?: string
+          processing_stage?: string
+          processing_time_ms?: number | null
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_processing_audit_import_job_id_fkey"
+            columns: ["import_job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_processing_feedback: {
         Row: {
@@ -189,6 +287,57 @@ export type Database = {
           },
         ]
       }
+      external_data_sources: {
+        Row: {
+          api_key_required: boolean | null
+          base_url: string | null
+          configuration: Json | null
+          created_at: string | null
+          failure_count: number | null
+          id: string
+          is_active: boolean | null
+          last_failure_at: string | null
+          last_success_at: string | null
+          name: string
+          rate_limit_per_minute: number | null
+          reliability_score: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_key_required?: boolean | null
+          base_url?: string | null
+          configuration?: Json | null
+          created_at?: string | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          name: string
+          rate_limit_per_minute?: number | null
+          reliability_score?: number | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_key_required?: boolean | null
+          base_url?: string | null
+          configuration?: Json | null
+          created_at?: string | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          name?: string
+          rate_limit_per_minute?: number | null
+          reliability_score?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       features: {
         Row: {
           actual_hours: number | null
@@ -315,8 +464,12 @@ export type Database = {
           column_mapping: Json | null
           created_at: string
           created_by: string
+          enrichment_stats: Json | null
+          external_enrichment_enabled: boolean | null
+          external_sources_used: Json | null
           id: string
           original_headers: Json | null
+          quality_metrics: Json | null
           settings: Json | null
           source_filename: string | null
           stats_error_rows: number | null
@@ -329,8 +482,12 @@ export type Database = {
           column_mapping?: Json | null
           created_at?: string
           created_by: string
+          enrichment_stats?: Json | null
+          external_enrichment_enabled?: boolean | null
+          external_sources_used?: Json | null
           id?: string
           original_headers?: Json | null
+          quality_metrics?: Json | null
           settings?: Json | null
           source_filename?: string | null
           stats_error_rows?: number | null
@@ -343,8 +500,12 @@ export type Database = {
           column_mapping?: Json | null
           created_at?: string
           created_by?: string
+          enrichment_stats?: Json | null
+          external_enrichment_enabled?: boolean | null
+          external_sources_used?: Json | null
           id?: string
           original_headers?: Json | null
+          quality_metrics?: Json | null
           settings?: Json | null
           source_filename?: string | null
           stats_error_rows?: number | null

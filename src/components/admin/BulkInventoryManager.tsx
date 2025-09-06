@@ -408,46 +408,36 @@ console.log('Filtered data:', filteredData.length, 'product rows');
     if (dryRun) setIsDryRun(true);
     
     try {
-const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
-  body: { 
-    rows: excelData.map(p => ({
-      // Send properly structured A-E data with learning context
-      col_0: p.name,
-      col_1: p.origin, // brand
-      col_2: '', // CRC price (we already converted)
-      col_3: p.price, // USD price
-      col_4: p.image_url,
-      name: p.name,
-      brand: p.origin,
-      price: p.price,
-      image_url: p.image_url,
-      original_data: p.original_data,
-      // Enhanced data for learning
-      processing_context: {
-        upload_timestamp: Date.now(),
-        user_corrections: p.user_corrections || {},
-        previous_suggestions: p.ai_suggestions || null,
-        category_hint: p.category_hint || null
-      }
-    })),
-    filename: fileName,
-    settings: {
-      columnFormat: 'A-E',
-      exchangeRate,
-      dryRun,
-      enableLearning: true,
-      qualityThreshold: 0.8,
-      preferUSD: true
-    }
-  }
-});
+      // Use the new enhanced AI processor with external enrichment
+      const { data, error } = await supabase.functions.invoke('ai-enhanced-processor', {
+        body: {
+          products: excelData.map(p => ({
+            name: p.name,
+            brand: p.origin,
+            price: p.price,
+            image_url: p.image_url,
+            original_data: p.original_data,
+            category_hint: p.category_hint,
+            stock_quantity: p.stock_quantity || 0,
+            processing_context: {
+              upload_timestamp: Date.now(),
+              user_corrections: p.user_corrections || {},
+              previous_suggestions: p.ai_suggestions || null
+            }
+          })),
+          jobId: null,
+          enableExternalEnrichment: true,
+          processingStages: ['cleanup', 'enrichment', 'validation']
+        }
+      });
 
       if (error) throw error;
 
-      const { jobId, summary, learning_stats, products } = data;
+      if (data.success) {
+        const processedProducts = data.products;
       
-      // Transform enhanced AI results to match our interface
-      const transformedItems = products.map((item: any, index: number) => ({
+        // Transform enhanced AI results to match our interface
+        const transformedItems = processedProducts.map((item: any, index: number) => ({
         ...item,
         rowIndex: index + 2, // Excel row numbering
         stock_quantity: item.stock_quantity || 10,
@@ -459,23 +449,23 @@ const { data, error } = await supabase.functions.invoke('ai-normalize-products',
       }));
 
       setExcelData(transformedItems);
-      if (!dryRun) setImportJobId(jobId);
 
-      const autoFixCount = learning_stats?.auto_fixes_applied || 0;
-      const highConfidenceCount = learning_stats?.high_confidence_suggestions || 0;
+      const validCount = transformedItems.filter(p => p.quality_score >= 50).length;
+      const errorCount = transformedItems.filter(p => p.quality_score < 50).length;
       
       toast({
-        title: dryRun ? "Enhanced AI Analysis Complete" : "Smart AI Processing Complete",
-        description: `${summary.ready} ready, ${summary.suggested} need review, ${summary.errors} errors. ${autoFixCount} auto-fixes, ${highConfidenceCount} high confidence.`,
-        variant: summary.errors > 0 ? "destructive" : "default",
+        title: dryRun ? "Enhanced AI Analysis Complete" : "Enhanced AI Processing Complete", 
+        description: `${validCount} validated, ${errorCount} need review. Enhanced with external data sources.`,
+        variant: errorCount > 0 ? "destructive" : "default",
       });
 
-      console.log('Enhanced AI processing results:', {
-        summary,
-        learning_stats,
-        auto_fixes: autoFixCount,
-        high_confidence: highConfidenceCount
-      });
+        toast({
+          title: dryRun ? "Enhanced AI Processing Complete" : "Enhanced AI Processing Complete",
+          description: `Processed ${processedProducts.length} products with enhanced AI learning.`,
+        });
+      } else {
+        throw new Error(data.error || 'Enhanced AI processing failed');
+      }
 
     } catch (error: any) {
       console.error('AI processing error:', error);

@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Users, Package, ShoppingCart, UserPlus, UserMinus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import ProductManager from '@/components/admin/ProductManager';
+import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 
 interface UserWithRoles {
   id: string;
@@ -113,11 +114,16 @@ const Admin = () => {
         <Tabs defaultValue="inventory" className="space-y-6">
           <TabsList>
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
+            <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="inventory">
             <ProductManager />
+          </TabsContent>
+
+          <TabsContent value="ai-learning">
+            <EnhancedAIManager />
           </TabsContent>
 
           <TabsContent value="users">
