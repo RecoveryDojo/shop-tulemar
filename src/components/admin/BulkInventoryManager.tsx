@@ -205,7 +205,7 @@ const parseColumnAEData = (row: any, index: number): ExcelProduct => {
   if (!name || name.trim() === '') errors.push('Name is required (Column A)');
   if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
   
-    return {
+  return {
       name,
       description: brand || '', // Map column B to description field
       price: finalPrice,
