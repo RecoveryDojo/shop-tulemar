@@ -317,7 +317,8 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
         ? Object.keys(drawingsFolder.files).filter((n) => n.endsWith('.xml'))
         : [];
 
-      const useAnchorMapping = drawingFiles.length > 0 && !!drawingsRelsFolder;
+      // FORCE SEQUENTIAL MAPPING - Disable anchor mapping entirely due to mismatches
+      const useAnchorMapping = false; // drawingFiles.length > 0 && !!drawingsRelsFolder;
 
       if (useAnchorMapping) {
         // Build rels map: rId -> media target (e.g., ../media/image1.png)
