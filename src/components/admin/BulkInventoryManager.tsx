@@ -155,7 +155,7 @@ const BulkInventoryManager = () => {
     };
   };
 
-const parseColumnAEData = (row: any, index: number): ExcelProduct => {
+const parseColumnAEData = (row: any, index: number, exchangeRate: number): ExcelProduct => {
   // Handle A-E format: A=name, B=brand, C=CRC price, D=USD price, E=image
   const keys = Object.keys(row);
   
@@ -175,19 +175,36 @@ const parseColumnAEData = (row: any, index: number): ExcelProduct => {
   
   // Parse price - prefer USD over CRC
   let finalPrice = 0;
+  let priceErrors = [];
+  
   if (usdPrice && usdPrice !== '') {
     // Extract USD price
     const usdMatch = usdPrice.match(/[\d.,]+/);
     if (usdMatch) {
-      finalPrice = parseFloat(usdMatch[0].replace(',', ''));
+      const parsedUsd = parseFloat(usdMatch[0].replace(',', ''));
+      if (!isNaN(parsedUsd) && parsedUsd > 0) {
+        finalPrice = parsedUsd;
+      } else {
+        priceErrors.push(`Invalid USD price: ${usdPrice}`);
+      }
+    } else {
+      priceErrors.push(`Could not parse USD price: ${usdPrice}`);
     }
   } else if (crcPrice && crcPrice !== '') {
     // Convert CRC to USD
     const crcMatch = crcPrice.match(/[\d.,]+/);
     if (crcMatch) {
       const crcValue = parseFloat(crcMatch[0].replace(',', ''));
-      finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
+      if (!isNaN(crcValue) && crcValue > 0 && exchangeRate > 0) {
+        finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
+      } else {
+        priceErrors.push(`Invalid CRC price or exchange rate: ${crcPrice} (rate: ${exchangeRate})`);
+      }
+    } else {
+      priceErrors.push(`Could not parse CRC price: ${crcPrice}`);
     }
+  } else {
+    priceErrors.push('No price found in USD or CRC columns');
   }
   
   // Extract unit from name (115g, 1L, etc.)
@@ -210,8 +227,9 @@ const parseColumnAEData = (row: any, index: number): ExcelProduct => {
     }
   }
   
-  const errors: string[] = [];
+  const errors: string[] = [...priceErrors];
   if (!name || name.trim() === '') errors.push('Name is required (Column A)');
+  if (!brand || brand.trim() === '') errors.push('Brand/description is required (Column B)');
   if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
   
   return {
@@ -356,7 +374,7 @@ console.log('Filtered data:', filteredData.length, 'product rows');
 
           const parsedProducts = filteredData.map((row, index) => {
             console.log(`Parsing A-E row ${index + 2}:`, row);
-            const product = parseColumnAEData(row, index + 2);
+            const product = parseColumnAEData(row, index + 2, exchangeRate);
             
             // Check if this row has an embedded image
             const actualRowIndex = index + 2;
@@ -745,9 +763,19 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                       <TableRow key={index} className={product.status === 'error' ? 'bg-red-50' : ''}>
                         <TableCell>{getStatusBadge(product.status)}</TableCell>
                         <TableCell>{product.rowIndex}</TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate">
+                         <TableCell className="font-medium max-w-[200px] truncate">
                           <div className="flex items-center gap-2">
-                            {product.hasEmbeddedImage && (
+                            {product.image_url && (
+                              <img 
+                                src={product.image_url} 
+                                alt={product.name}
+                                className="w-8 h-8 object-cover rounded border"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            {product.hasEmbeddedImage && !product.image_url && (
                               <Image className="h-4 w-4 text-blue-600" />
                             )}
                             {product.name}
