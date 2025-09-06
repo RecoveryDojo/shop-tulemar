@@ -536,11 +536,17 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             const product = parseColumnAEData(row, index + 2, exchangeRate);
             
             // Check if this row has an embedded image
-            const actualRowIndex = index + 2;
+            // The imageMapping uses the Excel row numbers as keys, but our products array
+            // is the filtered data starting from the first product row
+            // We need to map back to the actual Excel row number
+            const actualRowIndex = product.rowIndex; // This already contains the correct Excel row
             const imageUrl = imageMapping[actualRowIndex];
             if (imageUrl) {
               product.image_url = imageUrl;
               product.hasEmbeddedImage = true;
+              console.log(`✅ Mapped image for row ${actualRowIndex} (${product.name}): ${imageUrl}`);
+            } else {
+              console.log(`❌ No image found for row ${actualRowIndex} (${product.name})`);
             }
             
             return product;
