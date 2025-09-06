@@ -26,6 +26,12 @@ interface ExcelProduct {
   errors: string[];
   suggestions?: string[];
   original_data?: any;
+  ai_suggestions?: {
+    confidence_score?: number;
+    learned_patterns?: string[];
+    auto_fixes?: string[];
+  };
+  user_corrections?: any;
 }
 
 const BulkInventoryManager = () => {
@@ -320,7 +326,7 @@ const BulkInventoryManager = () => {
       const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
         body: { 
           rows: excelData.map(p => ({
-            // Send properly structured A-E data
+            // Send properly structured A-E data with learning context
             col_0: p.name,
             col_1: p.origin, // brand
             col_2: '', // CRC price (we already converted)
@@ -330,13 +336,21 @@ const BulkInventoryManager = () => {
             brand: p.origin,
             price: p.price,
             image_url: p.image_url,
-            original_data: p.original_data
+            original_data: p.original_data,
+            // Enhanced data for learning
+            processing_context: {
+              upload_timestamp: Date.now(),
+              user_corrections: p.user_corrections || {},
+              previous_suggestions: p.ai_suggestions || null
+            }
           })),
           filename: fileName,
           settings: {
             columnFormat: 'A-E',
             exchangeRate,
             dryRun,
+            enableLearning: true,
+            qualityThreshold: 0.8,
             preferUSD: true
           }
         }
@@ -344,22 +358,37 @@ const BulkInventoryManager = () => {
 
       if (error) throw error;
 
-      const { jobId, summary, items } = data;
+      const { jobId, summary, learning_stats, products } = data;
       
-      // Transform AI results to match our interface
-      const transformedItems = items.map((item: any, index: number) => ({
+      // Transform enhanced AI results to match our interface
+      const transformedItems = products.map((item: any, index: number) => ({
         ...item,
         rowIndex: index + 2, // Excel row numbering
-        stock_quantity: item.stock_quantity || 10
+        stock_quantity: item.stock_quantity || 10,
+        ai_suggestions: {
+          confidence_score: item.confidence_score || 0,
+          learned_patterns: item.learned_patterns_applied || [],
+          auto_fixes: item.auto_fixes || []
+        }
       }));
 
       setExcelData(transformedItems);
       if (!dryRun) setImportJobId(jobId);
 
+      const autoFixCount = learning_stats?.auto_fixes_applied || 0;
+      const highConfidenceCount = learning_stats?.high_confidence_suggestions || 0;
+      
       toast({
-        title: dryRun ? "Dry Run Complete" : "AI Processing Complete",
-        description: `${summary.ready} ready, ${summary.suggested} need review, ${summary.errors} errors`,
+        title: dryRun ? "Enhanced AI Analysis Complete" : "Smart AI Processing Complete",
+        description: `${summary.ready} ready, ${summary.suggested} need review, ${summary.errors} errors. ${autoFixCount} auto-fixes, ${highConfidenceCount} high confidence.`,
         variant: summary.errors > 0 ? "destructive" : "default",
+      });
+
+      console.log('Enhanced AI processing results:', {
+        summary,
+        learning_stats,
+        auto_fixes: autoFixCount,
+        high_confidence: highConfidenceCount
       });
 
     } catch (error: any) {

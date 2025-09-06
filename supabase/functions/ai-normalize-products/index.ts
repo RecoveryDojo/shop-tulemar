@@ -29,12 +29,22 @@ interface NormalizedProduct {
   errors: string[];
   suggestions: string[];
   original_data: ExcelRow;
+  confidence_score?: number;
+  learned_patterns_applied?: string[];
+  auto_fixes?: string[];
 }
 
 interface Category {
   id: string;
   name: string;
   icon: string;
+}
+
+interface AILearningPattern {
+  pattern_type: string;
+  input_pattern: string;
+  output_value: string;
+  confidence_score: number;
 }
 
 const MAX_IMAGE_DIMENSION = 1024;
@@ -117,11 +127,148 @@ async function processProductImages(
       if (uploadedUrl) {
         p.image_url = uploadedUrl;
         p.suggestions = [...(p.suggestions || []), 'Image resized and uploaded to CDN'];
+        p.auto_fixes = [...(p.auto_fixes || []), 'image_optimization'];
       } else {
         p.errors = [...(p.errors || []), 'Image processing/upload failed'];
         if (p.status !== 'error') p.status = 'suggested';
       }
     }
+  }
+}
+
+// Apply learning patterns to enhance product data
+async function applyLearningPatterns(
+  batch: any[],
+  categories: any[],
+  supabase: any
+): Promise<any[]> {
+  const enhanced = await Promise.all(batch.map(async (row) => {
+    try {
+      const productName = row.name || row.col_0 || '';
+      if (!productName) return row;
+
+      const learnedPatterns: string[] = [];
+
+      // Get category suggestions
+      const { data: categoryPattern } = await supabase.rpc('get_ai_pattern_suggestion', {
+        pattern_type_param: 'category',
+        input_pattern_param: productName.toLowerCase(),
+        min_confidence: 0.7
+      });
+
+      // Get unit extraction patterns
+      const { data: unitPattern } = await supabase.rpc('get_ai_pattern_suggestion', {
+        pattern_type_param: 'unit',
+        input_pattern_param: productName.toLowerCase(),
+        min_confidence: 0.7
+      });
+
+      // Get price normalization patterns
+      const priceValue = row.price || row.col_3 || row.col_2 || '';
+      const { data: pricePattern } = await supabase.rpc('get_ai_pattern_suggestion', {
+        pattern_type_param: 'price',
+        input_pattern_param: priceValue.toString(),
+        min_confidence: 0.7
+      });
+
+      // Get brand suggestions
+      const brand = row.brand || row.col_1 || '';
+      const { data: brandPattern } = await supabase.rpc('get_ai_pattern_suggestion', {
+        pattern_type_param: 'brand',
+        input_pattern_param: productName.toLowerCase(),
+        min_confidence: 0.7
+      });
+
+      const suggestions: any = {};
+      
+      if (categoryPattern?.[0]?.output_value) {
+        suggestions.category = categoryPattern[0].output_value;
+        learnedPatterns.push('category_suggestion');
+      }
+      
+      if (unitPattern?.[0]?.output_value) {
+        suggestions.unit = unitPattern[0].output_value;
+        learnedPatterns.push('unit_extraction');
+      }
+      
+      if (pricePattern?.[0]?.output_value) {
+        suggestions.price_format = pricePattern[0].output_value;
+        learnedPatterns.push('price_normalization');
+      }
+      
+      if (brandPattern?.[0]?.output_value) {
+        suggestions.brand = brandPattern[0].output_value;
+        learnedPatterns.push('brand_detection');
+      }
+
+      return {
+        ...row,
+        _ai_suggestions: suggestions,
+        _learned_patterns: learnedPatterns,
+        _confidence_scores: {
+          category: categoryPattern?.[0]?.confidence_score || 0,
+          unit: unitPattern?.[0]?.confidence_score || 0,
+          price: pricePattern?.[0]?.confidence_score || 0,
+          brand: brandPattern?.[0]?.confidence_score || 0
+        }
+      };
+    } catch (error) {
+      console.error('Error applying learning patterns:', error);
+      return row;
+    }
+  }));
+
+  return enhanced;
+}
+
+// Record successful AI processing patterns for learning
+async function recordSuccessfulPatterns(
+  product: NormalizedProduct,
+  originalRow: any,
+  supabase: any
+): Promise<void> {
+  try {
+    const productName = originalRow.name || originalRow.col_0 || '';
+    
+    if (productName && product.category_id) {
+      await supabase.rpc('record_ai_pattern_success', {
+        pattern_type_param: 'category',
+        input_pattern_param: productName.toLowerCase(),
+        output_value_param: product.category_id,
+        confidence_param: 0.85
+      });
+    }
+
+    if (productName && product.unit) {
+      await supabase.rpc('record_ai_pattern_success', {
+        pattern_type_param: 'unit',
+        input_pattern_param: productName.toLowerCase(),
+        output_value_param: product.unit,
+        confidence_param: 0.85
+      });
+    }
+
+    if (product.price && (originalRow.price || originalRow.col_3 || originalRow.col_2)) {
+      const originalPrice = originalRow.price || originalRow.col_3 || originalRow.col_2;
+      await supabase.rpc('record_ai_pattern_success', {
+        pattern_type_param: 'price',
+        input_pattern_param: originalPrice.toString(),
+        output_value_param: product.price.toString(),
+        confidence_param: 0.85
+      });
+    }
+
+    if (productName && product.origin) {
+      await supabase.rpc('record_ai_pattern_success', {
+        pattern_type_param: 'brand',
+        input_pattern_param: productName.toLowerCase(),
+        output_value_param: product.origin,
+        confidence_param: 0.85
+      });
+    }
+
+  } catch (error) {
+    console.error('Error recording learning patterns:', error);
   }
 }
 
@@ -161,6 +308,7 @@ serve(async (req) => {
     }
 
     console.log(`Processing ${rows.length} rows from file: ${filename || 'unnamed'}`);
+    console.log('Settings:', JSON.stringify(settings, null, 2));
 
     // Fetch categories for mapping
     const { data: categories, error: categoriesError } = await supabase
@@ -187,11 +335,12 @@ serve(async (req) => {
       (existingProducts || []).map(p => p.name.toLowerCase().trim())
     );
 
-    // Process rows with AI assistance
-    let normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames, settings);
+    // Enhanced AI processing with learning
+    let normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames, settings, supabase);
 
-// Resize and upload images to storage, updating image_url to CDN URL
-await processProductImages(normalizedProducts, supabase, user.id);
+    // Resize and upload images to storage, updating image_url to CDN URL
+    await processProductImages(normalizedProducts, supabase, user.id);
+    
     // Create import job
     const { data: importJob, error: jobError } = await supabase
       .from('import_jobs')
@@ -199,8 +348,8 @@ await processProductImages(normalizedProducts, supabase, user.id);
         created_by: user.id,
         source_filename: filename || 'ai-import',
         original_headers: rows.length > 0 ? Object.keys(rows[0]) : [],
-        column_mapping: {}, // Will be populated by AI processing
-        settings: { ai_processing: true },
+        column_mapping: settings, 
+        settings: { ai_processing: true, enableLearning: settings.enableLearning },
         stats_total_rows: rows.length,
         stats_valid_rows: normalizedProducts.filter(p => p.status === 'ready').length,
         stats_error_rows: normalizedProducts.filter(p => p.status === 'error').length,
@@ -255,12 +404,19 @@ await processProductImages(normalizedProducts, supabase, user.id);
       errors: normalizedProducts.filter(p => p.status === 'error').length
     };
 
-    console.log('AI processing complete:', summary);
+    const learningStats = {
+      auto_fixes_applied: normalizedProducts.filter(p => p.auto_fixes?.length > 0).length,
+      high_confidence_suggestions: normalizedProducts.filter(p => (p.confidence_score || 0) > 0.8).length,
+      patterns_learned: normalizedProducts.reduce((acc, p) => acc + (p.learned_patterns_applied?.length || 0), 0)
+    };
+
+    console.log('Enhanced AI processing complete:', { summary, learningStats });
 
     return new Response(JSON.stringify({
       jobId: importJob.id,
       summary,
-      items: normalizedProducts
+      learning_stats: learningStats,
+      products: normalizedProducts
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -276,11 +432,13 @@ await processProductImages(normalizedProducts, supabase, user.id);
   }
 });
 
+// Enhanced AI processing with learning capabilities
 async function processRowsWithAI(
   rows: ExcelRow[], 
   categories: Category[], 
   existingProductNames: Set<string>,
-  settings: any = {}
+  settings: any = {},
+  supabase: any
 ): Promise<NormalizedProduct[]> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openaiApiKey) {
@@ -293,7 +451,7 @@ async function processRowsWithAI(
   const batchSize = 10;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const batchResults = await processBatchWithAI(batch, categories, existingProductNames, openaiApiKey, settings);
+    const batchResults = await processBatchWithAI(batch, categories, existingProductNames, openaiApiKey, settings, supabase);
     results.push(...batchResults);
   }
 
@@ -305,49 +463,36 @@ async function processBatchWithAI(
   categories: Category[], 
   existingProductNames: Set<string>,
   openaiApiKey: string,
-  settings: any = {}
+  settings: any = {},
+  supabase: any
 ): Promise<NormalizedProduct[]> {
   
   const exchangeRate = settings.exchangeRate || 500;
   const isAEFormat = settings.columnFormat === 'A-E';
+  const enableLearning = settings.enableLearning || true;
   
-  console.log(`Processing ${batch.length} rows with ${isAEFormat ? 'A-E' : 'auto-detect'} format, exchange rate: ${exchangeRate}`);
+  console.log(`Processing ${batch.length} rows with ${isAEFormat ? 'A-E' : 'auto-detect'} format, learning: ${enableLearning}`);
   
   let cleanedBatch = batch;
   
   if (isAEFormat) {
     // Handle pre-parsed A-E format from frontend
     cleanedBatch = batch.filter(row => {
-      // For A-E format, check if we have meaningful data in the first few columns
       const keys = Object.keys(row);
       if (keys.length === 0) return false;
       
-      // Check columns A (name) and either C (CRC) or D (USD) for price
       const hasName = row[keys[0]] && String(row[keys[0]]).trim() !== '';
       const hasPrice = (row[keys[2]] && String(row[keys[2]]).match(/[\d.,]+/)) ||
                       (row[keys[3]] && String(row[keys[3]]).match(/[\d.,]+/));
       
       return hasName && hasPrice;
     });
-  } else {
-    // Legacy auto-detection logic
-    const firstRow = batch[0] || {};
-    const hasExcelColumnNames = Object.keys(firstRow).some(k => k.startsWith('__EMPTY'));
-    
-    if (hasExcelColumnNames) {
-      cleanedBatch = batch.filter(row => {
-        const values = Object.values(row).filter(v => v !== undefined && v !== null && v !== '');
-        if (values.length <= 1) return false;
-        
-        const hasPrice = Object.values(row).some(value => 
-          value && String(value).match(/[\$₡\d]/));
-        
-        return hasPrice;
-      });
-    }
   }
   
-  const prompt = `You are an AI assistant specializing in normalizing product data from Excel imports.
+  // Apply learning patterns before AI processing
+  const learnedProducts = enableLearning ? await applyLearningPatterns(cleanedBatch, categories, supabase) : cleanedBatch;
+  
+  const prompt = `You are an enhanced AI assistant specializing in product data normalization with learning capabilities.
 
 Available categories:
 ${categories.map(c => `- ${c.id}: "${c.name}" (${c.icon})`).join('\n')}
@@ -364,46 +509,32 @@ A-E COLUMN MAPPING:
 EXCHANGE RATE: ₡${exchangeRate} = $1.00
 ` : ''}
 
-PROCESSING INSTRUCTIONS:
-1. **Price Parsing** (CRITICAL):
-   ${isAEFormat ? `
-   - Check col_3 (USD) first - if it has a valid $ amount, use it
-   - If no USD price, convert col_2 (CRC): ₡${exchangeRate} = $1.00
-   - Examples: "₡1,500" = $${(1500/exchangeRate).toFixed(2)}, "$3.00" = $3.00
-   ` : `
+ENHANCED PROCESSING INSTRUCTIONS:
+1. **Learning Integration**: Apply learned patterns from _ai_suggestions when available
+2. **Auto-Fix Detection**: Automatically fix common issues and record in auto_fixes array
+3. **Confidence Scoring**: Provide confidence_score (0-1) for each suggestion
+4. **Quality Assurance**: Validate all auto-fixes before applying
+
+3. **Price Intelligence**:
    - Prefer USD prices over CRC prices
-   - Convert CRC to USD using rate ₡${exchangeRate} = $1.00
-   `}
+   - Auto-detect currency patterns
+   - Flag suspicious price anomalies
+   
+4. **Category Intelligence**:
+   - Use learned patterns from previous categorizations
+   - Apply brand-based category suggestions
+   - Implement fuzzy matching for similar products
 
-2. **Data Extraction for A-E Format**:
-   - Column A (name): Extract clean product name
-   - Column B (brand): Use for origin and description enhancement  
-   - Column C (CRC price): Costa Rica Colones price
-   - Column D (USD price): US Dollar price (preferred)
-   - Column E (image_url): Image URL if provided
-   - Extract unit from name (115g, 1L, 500ml, etc.)
-   - Convert CRC to USD using exchange rate ${exchangeRate} if USD not available
+5. **Smart Fixes**:
+   - Auto-extract units from product names (115g, 1L, 500ml, etc.)
+   - Generate enhanced descriptions combining brand + name + size
+   - Normalize product names for consistency
 
-3. **Category Matching**:
-   - Intelligently match products to categories based on name
-   - Common mappings: milk/cheese → dairy, bread/tortilla → bakery, coffee → beverages
-   - If uncertain, choose closest match and mark as "suggested"
-
-4. **Status Assignment**:
-   - "ready": Valid name, price, category, unit extracted
-   - "suggested": AI made assumptions (category guessed, description generated, etc.)
-   - "error": Missing name or price, invalid data
-
-5. **Data Quality**:
-   - Generate meaningful descriptions combining brand + name + size
-   - Set stock_quantity to 10 (default)
-   - Include specific suggestions for review
-
-Return JSON array with this structure:
+Return JSON array with enhanced structure:
 {
   "id": "temp-id-X",
   "name": "Clean Product Name",
-  "description": "Brand Product Name (size if available)",
+  "description": "Enhanced Brand Product Name (size)",
   "price": 9.99,
   "category_id": "best_matching_category_id",
   "unit": "g|ml|L|each",
@@ -413,16 +544,17 @@ Return JSON array with this structure:
   "status": "ready|suggested|error",
   "errors": ["specific error messages"],
   "suggestions": ["AI assumptions made"],
+  "confidence_score": 0.95,
+  "learned_patterns_applied": ["category_suggestion", "unit_extraction"],
+  "auto_fixes": ["price_normalization", "unit_extraction"],
   "original_data": {}
 }
 
-Process these ${cleanedBatch.length} products:
-${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 ? '\n... (truncated for prompt length)' : ''}`;
+Process these ${cleanedBatch.length} products with learned patterns:
+${JSON.stringify(learnedProducts.slice(0, 20), null, 2)}${cleanedBatch.length > 20 ? '\n... (truncated for prompt length)' : ''}`;
 
   try {
-    console.log(`Processing batch of ${cleanedBatch.length} cleaned rows (from ${batch.length} original)`);
-    console.log('Column format:', isAEFormat ? 'A-E' : 'auto-detect');
-    console.log('Sample data:', JSON.stringify(cleanedBatch.slice(0, 2), null, 2));
+    console.log(`Processing batch of ${cleanedBatch.length} cleaned rows with learning patterns`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -433,7 +565,7 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
         messages: [
-          { role: 'system', content: 'You are a product data specialist. Parse Excel data into valid JSON format. Prioritize USD prices, accurate categorization, and data quality. Return only valid JSON arrays.' },
+          { role: 'system', content: 'You are an enhanced product data specialist with learning capabilities. Apply learned patterns, provide confidence scores, and perform intelligent auto-fixes. Return only valid JSON arrays.' },
           { role: 'user', content: prompt }
         ],
         max_completion_tokens: 4000,
@@ -447,7 +579,7 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
     const aiResponse = await response.json();
     const aiContent = aiResponse.choices[0].message.content;
     
-    // Extract JSON from response (in case there's extra text)
+    // Extract JSON from response
     const jsonMatch = aiContent.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       throw new Error('No valid JSON found in AI response');
@@ -455,8 +587,8 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
 
     const normalizedProducts: NormalizedProduct[] = JSON.parse(jsonMatch[0]);
     
-    // Post-process results
-    return normalizedProducts.map((product, index) => {
+    // Post-process and store learning patterns
+    const processedProducts = await Promise.all(normalizedProducts.map(async (product, index) => {
       const originalRow = batch[index] || {};
       
       // Check for duplicates
@@ -477,97 +609,67 @@ ${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 
         product.status = 'error';
       }
 
+      // Record successful learning patterns if enabled
+      if (enableLearning && product.status !== 'error') {
+        await recordSuccessfulPatterns(product, originalRow, supabase);
+      }
+
       return {
         ...product,
         original_data: originalRow,
-        id: `ai-${Date.now()}-${index}`
+        id: `ai-${Date.now()}-${index}`,
+        confidence_score: product.confidence_score || 0.8
       };
-    });
+    }));
+
+    return processedProducts;
 
   } catch (error) {
     console.error('AI processing error:', error);
     
-    // Enhanced fallback: deterministic processing for A-E format
+    // Enhanced fallback with basic learning
     return cleanedBatch.map((row, index) => {
+      const originalRow = batch[index] || {};
       let name = 'Unknown Product';
       let price = 0;
       let brand = '';
       let imageUrl = '';
       
       if (isAEFormat) {
-        // A-E format: col_0=name, col_1=brand, col_2=CRC, col_3=USD, col_4=image
         name = String(row.col_0 || '').trim();
         brand = String(row.col_1 || '').trim();
         
-        // Prefer USD (col_3) over CRC (col_2)
-        const usdValue = String(row.col_3 || '').trim();
-        const crcValue = String(row.col_2 || '').trim();
+        // Try USD first, then CRC
+        const usdPrice = String(row.col_3 || '');
+        const crcPrice = String(row.col_2 || '');
         
-        if (usdValue && usdValue.match(/[\d.,]/)) {
-          price = parseFloat(usdValue.replace(/[^0-9.]/g, '')) || 0;
-        } else if (crcValue && crcValue.match(/[\d.,]/)) {
-          const crcAmount = parseFloat(crcValue.replace(/[^0-9.]/g, '')) || 0;
-          price = Math.round((crcAmount / exchangeRate) * 100) / 100;
+        if (usdPrice && usdPrice.match(/[\d.,]+/)) {
+          price = parseFloat(usdPrice.replace(/[^0-9.-]/g, ''));
+        } else if (crcPrice && crcPrice.match(/[\d.,]+/)) {
+          const crcValue = parseFloat(crcPrice.replace(/[^0-9.-]/g, ''));
+          price = Math.round((crcValue / exchangeRate) * 100) / 100;
         }
         
         imageUrl = String(row.col_4 || '').trim();
-      } else {
-        // Legacy format processing
-        Object.entries(row).forEach(([key, value]) => {
-          if (key.includes('name') || key.includes('item')) {
-            name = String(value || '').trim();
-          } else if ((key.includes('price') || key.includes('cost')) && value) {
-            const strValue = String(value);
-            if (strValue.includes('$')) {
-              price = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
-            } else {
-              const colonesPrice = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
-              price = Math.round((colonesPrice / exchangeRate) * 100) / 100;
-            }
-          } else if (key.includes('brand')) {
-            brand = String(value || '').trim();
-          }
-        });
-      }
-      
-      // Extract unit from name
-      let unit = 'each';
-      const unitMatch = name.match(/(\d+)\s*(g|kg|ml|l|oz|lb)\b/i);
-      if (unitMatch) {
-        unit = unitMatch[2].toLowerCase();
-      }
-      
-      // Simple category assignment (fallback)
-      let categoryId = categories[0]?.id || '';
-      const nameLower = name.toLowerCase();
-      for (const category of categories) {
-        if (nameLower.includes('milk') || nameLower.includes('cheese')) {
-          if (category.name.toLowerCase().includes('dairy')) {
-            categoryId = category.id;
-            break;
-          }
-        } else if (nameLower.includes('bread') || nameLower.includes('tortilla')) {
-          if (category.name.toLowerCase().includes('bakery') || category.name.toLowerCase().includes('bread')) {
-            categoryId = category.id;
-            break;
-          }
-        }
       }
       
       return {
         id: `fallback-${Date.now()}-${index}`,
-        name,
+        name: name || 'Unknown Product',
         description: brand ? `${brand} ${name}` : name,
-        price,
-        category_id: categoryId,
-        unit,
+        price: price || 0,
+        category_id: categories[0]?.id || 'other',
+        unit: 'each',
         origin: brand,
         image_url: imageUrl,
         stock_quantity: 10,
-        status: (name === 'Unknown Product' || price === 0) ? 'error' : 'suggested',
-        errors: name === 'Unknown Product' || price === 0 ? ['Fallback processing - missing data'] : [],
-        suggestions: ['Processed without AI - please review'],
-        original_data: row
+        status: 'suggested' as const,
+        errors: ['AI processing failed, using fallback'],
+        suggestions: ['Manual review recommended'],
+        confidence_score: 0.3,
+        learned_patterns_applied: [],
+        auto_fixes: [],
+        original_data: originalRow
       };
     });
   }
