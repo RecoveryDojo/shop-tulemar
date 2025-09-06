@@ -317,8 +317,8 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
         ? Object.keys(drawingsFolder.files).filter((n) => n.endsWith('.xml'))
         : [];
 
-      // FORCE SEQUENTIAL MAPPING - Disable anchor mapping entirely due to mismatches
-      const useAnchorMapping = false; // drawingFiles.length > 0 && !!drawingsRelsFolder;
+      // Use anchor mapping when drawings exist; we'll filter to Column E anchors
+      const useAnchorMapping = drawingFiles.length > 0 && !!drawingsRelsFolder;
 
       if (useAnchorMapping) {
         // Build rels map: rId -> media target (e.g., ../media/image1.png)
@@ -349,46 +349,60 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
             if (id && target) relsMap.set(id, target);
           });
 
-          // Collect anchors -> (row, rId)
-          const anchors: { row: number; rId: string }[] = [];
+          // Collect anchors -> (row, col, rId) and filter to Column E (col = 4)
+          const anchors: { row: number; col: number; rId: string }[] = [];
           const allNodes = drawingDoc.getElementsByTagName('*');
           for (let i = 0; i < allNodes.length; i++) {
             const node = allNodes[i] as Element;
             const local = (node as any).localName || node.tagName; // handle namespaces
             if (local === 'twoCellAnchor' || local === 'oneCellAnchor') {
-              // find <from><row>
               let rowNum: number | null = null;
+              let colNum: number | null = null;
               let rId: string | null = null;
 
-              // find descendant with localName 'from' then 'row'
+              // Find <from> => <row>, <col>, and <a:blip ... r:embed="rId"/>
               const descendants = node.getElementsByTagName('*');
               for (let j = 0; j < descendants.length; j++) {
                 const d = descendants[j] as Element;
                 const dl = (d as any).localName || d.tagName;
-                if (dl === 'row' && rowNum === null) {
-                  const val = parseInt((d.textContent || '0').trim(), 10);
-                  if (!isNaN(val)) rowNum = val; // zero-based
+
+                if ((dl === 'from' || dl.endsWith(':from')) && (rowNum === null || colNum === null)) {
+                  const kids = d.getElementsByTagName('*');
+                  for (let k = 0; k < kids.length; k++) {
+                    const kid = kids[k] as Element;
+                    const kl = (kid as any).localName || kid.tagName;
+                    if (kl === 'row' && rowNum === null) {
+                      const val = parseInt((kid.textContent || '0').trim(), 10);
+                      if (!isNaN(val)) rowNum = val; // zero-based
+                    }
+                    if (kl === 'col' && colNum === null) {
+                      const val = parseInt((kid.textContent || '0').trim(), 10);
+                      if (!isNaN(val)) colNum = val; // zero-based
+                    }
+                  }
                 }
+
                 if (dl === 'blip' && !rId) {
-                  // attributes can be r:embed or similar
                   const attrs = Array.from(d.attributes);
                   const embedAttr = attrs.find((a) => a.name.endsWith(':embed') || a.name === 'embed');
                   if (embedAttr) rId = embedAttr.value;
                 }
-                if (rowNum !== null && rId) break;
               }
 
-              if (rowNum !== null && rId) {
-                anchors.push({ row: rowNum, rId });
+              if (rowNum !== null && colNum !== null && rId) {
+                anchors.push({ row: rowNum, col: colNum, rId });
               }
             }
           }
 
-          // Map anchors to media files via rels
-          for (const { row, rId } of anchors) {
+          // Keep only images placed in Column E (zero-based index 4) and sort by row
+          const columnEAnchors = anchors.filter(a => a.col === 4).sort((a, b) => a.row - b.row);
+
+
+          // Map Column E anchors to media files via rels
+          for (const { row, rId } of columnEAnchors) {
             const target = relsMap.get(rId);
             if (!target) continue;
-            // Normalize target path to xl/media/<file>
             const clean = target.replace(/^\.\//, '').replace(/^\.\.\//, '');
             const fileName = clean.startsWith('media/') ? clean.substring('media/'.length) : clean;
             const mediaPath = `xl/media/${fileName}`;
@@ -412,19 +426,18 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
               .from('product-images')
               .getPublicUrl(uploadName);
 
-            // Excel rows are zero-based in drawings; convert to 1-based for sheet rows
-            const sheetRowIndex = row + 1;
-            // Only set first image per row
+            const sheetRowIndex = row + 1; // convert to 1-based
             if (!imageMapping[sheetRowIndex]) {
               imageMapping[sheetRowIndex] = publicUrl;
             }
           }
 
-          // If we successfully mapped some rows, return mapping
+
+          // If we successfully mapped some Column E rows, return mapping
           if (Object.keys(imageMapping).length > 0) {
-            console.log(`📸 Mapped ${Object.keys(imageMapping).length} images via anchors:`);
+            console.log(`📸 Mapped ${Object.keys(imageMapping).length} images via Column E anchors:`);
             Object.entries(imageMapping).forEach(([row, url]) => {
-              console.log(`  Row ${row}: ${url.split('/').pop()}`);
+              console.log(`  Row ${row} (Col E): ${url.split('/').pop()}`);
             });
             return imageMapping;
           }
@@ -598,13 +611,20 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Map extracted images from Column E to products sequentially
-            if ('__sequentialImages' in imageMapping) {
-              const sequentialImages = imageMapping.__sequentialImages;
-              if (index < sequentialImages.length) {
-                product.image_url = sequentialImages[index];
+            // Prefer row-based Column E mapping; fallback to sequential; never override if Column E text URL exists
+            if (!product.image_url) {
+              const rowImage = (imageMapping as any)[originalRowIndex];
+              if (rowImage) {
+                product.image_url = rowImage;
                 product.hasEmbeddedImage = true;
-                console.log(`✅ Column E image ${index + 1}: ${product.name} → ${sequentialImages[index].split('/').pop()}`);
+                console.log(`✅ Column E row ${originalRowIndex} → ${product.name}: ${rowImage.split('/').pop()}`);
+              } else if ('__sequentialImages' in imageMapping) {
+                const sequentialImages = (imageMapping as any).__sequentialImages as string[];
+                if (index < sequentialImages.length) {
+                  product.image_url = sequentialImages[index];
+                  product.hasEmbeddedImage = true;
+                  console.log(`✅ Sequential fallback ${index + 1} → ${product.name}: ${sequentialImages[index].split('/').pop()}`);
+                }
               }
             }
             
