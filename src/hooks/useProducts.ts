@@ -57,12 +57,14 @@ export const useProducts = () => {
       let query = supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
       }
+
+      // Sort by price (low to high) instead of alphabetical - more logical for shopping
+      query = query.order('price', { ascending: true });
 
       const { data, error } = await query;
 
@@ -93,7 +95,7 @@ export const useProducts = () => {
         .select('*')
         .eq('is_active', true)
         .ilike('name', `%${query}%`)
-        .order('name');
+        .order('price', { ascending: true });
 
       if (error) throw error;
       setProducts(data || []);

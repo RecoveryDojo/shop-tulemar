@@ -7,6 +7,28 @@ import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 
+// Function to get appropriate product image based on category
+const getProductImage = (product: Product): string => {
+  // If product has an image URL, use it
+  if (product.image_url && product.image_url.trim() !== '') {
+    return product.image_url;
+  }
+  
+  // Otherwise, use category-based default images
+  const categoryImages: Record<string, string> = {
+    'fresh-produce': '/placeholder.svg', // Could be fruits/vegetables image
+    'coffee-beverages': '/placeholder.svg', // Coffee/drinks image
+    'fresh-seafood': '/placeholder.svg', // Fish/seafood image
+    'meat-poultry': '/placeholder.svg', // Meat image
+    'bakery-grains': '/placeholder.svg', // Bread/grains image
+    'wines-spirits': '/placeholder.svg', // Wine/spirits image
+    'baby-family': '/placeholder.svg', // Baby products image
+    'organic-health': '/placeholder.svg', // Health products image
+  };
+  
+  return categoryImages[product.category_id] || '/placeholder.svg';
+};
+
 interface ProductCardProps {
   product: Product;
 }
@@ -33,9 +55,13 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardContent className="p-3 sm:p-4">
         <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden h-32 sm:h-40 md:h-48">
           <img
-          src={product.image_url || '/placeholder.svg'}
-          alt={product.name}
+            src={getProductImage(product)}
+            alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/placeholder.svg';
+            }}
           />
         </div>
         
