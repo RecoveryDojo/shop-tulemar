@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,15 @@ const BulkInventoryManager = () => {
   const [importJobId, setImportJobId] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState(500); // CRC to USD default rate
   const { categories, refetch } = useProducts();
+
+  // Debug effect to track excelData changes
+  useEffect(() => {
+    console.log('📊 ExcelData state changed:', {
+      length: excelData.length,
+      data: excelData,
+      firstProduct: excelData[0]
+    });
+  }, [excelData]);
 
   const downloadTemplate = () => {
     console.log('Downloading template, categories available:', categories.length);
@@ -361,6 +370,7 @@ console.log('Filtered data:', filteredData.length, 'product rows');
           });
 
           console.log('Parsing complete:', parsedProducts);
+          console.log('🚀 Setting excelData to:', parsedProducts.length, 'products');
           setExcelData(parsedProducts);
           
           const validCount = parsedProducts.filter(p => p.status !== 'error').length;
@@ -694,7 +704,11 @@ console.log('Filtered data:', filteredData.length, 'product rows');
         </CardContent>
       </Card>
 
-      {excelData.length > 0 && (
+      {(() => {
+        console.log('🔍 Debug: excelData length:', excelData.length);
+        console.log('🔍 Debug: excelData:', excelData);
+        return excelData.length > 0;
+      })() && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -724,6 +738,7 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                 </TableHeader>
                 <TableBody>
                   {excelData.map((product, index) => {
+                    console.log('🔄 Rendering product row:', index, product);
                     const category = categories.find(cat => cat.id === product.category_id);
                     
                     return (
