@@ -534,9 +534,8 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     }
 
     try {
-      // First extract embedded images
-      const imageMapping = await extractEmbeddedImages(file);
-      console.log('Extracted image mapping:', imageMapping);
+      // Skip embedded image extraction - use Column E URLs directly
+      const imageMapping = {};
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -598,28 +597,8 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // NEW SEQUENTIAL IMAGE MAPPING APPROACH
-            if ('__sequentialImages' in imageMapping) {
-              // Use sequential mapping: image index matches product index
-              const sequentialImages = imageMapping.__sequentialImages;
-              if (index < sequentialImages.length) {
-                product.image_url = sequentialImages[index];
-                product.hasEmbeddedImage = true;
-                console.log(`🎯 Sequential image ${index + 1} → ${product.name}: ${sequentialImages[index].split('/').pop()}`);
-              } else {
-                console.log(`📷 No image available for product ${index + 1} (${product.name}) - only ${sequentialImages.length} images extracted`);
-              }
-            } else {
-              // Fallback to old row-based mapping (if anchor mapping worked)
-              const imageUrl = imageMapping[originalRowIndex];
-              if (imageUrl) {
-                product.image_url = imageUrl;
-                product.hasEmbeddedImage = true;
-                console.log(`✅ Row-based image for ${product.name}: ${imageUrl.split('/').pop()}`);
-              } else {
-                console.log(`❌ No image for row ${originalRowIndex} (${product.name})`);
-              }
-            }
+            // Column E contains the image URL directly - no extraction needed
+            console.log(`✅ Direct mapping: ${product.name} → Column E: ${product.image_url || 'no image'}`);
             
             return product;
           });
@@ -630,7 +609,7 @@ console.log('Filtered data:', filteredData.length, 'product rows');
           
           const validCount = parsedProducts.filter(p => p.status !== 'error').length;
           const errorCount = parsedProducts.filter(p => p.status === 'error').length;
-          const imageCount = '__sequentialImages' in imageMapping ? imageMapping.__sequentialImages.length : Object.keys(imageMapping).length;
+          const imageCount = parsedProducts.filter(p => p.image_url).length;
           
           console.log(`Processing complete: ${validCount} valid, ${errorCount} errors, ${imageCount} images`);
           
