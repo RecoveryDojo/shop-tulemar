@@ -154,7 +154,7 @@ serve(async (req) => {
       throw new Error('Admin access required');
     }
 
-    const { rows, filename } = await req.json();
+    const { rows, filename, settings = {} } = await req.json();
     
     if (!rows || !Array.isArray(rows)) {
       throw new Error('Invalid input: rows must be an array');
@@ -187,8 +187,8 @@ serve(async (req) => {
       (existingProducts || []).map(p => p.name.toLowerCase().trim())
     );
 
-// Process rows with AI assistance
-let normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames);
+    // Process rows with AI assistance
+    let normalizedProducts = await processRowsWithAI(rows, categories, existingProductNames, settings);
 
 // Resize and upload images to storage, updating image_url to CDN URL
 await processProductImages(normalizedProducts, supabase, user.id);
@@ -279,7 +279,8 @@ await processProductImages(normalizedProducts, supabase, user.id);
 async function processRowsWithAI(
   rows: ExcelRow[], 
   categories: Category[], 
-  existingProductNames: Set<string>
+  existingProductNames: Set<string>,
+  settings: any = {}
 ): Promise<NormalizedProduct[]> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openaiApiKey) {
@@ -292,7 +293,7 @@ async function processRowsWithAI(
   const batchSize = 10;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const batchResults = await processBatchWithAI(batch, categories, existingProductNames, openaiApiKey);
+    const batchResults = await processBatchWithAI(batch, categories, existingProductNames, openaiApiKey, settings);
     results.push(...batchResults);
   }
 
@@ -303,104 +304,109 @@ async function processBatchWithAI(
   batch: ExcelRow[], 
   categories: Category[], 
   existingProductNames: Set<string>,
-  openaiApiKey: string
+  openaiApiKey: string,
+  settings: any = {}
 ): Promise<NormalizedProduct[]> {
   
-  // First, detect if this is an Excel format with headers and category rows
-  const firstRow = batch[0] || {};
-  const hasExcelColumnNames = Object.keys(firstRow).some(k => k.startsWith('__EMPTY'));
+  const exchangeRate = settings.exchangeRate || 500;
+  const isAEFormat = settings.columnFormat === 'A-E';
   
-  let headerMapping: Record<string, string> = {};
+  console.log(`Processing ${batch.length} rows with ${isAEFormat ? 'A-E' : 'auto-detect'} format, exchange rate: ${exchangeRate}`);
+  
   let cleanedBatch = batch;
   
-  if (hasExcelColumnNames) {
-    // Look for header row - typically contains column names like "Item", "Price", etc.
-    const headerRow = batch.find(row => {
+  if (isAEFormat) {
+    // Handle pre-parsed A-E format from frontend
+    cleanedBatch = batch.filter(row => {
       const values = Object.values(row);
-      return values.some(v => 
-        typeof v === 'string' && 
-        (v.toLowerCase().includes('item') || 
-         v.toLowerCase().includes('price') || 
-         v.toLowerCase().includes('brand'))
-      );
+      return values.some(v => v !== undefined && v !== null && String(v).trim() !== '');
     });
+  } else {
+    // Legacy auto-detection logic
+    const firstRow = batch[0] || {};
+    const hasExcelColumnNames = Object.keys(firstRow).some(k => k.startsWith('__EMPTY'));
     
-    if (headerRow) {
-      // Create mapping from __EMPTY_X to actual column names
-      Object.entries(headerRow).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.trim()) {
-          headerMapping[key] = value.toLowerCase().trim();
-        }
-      });
-      
-      // Filter out header rows and category-only rows
+    if (hasExcelColumnNames) {
       cleanedBatch = batch.filter(row => {
         const values = Object.values(row).filter(v => v !== undefined && v !== null && v !== '');
-        if (values.length <= 1) return false; // Category header or empty row
+        if (values.length <= 1) return false;
         
-        // Check if this looks like a product row (has price data)
-        const hasPrice = Object.entries(row).some(([key, value]) => {
-          const mappedKey = headerMapping[key];
-          return (mappedKey?.includes('price') || mappedKey?.includes('cost')) && 
-                 value && String(value).match(/[\$₡\d]/);
-        });
+        const hasPrice = Object.values(row).some(value => 
+          value && String(value).match(/[\$₡\d]/));
         
         return hasPrice;
       });
     }
   }
   
-  const prompt = `You are an AI assistant helping to normalize and clean product data from messy Excel imports. 
+  const prompt = `You are an AI assistant specializing in normalizing product data from Excel imports.
 
 Available categories:
 ${categories.map(c => `- ${c.id}: "${c.name}" (${c.icon})`).join('\n')}
 
-EXCEL FORMAT DETECTED: The data uses Excel column names like __EMPTY, __EMPTY_1, etc.
-Header mapping detected: ${JSON.stringify(headerMapping)}
+DATA FORMAT: ${isAEFormat ? 'Column A-E format' : 'Auto-detected Excel format'}
+${isAEFormat ? `
+A-E COLUMN MAPPING:
+- col_0 (A): Product Name
+- col_1 (B): Brand
+- col_2 (C): Costa Rica Colones Price (₡)
+- col_3 (D): USD Price ($) - PREFERRED
+- col_4 (E): Image URL
 
-INSTRUCTIONS:
-1. Map Excel columns to standard fields using the header mapping:
-   - Find the column that contains product names (usually mapped to "item" or "product")
-   - Find price columns (look for "price", "cost", may have $ or ₡ symbols)
-   - Extract brand information if available
-   - Look for image URLs in designated columns
-2. Clean and normalize the data:
-   - Parse prices correctly (₡1,700 = colones, $3 = USD - prefer USD if both available)
-   - Standardize units (e.g., "115g", "1L", "1kg" → extract unit)
-   - Match products to appropriate category_id based on name/description
-   - Generate concise descriptions based on name and brand
-   - Set reasonable stock_quantity (default: 10)
-3. Skip rows that are category headers or have insufficient data
-4. Mark status as:
-   - "ready": Complete, valid data with price and name
-   - "suggested": Needs review (guessed category, generated description, etc.)
-   - "error": Missing critical data or invalid
+EXCHANGE RATE: ₡${exchangeRate} = $1.00
+` : ''}
 
-IMPORTANT: Look for these patterns in the data:
-- Product names in columns mapped to "item" or similar
-- Prices in USD format ($3) or colones (₡1,700) - prefer USD
-- Brand information in separate columns
-- Category groupings (Dairy, Cheese, Breads, etc.)
+PROCESSING INSTRUCTIONS:
+1. **Price Parsing** (CRITICAL):
+   ${isAEFormat ? `
+   - Check col_3 (USD) first - if it has a valid $ amount, use it
+   - If no USD price, convert col_2 (CRC): ₡${exchangeRate} = $1.00
+   - Examples: "₡1,500" = $${(1500/exchangeRate).toFixed(2)}, "$3.00" = $3.00
+   ` : `
+   - Prefer USD prices over CRC prices
+   - Convert CRC to USD using rate ₡${exchangeRate} = $1.00
+   `}
 
-Return JSON array with this exact structure for each valid product:
+2. **Data Extraction**:
+   - Extract product name from ${isAEFormat ? 'col_0' : 'name/item columns'}
+   - Use brand from ${isAEFormat ? 'col_1' : 'brand columns'} for origin and description enhancement
+   - Extract unit from name (115g, 1L, 500ml, etc.) 
+   - Use image URL from ${isAEFormat ? 'col_4' : 'image columns'} if provided
+
+3. **Category Matching**:
+   - Intelligently match products to categories based on name
+   - Common mappings: milk/cheese → dairy, bread/tortilla → bakery, coffee → beverages
+   - If uncertain, choose closest match and mark as "suggested"
+
+4. **Status Assignment**:
+   - "ready": Valid name, price, category, unit extracted
+   - "suggested": AI made assumptions (category guessed, description generated, etc.)
+   - "error": Missing name or price, invalid data
+
+5. **Data Quality**:
+   - Generate meaningful descriptions combining brand + name + size
+   - Set stock_quantity to 10 (default)
+   - Include specific suggestions for review
+
+Return JSON array with this structure:
 {
-  "id": "temp-id-1",
-  "name": "cleaned name",
-  "description": "brand and size if available",
+  "id": "temp-id-X",
+  "name": "Clean Product Name",
+  "description": "Brand Product Name (size if available)",
   "price": 9.99,
-  "category_id": "matching category id",
-  "unit": "extracted unit (g, L, etc.)",
-  "origin": "brand if available",
-  "image_url": "url if available", 
+  "category_id": "best_matching_category_id",
+  "unit": "g|ml|L|each",
+  "origin": "Brand Name",
+  "image_url": "url_if_available",
   "stock_quantity": 10,
   "status": "ready|suggested|error",
-  "errors": ["list of specific errors"],
-  "suggestions": ["list of AI suggestions made"],
+  "errors": ["specific error messages"],
+  "suggestions": ["AI assumptions made"],
   "original_data": {}
 }
 
-Process these products:
-${JSON.stringify(cleanedBatch, null, 2)}`;
+Process these ${cleanedBatch.length} products:
+${JSON.stringify(cleanedBatch.slice(0, 20), null, 2)}${cleanedBatch.length > 20 ? '\n... (truncated for prompt length)' : ''}`;
 
   try {
     console.log(`Processing batch of ${cleanedBatch.length} cleaned rows (from ${batch.length} original)`);
@@ -415,11 +421,11 @@ ${JSON.stringify(cleanedBatch, null, 2)}`;
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
         messages: [
-          { role: 'system', content: 'You are a data normalization expert specializing in Excel product imports. Always return valid JSON arrays. Focus on extracting product names, prices, and categories accurately.' },
+          { role: 'system', content: 'You are a product data specialist. Parse Excel data into valid JSON format. Prioritize USD prices, accurate categorization, and data quality. Return only valid JSON arrays.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2,
-        max_tokens: 6000,
+        temperature: 0.1,
+        max_tokens: 8000,
       }),
     });
 
@@ -470,34 +476,91 @@ ${JSON.stringify(cleanedBatch, null, 2)}`;
   } catch (error) {
     console.error('AI processing error:', error);
     
-    // Fallback: basic processing without AI using cleaned batch and header mapping
+    // Enhanced fallback: deterministic processing for A-E format
     return cleanedBatch.map((row, index) => {
-      // Try to extract data using header mapping
       let name = 'Unknown Product';
       let price = 0;
       let brand = '';
+      let imageUrl = '';
       
-      Object.entries(row).forEach(([key, value]) => {
-        const mappedHeader = headerMapping[key];
-        if (mappedHeader?.includes('item') && value) {
-          name = String(value);
-        } else if ((mappedHeader?.includes('price') || mappedHeader?.includes('cost')) && value) {
-          // Try to extract USD price first
-          const strValue = String(value);
-          if (strValue.includes('$')) {
-            price = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
-          } else {
-            // Convert colones to USD (rough estimate: 500 colones = 1 USD)
-            const colonesPrice = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
-            price = Math.round((colonesPrice / 500) * 100) / 100;
-          }
-        } else if (mappedHeader?.includes('brand') && value) {
-          brand = String(value);
+      if (isAEFormat) {
+        // A-E format: col_0=name, col_1=brand, col_2=CRC, col_3=USD, col_4=image
+        name = String(row.col_0 || '').trim();
+        brand = String(row.col_1 || '').trim();
+        
+        // Prefer USD (col_3) over CRC (col_2)
+        const usdValue = String(row.col_3 || '').trim();
+        const crcValue = String(row.col_2 || '').trim();
+        
+        if (usdValue && usdValue.match(/[\d.,]/)) {
+          price = parseFloat(usdValue.replace(/[^0-9.]/g, '')) || 0;
+        } else if (crcValue && crcValue.match(/[\d.,]/)) {
+          const crcAmount = parseFloat(crcValue.replace(/[^0-9.]/g, '')) || 0;
+          price = Math.round((crcAmount / exchangeRate) * 100) / 100;
         }
-      });
+        
+        imageUrl = String(row.col_4 || '').trim();
+      } else {
+        // Legacy format processing
+        Object.entries(row).forEach(([key, value]) => {
+          if (key.includes('name') || key.includes('item')) {
+            name = String(value || '').trim();
+          } else if ((key.includes('price') || key.includes('cost')) && value) {
+            const strValue = String(value);
+            if (strValue.includes('$')) {
+              price = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
+            } else {
+              const colonesPrice = parseFloat(strValue.replace(/[^0-9.]/g, '')) || 0;
+              price = Math.round((colonesPrice / exchangeRate) * 100) / 100;
+            }
+          } else if (key.includes('brand')) {
+            brand = String(value || '').trim();
+          }
+        });
+      }
+      
+      // Extract unit from name
+      let unit = 'each';
+      const unitMatch = name.match(/(\d+)\s*(g|kg|ml|l|oz|lb)\b/i);
+      if (unitMatch) {
+        unit = unitMatch[2].toLowerCase();
+      }
+      
+      // Simple category assignment (fallback)
+      let categoryId = categories[0]?.id || '';
+      const nameLower = name.toLowerCase();
+      for (const category of categories) {
+        if (nameLower.includes('milk') || nameLower.includes('cheese')) {
+          if (category.name.toLowerCase().includes('dairy')) {
+            categoryId = category.id;
+            break;
+          }
+        } else if (nameLower.includes('bread') || nameLower.includes('tortilla')) {
+          if (category.name.toLowerCase().includes('bakery') || category.name.toLowerCase().includes('bread')) {
+            categoryId = category.id;
+            break;
+          }
+        }
+      }
       
       return {
         id: `fallback-${Date.now()}-${index}`,
+        name,
+        description: brand ? `${brand} ${name}` : name,
+        price,
+        category_id: categoryId,
+        unit,
+        origin: brand,
+        image_url: imageUrl,
+        stock_quantity: 10,
+        status: (name === 'Unknown Product' || price === 0) ? 'error' : 'suggested',
+        errors: name === 'Unknown Product' || price === 0 ? ['Fallback processing - missing data'] : [],
+        suggestions: ['Processed without AI - please review'],
+        original_data: row
+      };
+    });
+  }
+}
         name,
         description: brand ? `${brand} brand` : '',
         price,
