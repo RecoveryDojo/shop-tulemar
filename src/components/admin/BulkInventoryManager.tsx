@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { useProducts } from '@/hooks/useProducts';
+import ImportJobManager from './ImportJobManager';
 
 interface ExcelProduct {
   id?: string;
@@ -350,6 +351,20 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     setFileName(file.name);
     setIsUploading(true);
 
+    // Calculate file hash to prevent duplicates
+    const fileHash = await calculateFileHash(file);
+    const existingJob = await checkForDuplicateJob(fileHash, file.name);
+
+    if (existingJob) {
+      toast({
+        title: "Duplicate File Detected",
+        description: `This file was already uploaded on ${new Date(existingJob.created_at).toLocaleDateString()}. Would you like to load the existing data instead?`,
+        variant: "destructive",
+      });
+      setIsUploading(false);
+      return;
+    }
+
     try {
       // First extract embedded images
       const imageMapping = await extractEmbeddedImages(file);
@@ -555,8 +570,57 @@ console.log('Filtered data:', filteredData.length, 'product rows');
     }
   };
 
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const checkForDuplicateJob = async (fileHash: string, filename: string) => {
+    const { data, error } = await supabase
+      .from('import_jobs')
+      .select('*')
+      .or(`file_hash.eq.${fileHash},source_filename.eq.${filename}`)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    return data[0];
+  };
+
+  const checkForDuplicateProducts = async (products: ExcelProduct[]) => {
+    const duplicates = [];
+    
+    for (const product of products.filter(p => p.status === 'suggested' || p.status === 'validated')) {
+      if (!product.name || !product.category_id) continue;
+
+      const { data: existingProducts } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category_id', product.category_id)
+        .eq('is_active', true);
+
+      if (existingProducts) {
+        const exactMatch = existingProducts.find(p => 
+          p.name.toLowerCase() === product.name.toLowerCase()
+        );
+
+        if (exactMatch) {
+          duplicates.push({
+            import_product: product,
+            existing_product: exactMatch,
+            type: 'exact'
+          });
+        }
+      }
+    }
+
+    return duplicates;
+  };
+
   const publishProducts = async () => {
-    const validProducts = excelData.filter(p => p.status === 'validated' || p.status === 'ready');
+    const validProducts = excelData.filter(p => p.status === 'validated' || p.status === 'ready' || p.status === 'suggested');
     if (validProducts.length === 0) {
       toast({
         title: "No Valid Products",
@@ -567,57 +631,88 @@ console.log('Filtered data:', filteredData.length, 'product rows');
     }
 
     setIsPublishing(true);
-    let successCount = 0;
-    let errorCount = 0;
 
-    for (const product of validProducts) {
-      try {
-        const { error } = await supabase
-          .from('products')
-          .insert({
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            category_id: product.category_id,
-            unit: product.unit,
-            origin: product.origin || null,
-            image_url: product.image_url || null,
-            stock_quantity: product.stock_quantity,
-            is_active: true
-          });
-
-        if (error) throw error;
-
-        // Update status in UI
-        setExcelData(prev => prev.map(p => 
-          p.rowIndex === product.rowIndex 
-            ? { ...p, status: 'published' as const }
-            : p
-        ));
-        
-        successCount++;
-      } catch (error: any) {
-        // Update status in UI
-        setExcelData(prev => prev.map(p => 
-          p.rowIndex === product.rowIndex 
-            ? { ...p, status: 'error' as const, errors: [...p.errors, error.message] }
-            : p
-        ));
-        
-        errorCount++;
+    try {
+      // Check for duplicates before publishing
+      const duplicates = await checkForDuplicateProducts(validProducts);
+      
+      if (duplicates.length > 0) {
+        toast({
+          title: "Duplicate Products Found",
+          description: `Found ${duplicates.length} potential duplicates. Please review them before publishing.`,
+          variant: "destructive",
+        });
+        setIsPublishing(false);
+        return;
       }
-    }
 
-    setIsPublishing(false);
-    
-    toast({
-      title: "Publishing Complete",
-      description: `${successCount} products published successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
-      variant: errorCount > 0 ? "destructive" : "default",
-    });
+      let successCount = 0;
+      let errorCount = 0;
 
-    if (successCount > 0) {
-      refetch(); // Refresh product list
+      for (const product of validProducts) {
+        try {
+          const { error } = await supabase
+            .from('products')
+            .insert({
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              category_id: product.category_id,
+              unit: product.unit,
+              origin: product.origin || null,
+              image_url: product.image_url || null,
+              stock_quantity: product.stock_quantity,
+              is_active: true,
+              is_test_product: true // Mark as test product initially
+            });
+
+          if (error) {
+            // Handle unique constraint violation gracefully
+            if (error.code === '23505') {
+              throw new Error(`Product "${product.name}" already exists in this category`);
+            }
+            throw error;
+          }
+
+          // Update status in UI
+          setExcelData(prev => prev.map(p => 
+            p.rowIndex === product.rowIndex 
+              ? { ...p, status: 'published' as const }
+              : p
+          ));
+          
+          successCount++;
+        } catch (error: any) {
+          // Update status in UI
+          setExcelData(prev => prev.map(p => 
+            p.rowIndex === product.rowIndex 
+              ? { ...p, status: 'error' as const, errors: [...p.errors, error.message] }
+              : p
+          ));
+          
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: "Publishing Complete",
+        description: `${successCount} products published as test products${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        variant: errorCount > 0 ? "destructive" : "default",
+      });
+
+      if (successCount > 0) {
+        refetch(); // Refresh product list
+      }
+
+    } catch (error) {
+      console.error('Error during publishing:', error);
+      toast({
+        title: "Publishing Failed",
+        description: "An error occurred during publishing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
     }
   };
 

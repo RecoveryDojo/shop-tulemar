@@ -467,6 +467,7 @@ export type Database = {
           enrichment_stats: Json | null
           external_enrichment_enabled: boolean | null
           external_sources_used: Json | null
+          file_hash: string | null
           id: string
           original_headers: Json | null
           quality_metrics: Json | null
@@ -485,6 +486,7 @@ export type Database = {
           enrichment_stats?: Json | null
           external_enrichment_enabled?: boolean | null
           external_sources_used?: Json | null
+          file_hash?: string | null
           id?: string
           original_headers?: Json | null
           quality_metrics?: Json | null
@@ -503,6 +505,7 @@ export type Database = {
           enrichment_stats?: Json | null
           external_enrichment_enabled?: boolean | null
           external_sources_used?: Json | null
+          file_hash?: string | null
           id?: string
           original_headers?: Json | null
           quality_metrics?: Json | null
@@ -788,6 +791,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
+          is_test_product: boolean | null
           name: string
           origin: string | null
           price: number
@@ -802,6 +806,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_test_product?: boolean | null
           name: string
           origin?: string | null
           price: number
@@ -816,6 +821,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_test_product?: boolean | null
           name?: string
           origin?: string | null
           price?: number
