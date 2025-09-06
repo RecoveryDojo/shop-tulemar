@@ -12,6 +12,7 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { useProducts } from '@/hooks/useProducts';
 import ImportJobManager from './ImportJobManager';
+import TestProductManager from './TestProductManager';
 
 interface ExcelProduct {
   id?: string;
