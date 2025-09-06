@@ -410,7 +410,10 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
 
           // If we successfully mapped some rows, return mapping
           if (Object.keys(imageMapping).length > 0) {
-            console.log(`Mapped ${Object.keys(imageMapping).length} images via anchors`);
+            console.log(`📸 Mapped ${Object.keys(imageMapping).length} images via anchors:`);
+            Object.entries(imageMapping).forEach(([row, url]) => {
+              console.log(`  Row ${row}: ${url.split('/').pop()}`);
+            });
             return imageMapping;
           }
         }
@@ -523,6 +526,9 @@ rawData.slice(1).forEach((rowArr: any, idx: number) => {
     obj[`col_${colIndex}`] = cell;
   });
   if (lastCategoryHint) obj._category_hint = lastCategoryHint;
+  
+  // CRITICAL: Preserve original Excel row number for image mapping
+  obj.__rowNum__ = idx + 2; // Convert to 1-based row number (idx starts at 0, +1 for header)
 
   processedRows.push(obj);
 });
@@ -532,21 +538,21 @@ const filteredData = processedRows;
 console.log('Filtered data:', filteredData.length, 'product rows');
 
           const parsedProducts = filteredData.map((row, index) => {
-            console.log(`Parsing A-E row ${index + 2}:`, row);
-            const product = parseColumnAEData(row, index + 2, exchangeRate);
+            // The key fix: use the ORIGINAL row index from Excel, not the filtered array position
+            const originalRowIndex = (row.__rowNum__ || (index + 2)); // Use original Excel row if available
+            console.log(`🔍 Processing product at Excel row ${originalRowIndex}:`, row.col_0 || 'unnamed');
             
-            // Check if this row has an embedded image
-            // The imageMapping uses the Excel row numbers as keys, but our products array
-            // is the filtered data starting from the first product row
-            // We need to map back to the actual Excel row number
-            const actualRowIndex = product.rowIndex; // This already contains the correct Excel row
-            const imageUrl = imageMapping[actualRowIndex];
+            const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
+            
+            // Map image using the original Excel row number
+            const imageUrl = imageMapping[originalRowIndex];
             if (imageUrl) {
               product.image_url = imageUrl;
               product.hasEmbeddedImage = true;
-              console.log(`✅ Mapped image for row ${actualRowIndex} (${product.name}): ${imageUrl}`);
+              console.log(`✅ Image FOUND for row ${originalRowIndex} (${product.name})`);
             } else {
-              console.log(`❌ No image found for row ${actualRowIndex} (${product.name})`);
+              console.log(`❌ Image MISSING for row ${originalRowIndex} (${product.name})`);
+              console.log(`Available image rows:`, Object.keys(imageMapping));
             }
             
             return product;
