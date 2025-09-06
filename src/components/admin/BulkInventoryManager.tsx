@@ -438,8 +438,15 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
         return { __sequentialImages: [] };
       }
 
-      const imageFiles = Object.keys(mediaFolder.files).filter((name) => name.match(/\.(jpg|jpeg|png|gif)$/i));
-      console.log(`🔄 Extracting ${imageFiles.length} images sequentially (ignoring Excel anchors)`);
+      const imageFiles = Object.keys(mediaFolder.files)
+        .filter((name) => name.match(/\.(jpg|jpeg|png|gif)$/i))
+        .sort((a, b) => {
+          // Extract number from filename (e.g., image1.jpg, image34.jpg)
+          const numA = parseInt(a.match(/image(\d+)/)?.[1] || '0');
+          const numB = parseInt(b.match(/image(\d+)/)?.[1] || '0');
+          return numA - numB;
+        });
+      console.log(`🔄 Extracting ${imageFiles.length} images sequentially (sorted by filename number):`, imageFiles.map(f => f.split('/').pop()));
       
       const sequentialImages = [];
       
