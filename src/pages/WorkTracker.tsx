@@ -21,6 +21,7 @@ import { AutomatedWorkTracker } from "@/components/work-tracker/AutomatedWorkTra
 import { DailyWorkSummary } from "@/components/work-tracker/DailyWorkSummary";
 import { WorkHistoryBackfill } from "@/components/work-tracker/WorkHistoryBackfill";
 import { WorkItemBrowser } from "@/components/work-tracker/WorkItemBrowser";
+import { AutomatedDailyTracker } from "@/components/work-tracker/AutomatedDailyTracker";
 
 interface Project {
   id: string;
@@ -223,7 +224,7 @@ function WorkTrackerContent() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-11">
+              <TabsList className="grid w-full grid-cols-12">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
@@ -263,6 +264,10 @@ function WorkTrackerContent() {
                 <TabsTrigger value="daily" className="gap-2">
                   <Calendar className="h-4 w-4" />
                   Daily
+                </TabsTrigger>
+                <TabsTrigger value="auto-tracker" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Auto-Tracker
                 </TabsTrigger>
                 <TabsTrigger value="backfill" className="gap-2">
                   <FileText className="h-4 w-4" />
@@ -447,6 +452,10 @@ function WorkTrackerContent() {
 
               <TabsContent value="browser">
                 <WorkItemBrowser />
+              </TabsContent>
+
+              <TabsContent value="auto-tracker">
+                <AutomatedDailyTracker />
               </TabsContent>
             </Tabs>
           </>
