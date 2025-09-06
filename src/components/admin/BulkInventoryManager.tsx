@@ -59,6 +59,17 @@ const BulkInventoryManager = () => {
     });
   }, [excelData]);
 
+  const clearExcelData = () => {
+    setExcelData([]);
+    setFileName('');
+    setImportJobId(null);
+    console.log('🗑️ Cleared Excel data and reset state for new upload');
+    toast({
+      title: "Data Cleared",
+      description: "Ready for new Excel upload.",
+    });
+  };
+
   const downloadTemplate = () => {
     console.log('Downloading template, categories available:', categories.length);
     
@@ -972,6 +983,22 @@ console.log('Filtered data:', filteredData.length, 'product rows');
               />
               <span className="text-sm text-muted-foreground">₡{exchangeRate} = $1.00</span>
             </div>
+
+            {excelData.length > 0 && (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                <span className="text-sm text-muted-foreground">
+                  {excelData.length} products loaded from {fileName}
+                </span>
+                <Button 
+                  onClick={clearExcelData}
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                >
+                  Clear Data
+                </Button>
+              </div>
+            )}
 
             {excelData.length > 0 && (
               <div className="flex gap-4 flex-wrap">
