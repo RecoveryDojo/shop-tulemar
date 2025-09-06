@@ -20,6 +20,7 @@ import { DocumentationManager } from "@/components/work-tracker/DocumentationMan
 import { AutomatedWorkTracker } from "@/components/work-tracker/AutomatedWorkTracker";
 import { DailyWorkSummary } from "@/components/work-tracker/DailyWorkSummary";
 import { WorkHistoryBackfill } from "@/components/work-tracker/WorkHistoryBackfill";
+import { WorkItemBrowser } from "@/components/work-tracker/WorkItemBrowser";
 
 interface Project {
   id: string;
@@ -222,10 +223,14 @@ function WorkTrackerContent() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-10">
+              <TabsList className="grid w-full grid-cols-11">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
+                </TabsTrigger>
+                <TabsTrigger value="browser" className="gap-2">
+                  <Target className="h-4 w-4" />
+                  All Work
                 </TabsTrigger>
                 <TabsTrigger value="features" className="gap-2">
                   <CheckCircle2 className="h-4 w-4" />
@@ -266,12 +271,88 @@ function WorkTrackerContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
-                {/* Features Overview */}
+                {/* Real Projects Summary */}
                 <div className="grid gap-4">
-                  <h3 className="text-lg font-semibold">Features & Modules</h3>
-                  {features.length > 0 ? (
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">Your Active Projects</h3>
+                    <Badge variant="outline">{projects.length} Projects Total</Badge>
+                  </div>
+                  
+                  {projects.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {features.map((feature) => (
+                      {projects.map((project) => {
+                        const projectFeatures = features.filter(f => f.project_id === project.id);
+                        const projectTasks = tasks.filter(t => t.project_id === project.id);
+                        const completedTasks = projectTasks.filter(t => t.status === "done").length;
+                        const avgProgress = projectFeatures.length > 0 ? 
+                          Math.round(projectFeatures.reduce((sum, f) => sum + f.completion_percentage, 0) / projectFeatures.length) : 0;
+                        
+                        return (
+                          <Card key={project.id} className={selectedProject?.id === project.id ? "ring-2 ring-primary" : ""}>
+                            <CardHeader className="pb-3">
+                              <div className="flex justify-between items-start">
+                                <CardTitle className="text-sm">{project.name}</CardTitle>
+                                <Badge className={`text-white text-xs ${
+                                  project.status === 'completed' ? 'bg-green-500' :
+                                  project.status === 'active' ? 'bg-blue-500' : 'bg-gray-500'
+                                }`}>
+                                  {project.status}
+                                </Badge>
+                              </div>
+                              <CardDescription className="text-xs">
+                                {project.description.length > 100 ? 
+                                  `${project.description.substring(0, 100)}...` : 
+                                  project.description
+                                }
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-3">
+                                <Progress value={avgProgress} className="mb-2" />
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                  <div className="text-center">
+                                    <div className="font-bold text-blue-600">{projectFeatures.length}</div>
+                                    <div className="text-muted-foreground">Features</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="font-bold text-green-600">{completedTasks}</div>
+                                    <div className="text-muted-foreground">Tasks Done</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="font-bold text-purple-600">{avgProgress}%</div>
+                                    <div className="text-muted-foreground">Complete</div>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>Total Tasks: {projectTasks.length}</span>
+                                  <span>
+                                    {projectFeatures.reduce((sum, f) => sum + (f.actual_hours || 0), 0).toFixed(1)}h logged
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="flex items-center justify-center py-8">
+                        <p className="text-muted-foreground">No projects found</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Current Project Features Overview */}
+                {selectedProject && features.length > 0 && (
+                  <div className="grid gap-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Features in {selectedProject.name}</h3>
+                      <Badge variant="outline">{features.length} Features</Badge>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {features.slice(0, 6).map((feature) => (
                         <Card key={feature.id}>
                           <CardHeader className="pb-3">
                             <div className="flex justify-between items-start">
@@ -281,7 +362,10 @@ function WorkTrackerContent() {
                               </Badge>
                             </div>
                             <CardDescription className="text-xs">
-                              {feature.description}
+                              {feature.description.length > 80 ? 
+                                `${feature.description.substring(0, 80)}...` : 
+                                feature.description
+                              }
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -294,14 +378,15 @@ function WorkTrackerContent() {
                         </Card>
                       ))}
                     </div>
-                  ) : (
-                    <Card>
-                      <CardContent className="flex items-center justify-center py-8">
-                        <p className="text-muted-foreground">No features created yet</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                    {features.length > 6 && (
+                      <div className="text-center">
+                        <Button variant="outline" onClick={() => setActiveView("features")}>
+                          View All {features.length} Features
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="features">
@@ -358,6 +443,10 @@ function WorkTrackerContent() {
 
               <TabsContent value="backfill">
                 <WorkHistoryBackfill />
+              </TabsContent>
+
+              <TabsContent value="browser">
+                <WorkItemBrowser />
               </TabsContent>
             </Tabs>
           </>
