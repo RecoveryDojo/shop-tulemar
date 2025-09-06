@@ -14,19 +14,19 @@ const getProductImage = (product: Product): string => {
     return product.image_url;
   }
   
-  // Otherwise, use category-based default images
+  // Otherwise, use category-based default images from Unsplash
   const categoryImages: Record<string, string> = {
-    'fresh-produce': '/placeholder.svg', // Could be fruits/vegetables image
-    'coffee-beverages': '/placeholder.svg', // Coffee/drinks image
-    'fresh-seafood': '/placeholder.svg', // Fish/seafood image
-    'meat-poultry': '/placeholder.svg', // Meat image
-    'bakery-grains': '/placeholder.svg', // Bread/grains image
-    'wines-spirits': '/placeholder.svg', // Wine/spirits image
-    'baby-family': '/placeholder.svg', // Baby products image
-    'organic-health': '/placeholder.svg', // Health products image
+    'fresh-produce': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop', // Fresh fruits and vegetables
+    'coffee-beverages': 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop', // Coffee cup
+    'fresh-seafood': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop', // Fresh fish
+    'meat-poultry': 'https://images.unsplash.com/photo-1588347818481-ca5ad9039cea?w=400&h=400&fit=crop', // Fresh meat
+    'bakery-grains': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=400&fit=crop', // Bread and grains
+    'wines-spirits': 'https://images.unsplash.com/photo-1559181567-c3190ca9959b?w=400&h=400&fit=crop', // Wine bottles
+    'baby-family': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop', // Baby products
+    'organic-health': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop', // Health supplements
   };
   
-  return categoryImages[product.category_id] || '/placeholder.svg';
+  return categoryImages[product.category_id] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
 };
 
 interface ProductCardProps {
