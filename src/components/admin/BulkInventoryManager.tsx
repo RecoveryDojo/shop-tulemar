@@ -192,21 +192,21 @@ const parseColumnAEData = (row: any, index: number): ExcelProduct => {
   if (!name || name === '') errors.push('Name is required (Column A)');
   if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
   
-  return {
-    name,
-    description: brand ? `${brand} ${name}` : name,
-    price: finalPrice,
-    category_id: '', // Will be set by AI
-    category_hint: categoryHint || undefined,
-    unit,
-    origin: brand,
-    image_url: imageUrl,
-    stock_quantity: 10, // Default
-    rowIndex: index,
-    status: errors.length > 0 ? 'error' : 'pending',
-    errors,
-    original_data: row
-  };
+    return {
+      name,
+      description: brand || '', // Map column B to description field
+      price: finalPrice,
+      category_id: '', // Will be set by AI
+      category_hint: categoryHint || undefined,
+      unit,
+      origin: brand,
+      image_url: imageUrl,
+      stock_quantity: 10, // Default
+      rowIndex: index,
+      status: errors.length > 0 ? 'error' : 'pending',
+      errors,
+      original_data: row
+    };
 };
 
   const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string }> => {
@@ -710,6 +710,7 @@ const { data, error } = await supabase.functions.invoke('ai-normalize-products',
     <TableHead>Status</TableHead>
     <TableHead>Row</TableHead>
     <TableHead>Name</TableHead>
+    <TableHead>Description</TableHead>
     <TableHead>Price</TableHead>
     <TableHead>Category</TableHead>
     <TableHead>Hint</TableHead>
@@ -734,6 +735,9 @@ const { data, error } = await supabase.functions.invoke('ai-normalize-products',
                             )}
                             {product.name}
                           </div>
+                        </TableCell>
+                        <TableCell className="max-w-[150px] truncate text-sm text-muted-foreground">
+                          {product.description || 'None'}
                         </TableCell>
                         <TableCell>${product.price.toFixed(2)}</TableCell>
 <TableCell>
