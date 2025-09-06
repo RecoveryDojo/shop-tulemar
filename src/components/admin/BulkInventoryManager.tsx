@@ -178,10 +178,27 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
   let priceErrors = [];
   
   if (usdPrice && usdPrice !== '') {
-    // Extract USD price
-    const usdMatch = usdPrice.match(/[\d.,]+/);
-    if (usdMatch) {
-      const parsedUsd = parseFloat(usdMatch[0].replace(',', ''));
+    // Extract USD price with robust locale handling
+    const m = usdPrice.match(/[\d.,]+/);
+    if (m) {
+      let s = m[0].replace(/\s/g, '');
+      if (s.includes('.') && s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes(',')) {
+        const parts = s.split(',');
+        if (parts[1] && parts[1].length === 2) {
+          s = s.replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else {
+        const parts = s.split('.');
+        if (parts.length > 2) {
+          const last = parts.pop() as string;
+          s = parts.join('') + '.' + last;
+        }
+      }
+      const parsedUsd = parseFloat(s);
       if (!isNaN(parsedUsd) && parsedUsd > 0) {
         finalPrice = parsedUsd;
       } else {
@@ -191,10 +208,27 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
       priceErrors.push(`Could not parse USD price: ${usdPrice}`);
     }
   } else if (crcPrice && crcPrice !== '') {
-    // Convert CRC to USD
-    const crcMatch = crcPrice.match(/[\d.,]+/);
-    if (crcMatch) {
-      const crcValue = parseFloat(crcMatch[0].replace(',', ''));
+    // Convert CRC to USD with robust locale handling
+    const m = crcPrice.match(/[\d.,]+/);
+    if (m) {
+      let s = m[0].replace(/\s/g, '');
+      if (s.includes('.') && s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes(',')) {
+        const parts = s.split(',');
+        if (parts[1] && parts[1].length === 2) {
+          s = s.replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else {
+        const parts = s.split('.');
+        if (parts.length > 2) {
+          const last = parts.pop() as string;
+          s = parts.join('') + '.' + last;
+        }
+      }
+      const crcValue = parseFloat(s);
       if (!isNaN(crcValue) && crcValue > 0 && exchangeRate > 0) {
         finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
       } else {
