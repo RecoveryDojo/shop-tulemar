@@ -183,13 +183,26 @@ const parseColumnAEData = (row: any, index: number): ExcelProduct => {
   
   // Extract unit from name (115g, 1L, etc.)
   let unit = 'each';
-  const unitMatch = name.match(/(\d+)\s*(g|kg|ml|l|oz|lb|lbs)\b/i);
+  // Enhanced unit extraction: supports decimals and common variants (g, kg, ml, L, oz, lb, pack)
+  const unitMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|kg|ml|l|lt|oz|lb|lbs|pack|pk|unit|un|unid)\b/i);
   if (unitMatch) {
-    unit = unitMatch[2].toLowerCase();
+    const amount = unitMatch[1].replace(',', '.').trim();
+    let u = unitMatch[2].toLowerCase();
+    if (u === 'gr') u = 'g';
+    if (u === 'lt') u = 'l';
+    if (u === 'lbs') u = 'lb';
+    if (u === 'pk') u = 'pack';
+    if (u === 'un' || u === 'unid' || u === 'unit') u = 'each';
+
+    if (u === 'each') {
+      unit = 'each';
+    } else {
+      unit = `${amount}${['g','kg','ml','l','oz','lb'].includes(u) ? u : ` ${u}`}`.trim();
+    }
   }
   
   const errors: string[] = [];
-  if (!name || name === '') errors.push('Name is required (Column A)');
+  if (!name || name.trim() === '') errors.push('Name is required (Column A)');
   if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
   
     return {
