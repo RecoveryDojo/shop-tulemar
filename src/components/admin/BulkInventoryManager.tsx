@@ -18,6 +18,7 @@ interface ExcelProduct {
   description: string;
   price: number;
   category_id: string;
+  category_hint?: string; // Derived from Excel category header rows (e.g., "Dairy")
   unit: string;
   origin?: string;
   image_url?: string;
@@ -145,66 +146,68 @@ const BulkInventoryManager = () => {
     };
   };
 
-  const parseColumnAEData = (row: any, index: number): ExcelProduct => {
-    // Handle A-E format: A=name, B=brand, C=CRC price, D=USD price, E=image
-    const keys = Object.keys(row);
-    
-    let name = '';
-    let brand = '';
-    let crcPrice = '';
-    let usdPrice = '';
-    let imageUrl = '';
-    
-    // Extract values based on column position (A-E mapping)
-    if (keys[0] && row[keys[0]]) name = String(row[keys[0]]).trim();
-    if (keys[1] && row[keys[1]]) brand = String(row[keys[1]]).trim();
-    if (keys[2] && row[keys[2]]) crcPrice = String(row[keys[2]]).trim();
-    if (keys[3] && row[keys[3]]) usdPrice = String(row[keys[3]]).trim();
-    if (keys[4] && row[keys[4]]) imageUrl = String(row[keys[4]]).trim();
-    
-    // Parse price - prefer USD over CRC
-    let finalPrice = 0;
-    if (usdPrice && usdPrice !== '') {
-      // Extract USD price
-      const usdMatch = usdPrice.match(/[\d.,]+/);
-      if (usdMatch) {
-        finalPrice = parseFloat(usdMatch[0].replace(',', ''));
-      }
-    } else if (crcPrice && crcPrice !== '') {
-      // Convert CRC to USD
-      const crcMatch = crcPrice.match(/[\d.,]+/);
-      if (crcMatch) {
-        const crcValue = parseFloat(crcMatch[0].replace(',', ''));
-        finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
-      }
+const parseColumnAEData = (row: any, index: number): ExcelProduct => {
+  // Handle A-E format: A=name, B=brand, C=CRC price, D=USD price, E=image
+  const keys = Object.keys(row);
+  
+  let name = '';
+  let brand = '';
+  let crcPrice = '';
+  let usdPrice = '';
+  let imageUrl = '';
+  const categoryHint = (row._category_hint || row.category_hint || '').toString().trim();
+  
+  // Extract values based on column position (A-E mapping)
+  if (keys[0] && row[keys[0]]) name = String(row[keys[0]]).trim();
+  if (keys[1] && row[keys[1]]) brand = String(row[keys[1]]).trim();
+  if (keys[2] && row[keys[2]]) crcPrice = String(row[keys[2]]).trim();
+  if (keys[3] && row[keys[3]]) usdPrice = String(row[keys[3]]).trim();
+  if (keys[4] && row[keys[4]]) imageUrl = String(row[keys[4]]).trim();
+  
+  // Parse price - prefer USD over CRC
+  let finalPrice = 0;
+  if (usdPrice && usdPrice !== '') {
+    // Extract USD price
+    const usdMatch = usdPrice.match(/[\d.,]+/);
+    if (usdMatch) {
+      finalPrice = parseFloat(usdMatch[0].replace(',', ''));
     }
-    
-    // Extract unit from name (115g, 1L, etc.)
-    let unit = 'each';
-    const unitMatch = name.match(/(\d+)\s*(g|kg|ml|l|oz|lb|lbs)\b/i);
-    if (unitMatch) {
-      unit = unitMatch[2].toLowerCase();
+  } else if (crcPrice && crcPrice !== '') {
+    // Convert CRC to USD
+    const crcMatch = crcPrice.match(/[\d.,]+/);
+    if (crcMatch) {
+      const crcValue = parseFloat(crcMatch[0].replace(',', ''));
+      finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
     }
-    
-    const errors: string[] = [];
-    if (!name || name === '') errors.push('Name is required (Column A)');
-    if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
-    
-    return {
-      name,
-      description: brand ? `${brand} ${name}` : name,
-      price: finalPrice,
-      category_id: '', // Will be set by AI
-      unit,
-      origin: brand,
-      image_url: imageUrl,
-      stock_quantity: 10, // Default
-      rowIndex: index,
-      status: errors.length > 0 ? 'error' : 'pending',
-      errors,
-      original_data: row
-    };
+  }
+  
+  // Extract unit from name (115g, 1L, etc.)
+  let unit = 'each';
+  const unitMatch = name.match(/(\d+)\s*(g|kg|ml|l|oz|lb|lbs)\b/i);
+  if (unitMatch) {
+    unit = unitMatch[2].toLowerCase();
+  }
+  
+  const errors: string[] = [];
+  if (!name || name === '') errors.push('Name is required (Column A)');
+  if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
+  
+  return {
+    name,
+    description: brand ? `${brand} ${name}` : name,
+    price: finalPrice,
+    category_id: '', // Will be set by AI
+    category_hint: categoryHint || undefined,
+    unit,
+    origin: brand,
+    image_url: imageUrl,
+    stock_quantity: 10, // Default
+    rowIndex: index,
+    status: errors.length > 0 ? 'error' : 'pending',
+    errors,
+    original_data: row
   };
+};
 
   const extractEmbeddedImages = async (file: File): Promise<{ [rowIndex: number]: string }> => {
     try {
@@ -291,42 +294,43 @@ const BulkInventoryManager = () => {
           const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[];
           console.log('Raw data extracted:', rawData.length, 'rows');
 
-          // Convert to object format and skip header/empty rows
-          const filteredData = rawData
-            .slice(1) // Skip header row
-            .filter((row: any) => {
-              // Filter out empty rows and category header rows
-              const hasData = row && Array.isArray(row) && row.some((cell: any) => 
-                cell !== undefined && cell !== null && String(cell).trim() !== ''
-              );
-              
-              // Skip if this looks like a category header (only has text in first column)
-              if (hasData && row.length > 1) {
-                const nonEmptyColumns = row.filter((cell: any) => 
-                  cell !== undefined && cell !== null && String(cell).trim() !== ''
-                ).length;
-                
-                // If only one column has data, it's probably a category header
-                if (nonEmptyColumns === 1) return false;
-                
-                // Check if this has price-like data (numbers, currency symbols)
-                const hasPriceData = row.some((cell: any) => 
-                  cell && String(cell).match(/[\$₡\d]/));
-                
-                return hasPriceData;
-              }
-              return hasData;
-            })
-            .map((row: any, index: number) => {
-              // Convert array to object with consistent keys
-              const obj: any = {};
-              row.forEach((cell: any, colIndex: number) => {
-                obj[`col_${colIndex}`] = cell;
-              });
-              return obj;
-            });
+// Convert to object format, track category headers, and attach context hints
+const processedRows: any[] = [];
+let lastCategoryHint = '';
 
-          console.log('Filtered data:', filteredData.length, 'product rows');
+rawData.slice(1).forEach((rowArr: any, idx: number) => {
+  const cells = Array.isArray(rowArr) ? rowArr : [];
+  const nonEmpty = cells.filter((c: any) => c !== undefined && c !== null && String(c).trim() !== '');
+  const firstCell = cells[0] ? String(cells[0]).trim() : '';
+  const hasPriceLike = cells.some((c: any) => c && String(c).match(/[\$₡\d]/));
+
+  // Category header detection: only first column has text, no price-like tokens
+  const isCategoryHeader = firstCell && nonEmpty.length === 1 && !hasPriceLike;
+
+  if (isCategoryHeader) {
+    lastCategoryHint = firstCell;
+    return; // Do not push header rows into products
+  }
+
+  // Skip empty rows
+  if (nonEmpty.length === 0) return;
+
+  // Only include rows that look like products (should have some price-like value)
+  if (!hasPriceLike) return;
+
+  // Build object with consistent keys and attach hint
+  const obj: any = {};
+  cells.forEach((cell: any, colIndex: number) => {
+    obj[`col_${colIndex}`] = cell;
+  });
+  if (lastCategoryHint) obj._category_hint = lastCategoryHint;
+
+  processedRows.push(obj);
+});
+
+const filteredData = processedRows;
+
+console.log('Filtered data:', filteredData.length, 'product rows');
 
           const parsedProducts = filteredData.map((row, index) => {
             console.log(`Parsing A-E row ${index + 2}:`, row);
@@ -404,38 +408,39 @@ const BulkInventoryManager = () => {
     if (dryRun) setIsDryRun(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
-        body: { 
-          rows: excelData.map(p => ({
-            // Send properly structured A-E data with learning context
-            col_0: p.name,
-            col_1: p.origin, // brand
-            col_2: '', // CRC price (we already converted)
-            col_3: p.price, // USD price
-            col_4: p.image_url,
-            name: p.name,
-            brand: p.origin,
-            price: p.price,
-            image_url: p.image_url,
-            original_data: p.original_data,
-            // Enhanced data for learning
-            processing_context: {
-              upload_timestamp: Date.now(),
-              user_corrections: p.user_corrections || {},
-              previous_suggestions: p.ai_suggestions || null
-            }
-          })),
-          filename: fileName,
-          settings: {
-            columnFormat: 'A-E',
-            exchangeRate,
-            dryRun,
-            enableLearning: true,
-            qualityThreshold: 0.8,
-            preferUSD: true
-          }
-        }
-      });
+const { data, error } = await supabase.functions.invoke('ai-normalize-products', {
+  body: { 
+    rows: excelData.map(p => ({
+      // Send properly structured A-E data with learning context
+      col_0: p.name,
+      col_1: p.origin, // brand
+      col_2: '', // CRC price (we already converted)
+      col_3: p.price, // USD price
+      col_4: p.image_url,
+      name: p.name,
+      brand: p.origin,
+      price: p.price,
+      image_url: p.image_url,
+      original_data: p.original_data,
+      // Enhanced data for learning
+      processing_context: {
+        upload_timestamp: Date.now(),
+        user_corrections: p.user_corrections || {},
+        previous_suggestions: p.ai_suggestions || null,
+        category_hint: p.category_hint || null
+      }
+    })),
+    filename: fileName,
+    settings: {
+      columnFormat: 'A-E',
+      exchangeRate,
+      dryRun,
+      enableLearning: true,
+      qualityThreshold: 0.8,
+      preferUSD: true
+    }
+  }
+});
 
       if (error) throw error;
 
@@ -700,19 +705,20 @@ const BulkInventoryManager = () => {
           <CardContent>
             <div className="rounded-md border overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Row</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>AI Suggestions</TableHead>
-                    <TableHead>Errors</TableHead>
-                  </TableRow>
-                </TableHeader>
+<TableHeader>
+  <TableRow>
+    <TableHead>Status</TableHead>
+    <TableHead>Row</TableHead>
+    <TableHead>Name</TableHead>
+    <TableHead>Price</TableHead>
+    <TableHead>Category</TableHead>
+    <TableHead>Hint</TableHead>
+    <TableHead>Unit</TableHead>
+    <TableHead>Stock</TableHead>
+    <TableHead>AI Suggestions</TableHead>
+    <TableHead>Errors</TableHead>
+  </TableRow>
+</TableHeader>
                 <TableBody>
                   {excelData.map((product, index) => {
                     const category = categories.find(cat => cat.id === product.category_id);
@@ -730,26 +736,33 @@ const BulkInventoryManager = () => {
                           </div>
                         </TableCell>
                         <TableCell>${product.price.toFixed(2)}</TableCell>
-                        <TableCell>
-                          {category ? (
-                            <div className="flex items-center gap-1">
-                              <span>{category.icon}</span>
-                              <span className="text-sm">{category.name}</span>
-                            </div>
-                          ) : (
-                            <span className="text-red-500 text-sm">Invalid ID</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{product.unit}</TableCell>
-                        <TableCell>{product.stock_quantity}</TableCell>
-                        <TableCell>
-                          {product.suggestions && product.suggestions.length > 0 && (
-                            <div className="flex items-center gap-1 text-blue-600">
-                              <Sparkles className="h-3 w-3" />
-                              <span className="text-xs">{product.suggestions.join(', ')}</span>
-                            </div>
-                          )}
-                        </TableCell>
+<TableCell>
+  {category ? (
+    <div className="flex items-center gap-1">
+      <span>{category.icon}</span>
+      <span className="text-sm">{category.name}</span>
+    </div>
+  ) : (
+    <span className="text-red-500 text-sm">Invalid ID</span>
+  )}
+</TableCell>
+<TableCell>
+  {product.category_hint ? (
+    <Badge variant="secondary">{product.category_hint}</Badge>
+  ) : (
+    <span className="text-muted-foreground text-xs">—</span>
+  )}
+</TableCell>
+<TableCell>{product.unit}</TableCell>
+<TableCell>{product.stock_quantity}</TableCell>
+<TableCell>
+  {product.suggestions && product.suggestions.length > 0 && (
+    <div className="flex items-center gap-1 text-blue-600">
+      <Sparkles className="h-3 w-3" />
+      <span className="text-xs">{product.suggestions.join(', ')}</span>
+    </div>
+  )}
+</TableCell>
                         <TableCell>
                           {product.errors.length > 0 && (
                             <div className="flex items-center gap-1 text-red-600">

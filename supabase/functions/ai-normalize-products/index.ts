@@ -502,7 +502,7 @@ async function processBatchWithAI(
   // Apply learning patterns before AI processing
   const learnedProducts = enableLearning ? await applyLearningPatterns(cleanedBatch, categories, supabase) : cleanedBatch;
   
-  const prompt = `You are an enhanced AI assistant specializing in product data normalization with learning capabilities.
+const prompt = `You are an enhanced AI assistant specializing in product data normalization with learning capabilities.
 
 Available categories:
 ${categories.map(c => `- ${c.id}: "${c.name}" (${c.icon})`).join('\n')}
@@ -534,6 +534,7 @@ ENHANCED PROCESSING INSTRUCTIONS:
    - Use learned patterns from previous categorizations
    - Apply brand-based category suggestions
    - Implement fuzzy matching for similar products
+   - When a row includes processing_context.category_hint (e.g., "Dairy"), prioritize mapping to the category whose name matches or closely matches that hint. Increase confidence for matching categories.
 
 5. **Smart Fixes**:
    - Auto-extract units from product names (115g, 1L, 500ml, etc.)
@@ -560,7 +561,7 @@ Return JSON array with enhanced structure:
   "original_data": {}
 }
 
-Process these ${cleanedBatch.length} products with learned patterns:
+Process these ${cleanedBatch.length} products with learned patterns and optional category headers context (processing_context.category_hint when present):
 ${JSON.stringify(learnedProducts.slice(0, 20), null, 2)}${cleanedBatch.length > 20 ? '\n... (truncated for prompt length)' : ''}`;
 
   try {
