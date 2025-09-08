@@ -193,6 +193,7 @@ export function ConciergeDashboard() {
 
   const getCategoryDisplayName = (categoryId: string): string => {
     const categoryMap: Record<string, string> = {
+      'dairy-eggs': 'Refrigerated Items',
       'dairy': 'Refrigerated Items',
       'meat': 'Refrigerated Items', 
       'frozen': 'Frozen Items',

@@ -76,6 +76,9 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-foreground">Shop Categories</h4>
             <div className="space-y-2">
+              <Link to="/category/dairy-eggs" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+                Dairy & Eggs
+              </Link>
               <Link to="/category/fresh-produce" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Fresh Produce
               </Link>
@@ -87,9 +90,6 @@ export function Footer() {
               </Link>
               <Link to="/category/meat-poultry" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Meat & Poultry
-              </Link>
-              <Link to="/cart" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
-                Shopping Cart
               </Link>
             </div>
           </div>

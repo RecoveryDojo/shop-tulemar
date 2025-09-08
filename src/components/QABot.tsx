@@ -29,8 +29,8 @@ const qaKnowledgeBase = {
     ]
   },
   'categories': {
-    keywords: ['categories', 'category', 'fresh produce', 'coffee', 'seafood', 'meat', 'bakery', 'wine', 'baby', 'organic'],
-    response: "We have 8 product categories: Fresh Produce, Coffee & Beverages, Fresh Seafood, Meat & Poultry, Bakery & Grains, Wines & Spirits, Baby & Family, and Organic & Health. Each category has 10 carefully selected Costa Rican products.",
+    keywords: ['categories', 'category', 'dairy', 'eggs', 'fresh produce', 'coffee', 'seafood', 'meat', 'bakery', 'wine', 'baby', 'organic'],
+    response: "We have 9 product categories: Dairy & Eggs, Fresh Produce, Coffee & Beverages, Fresh Seafood, Meat & Poultry, Bakery & Grains, Wines & Spirits, Baby & Family, and Organic & Health. Each category has carefully selected Costa Rican products.",
     links: [{ text: 'View All Categories', url: '/shop/categories' }]
   },
   'cart': {
