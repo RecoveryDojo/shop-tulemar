@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { useProducts } from '@/hooks/useProducts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImportJobManager from './ImportJobManager';
 import TestProductManager from './TestProductManager';
 
@@ -48,6 +49,7 @@ const BulkInventoryManager = () => {
   const [fileName, setFileName] = useState('');
   const [importJobId, setImportJobId] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState(500); // CRC to USD default rate
+  const [selectedCategoryForAll, setSelectedCategoryForAll] = useState<string>('');
   const { categories, refetch } = useProducts();
 
   // Debug effect to track excelData changes
@@ -63,10 +65,70 @@ const BulkInventoryManager = () => {
     setExcelData([]);
     setFileName('');
     setImportJobId(null);
+    setSelectedCategoryForAll('');
     console.log('🗑️ Cleared Excel data and reset state for new upload');
     toast({
       title: "Data Cleared",
       description: "Ready for new Excel upload.",
+    });
+  };
+
+  const assignCategoryToAll = (categoryId: string) => {
+    if (!categoryId) {
+      toast({
+        title: "No Category Selected",
+        description: "Please select a category first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setExcelData(prev => prev.map(product => ({
+      ...product,
+      category_id: categoryId,
+      status: product.errors.filter(e => !e.includes('Category')).length === 0 ? 'validated' as const : 'error' as const,
+      errors: product.errors.filter(e => !e.includes('Category')) // Remove category-related errors
+    })));
+
+    const selectedCategory = categories.find(cat => cat.id === categoryId);
+    toast({
+      title: "Category Assigned",
+      description: `All products assigned to "${selectedCategory?.name}" category.`,
+    });
+  };
+
+  const markAllAsValid = () => {
+    let validCount = 0;
+    let errorCount = 0;
+
+    setExcelData(prev => prev.map(product => {
+      const errors: string[] = [];
+      
+      // Validate required fields
+      if (!product.name || product.name.trim() === '') errors.push('Name is required');
+      if (!product.price || product.price <= 0) errors.push('Valid price is required');
+      if (!product.category_id || product.category_id.trim() === '') errors.push('Category is required');
+      if (!product.unit || product.unit.trim() === '') errors.push('Unit is required');
+      
+      const newStatus = errors.length === 0 ? 'validated' as const : 'error' as const;
+      
+      if (newStatus === 'validated') {
+        validCount++;
+      } else {
+        errorCount++;
+      }
+
+      return {
+        ...product,
+        status: newStatus,
+        errors
+      };
+    }));
+
+    toast({
+      title: "Validation Complete", 
+      description: `${validCount} products validated successfully${errorCount > 0 ? `, ${errorCount} have errors` : ''}`,
+      variant: errorCount > 0 ? "destructive" : "default",
     });
   };
 
@@ -854,34 +916,80 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             )}
 
             {excelData.length > 0 && (
-              <div className="flex gap-4 flex-wrap">
-                <Button 
-                  onClick={() => processWithAI(true)}
-                  disabled={isProcessingAI}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  {isDryRun ? 'Testing...' : 'Dry Run (Test)'}
-                </Button>
+              <div className="space-y-4">
+                {/* Bulk Actions Section */}
+                <div className="p-4 bg-muted/50 rounded-lg border">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Bulk Actions
+                  </h4>
+                  <div className="flex gap-4 flex-wrap items-center">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="category-select" className="text-sm">Assign category to all:</Label>
+                      <Select value={selectedCategoryForAll} onValueChange={setSelectedCategoryForAll}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="Select category..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border shadow-lg">
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.icon} {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        onClick={() => assignCategoryToAll(selectedCategoryForAll)}
+                        disabled={!selectedCategoryForAll}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Apply to All
+                      </Button>
+                    </div>
+                    
+                    <Button 
+                      onClick={markAllAsValid}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      Mark All Valid
+                    </Button>
+                  </div>
+                </div>
 
-                <Button 
-                  onClick={() => processWithAI(false)}
-                  disabled={isProcessingAI}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {isProcessingAI ? 'AI Processing...' : 'Process with AI'}
-                </Button>
+                {/* AI Processing Actions */}
+                <div className="flex gap-4 flex-wrap">
+                  <Button 
+                    onClick={() => processWithAI(true)}
+                    disabled={isProcessingAI}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {isDryRun ? 'Testing...' : 'Dry Run (Test)'}
+                  </Button>
 
-                <Button 
-                  onClick={publishProducts} 
-                  disabled={isPublishing || excelData.filter(p => p.status === 'validated' || p.status === 'ready').length === 0}
-                  className="flex items-center gap-2"
-                >
-                  <Check className="h-4 w-4" />
-                  {isPublishing ? 'Publishing...' : `Publish ${excelData.filter(p => p.status === 'validated' || p.status === 'ready').length} Products`}
-                </Button>
+                  <Button 
+                    onClick={() => processWithAI(false)}
+                    disabled={isProcessingAI}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {isProcessingAI ? 'AI Processing...' : 'Process with AI'}
+                  </Button>
+
+                  <Button 
+                    onClick={publishProducts} 
+                    disabled={isPublishing || excelData.filter(p => p.status === 'validated' || p.status === 'ready').length === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <Check className="h-4 w-4" />
+                    {isPublishing ? 'Publishing...' : `Publish ${excelData.filter(p => p.status === 'validated' || p.status === 'ready').length} Products`}
+                  </Button>
+                </div>
               </div>
             )}
           </div>

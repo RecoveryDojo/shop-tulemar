@@ -7,6 +7,14 @@ import { Link } from "react-router-dom";
 export default function ShopCategories() {
   const categories = [
     {
+      id: "dairy-eggs",
+      icon: "🥛",
+      name: "Dairy & Eggs",
+      description: "Fresh dairy products, eggs, cheese, and milk",
+      items: "10+ items",
+      color: "from-blue-400 to-cyan-500"
+    },
+    {
       id: "fresh-produce",
       icon: Apple,
       name: "Fresh Produce",
@@ -97,7 +105,11 @@ export default function ShopCategories() {
               <Card key={index} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale group">
                 <CardHeader className="text-center">
                   <div className={`bg-gradient-to-r ${category.color} p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                    <category.icon className="h-10 w-10 text-white" />
+                    {typeof category.icon === 'string' ? (
+                      <span className="text-3xl">{category.icon}</span>
+                    ) : (
+                      <category.icon className="h-10 w-10 text-white" />
+                    )}
                   </div>
                   <CardTitle className="text-xl">{category.name}</CardTitle>
                   <CardDescription className="text-base">
