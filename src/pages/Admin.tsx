@@ -14,6 +14,7 @@ import { Shield, Users, Package, ShoppingCart, UserPlus, UserMinus } from 'lucid
 import { toast } from '@/hooks/use-toast';
 import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
+import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 
 interface UserWithRoles {
   id: string;
@@ -115,6 +116,7 @@ const Admin = () => {
           <TabsList>
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
+            <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
           </TabsList>
 
@@ -124,6 +126,10 @@ const Admin = () => {
 
           <TabsContent value="ai-learning">
             <EnhancedAIManager />
+          </TabsContent>
+
+          <TabsContent value="documentation">
+            <ProductDocumentation />
           </TabsContent>
 
           <TabsContent value="users">
