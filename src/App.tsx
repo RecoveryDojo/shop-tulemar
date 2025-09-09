@@ -19,6 +19,7 @@ import OrderWorkflowDashboard from "@/pages/OrderWorkflowDashboard";
 import MainDashboard from "@/pages/MainDashboard";
 import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
+import ProductEdit from "@/pages/ProductEdit";
 import NotFound from "@/pages/NotFound";
 import Sitemap from "@/pages/Sitemap";
 import FeatureShowcase from "@/pages/FeatureShowcase";
@@ -50,6 +51,7 @@ const App = () => {
                 <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/product/:productId" element={<ProductEdit />} />
                 <Route path="/navigation" element={<Navigation />} />
                 <Route path="/feature-showcase" element={<FeatureShowcase />} />
                 <Route path="/sitemap" element={<Sitemap />} />

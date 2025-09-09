@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ import BulkInventoryManager from './BulkInventoryManager';
 const ProductManager = () => {
   const { products, categories, loading, refetch } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const navigate = useNavigate();
   const [newProduct, setNewProduct] = useState({
     name: '',
     description: '',
@@ -70,43 +71,6 @@ const ProductManager = () => {
         stock_quantity: ''
       });
       
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({
-          name: editingProduct.name,
-          description: editingProduct.description,
-          price: editingProduct.price,
-          category_id: editingProduct.category_id,
-          unit: editingProduct.unit,
-          origin: editingProduct.origin,
-          image_url: editingProduct.image_url,
-          stock_quantity: editingProduct.stock_quantity,
-        })
-        .eq('id', editingProduct.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Product updated successfully!",
-      });
-
-      setEditingProduct(null);
       refetch();
     } catch (error: any) {
       toast({
@@ -372,7 +336,7 @@ const ProductManager = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setEditingProduct(product)}
+                                onClick={() => navigate(`/admin/product/${product.id}`)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -393,32 +357,6 @@ const ProductManager = () => {
               </div>
             </CardContent>
           </Card>
-
-          {editingProduct && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Edit Product</CardTitle>
-                <CardDescription>
-                  Update product information
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProductForm
-                  product={editingProduct}
-                  onChange={setEditingProduct}
-                  onSubmit={handleUpdateProduct}
-                  submitLabel="Update Product"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => setEditingProduct(null)}
-                  className="mt-4"
-                >
-                  Cancel
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
     </div>
