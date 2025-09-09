@@ -230,6 +230,9 @@ const BulkInventoryManager = () => {
     };
   };
 
+// Global variable to track the last product name for carry-forward logic
+let lastCarriedName = '';
+
 const parseColumnAEData = (row: any, index: number, exchangeRate: number): ExcelProduct => {
   // Handle A-E format: A=name, B=brand, C=CRC price, D=USD price, E=image
   const keys = Object.keys(row);
@@ -248,13 +251,29 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
   if (keys[3] && row[keys[3]]) usdPrice = String(row[keys[3]]).trim();
   if (keys[4] && row[keys[4]]) imageUrl = String(row[keys[4]]).trim();
   
+  // Carry-forward logic: If name is empty but we have a price, use the last carried name
+  if (!name || name === '') {
+    if ((crcPrice || usdPrice) && lastCarriedName) {
+      name = lastCarriedName;
+      console.log(`🔄 Row ${index}: Carrying forward name "${name}" (had price but no name)`);
+    }
+  } else {
+    // Update the carried name when we encounter a new product name
+    lastCarriedName = name;
+    console.log(`📝 Row ${index}: Updated carried name to "${name}"`);
+  }
+  
+  // Debug price parsing
+  console.log(`💰 Row ${index}: Price parsing - USD:"${usdPrice}" CRC:"${crcPrice}" Rate:${exchangeRate}`);
+  
   // Parse price - prefer USD over CRC
   let finalPrice = 0;
   let priceErrors = [];
   
   if (usdPrice && usdPrice !== '') {
-    // Extract USD price with robust locale handling
-    const m = usdPrice.match(/[\d.,]+/);
+    // Extract USD price with robust locale handling and currency symbol support
+    const cleanUsd = usdPrice.replace(/[$€£¥₡\s]/g, ''); // Remove currency symbols and spaces
+    const m = cleanUsd.match(/[\d.,]+/);
     if (m) {
       let s = m[0].replace(/\s/g, '');
       if (s.includes('.') && s.includes(',')) {
@@ -276,15 +295,19 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
       const parsedUsd = parseFloat(s);
       if (!isNaN(parsedUsd) && parsedUsd > 0) {
         finalPrice = parsedUsd;
+        console.log(`✅ Row ${index}: USD parsed successfully: "${usdPrice}" → $${finalPrice}`);
       } else {
-        priceErrors.push(`Invalid USD price: ${usdPrice}`);
+        priceErrors.push(`Invalid USD price: "${usdPrice}" → parsed as ${parsedUsd}`);
+        console.log(`❌ Row ${index}: USD parsing failed: "${usdPrice}" → ${parsedUsd}`);
       }
     } else {
-      priceErrors.push(`Could not parse USD price: ${usdPrice}`);
+      priceErrors.push(`Could not extract numbers from USD price: "${usdPrice}"`);
+      console.log(`❌ Row ${index}: No numbers found in USD: "${usdPrice}"`);
     }
   } else if (crcPrice && crcPrice !== '') {
-    // Convert CRC to USD with robust locale handling
-    const m = crcPrice.match(/[\d.,]+/);
+    // Convert CRC to USD with robust locale handling and colones symbol support
+    const cleanCrc = crcPrice.replace(/[₡$€£¥\s]/g, ''); // Remove currency symbols and spaces
+    const m = cleanCrc.match(/[\d.,]+/);
     if (m) {
       let s = m[0].replace(/\s/g, '');
       if (s.includes('.') && s.includes(',')) {
@@ -306,49 +329,61 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
       const crcValue = parseFloat(s);
       if (!isNaN(crcValue) && crcValue > 0 && exchangeRate > 0) {
         finalPrice = Math.round((crcValue / exchangeRate) * 100) / 100;
+        console.log(`✅ Row ${index}: CRC converted successfully: "${crcPrice}" → ₡${crcValue} → $${finalPrice} (rate: ${exchangeRate})`);
+      } else if (exchangeRate <= 0) {
+        priceErrors.push(`Invalid exchange rate: ${exchangeRate}. Please set a valid CRC→USD rate.`);
+        console.log(`❌ Row ${index}: Invalid exchange rate: ${exchangeRate}`);
       } else {
-        priceErrors.push(`Invalid CRC price or exchange rate: ${crcPrice} (rate: ${exchangeRate})`);
+        priceErrors.push(`Invalid CRC price: "${crcPrice}" → parsed as ${crcValue}`);
+        console.log(`❌ Row ${index}: CRC parsing failed: "${crcPrice}" → ${crcValue}`);
       }
     } else {
-      priceErrors.push(`Could not parse CRC price: ${crcPrice}`);
+      priceErrors.push(`Could not extract numbers from CRC price: "${crcPrice}"`);
+      console.log(`❌ Row ${index}: No numbers found in CRC: "${crcPrice}"`);
     }
   } else {
-    priceErrors.push('No price found in USD or CRC columns');
+    priceErrors.push('No price found in USD (Column D) or CRC (Column C)');
+    console.log(`❌ Row ${index}: No price data - USD:"${usdPrice}" CRC:"${crcPrice}"`);
   }
   
   // Extract unit from name (115g, 1L, etc.)
   let unit = 'each';
-  // Enhanced unit extraction: supports decimals and common variants (g, kg, ml, L, oz, lb, pack)
-  const unitMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|kg|ml|l|lt|oz|lb|lbs|pack|pk|unit|un|unid)\b/i);
-  if (unitMatch) {
-    const amount = unitMatch[1].replace(',', '.').trim();
-    let u = unitMatch[2].toLowerCase();
-    if (u === 'gr') u = 'g';
-    if (u === 'lt') u = 'l';
-    if (u === 'lbs') u = 'lb';
-    if (u === 'pk') u = 'pack';
-    if (u === 'un' || u === 'unid' || u === 'unit') u = 'each';
+  if (name) {
+    const unitMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|kg|ml|l|lt|oz|lb|lbs|pack|pk|unit|un|unid|bottle|btl)\b/i);
+    if (unitMatch) {
+      const amount = unitMatch[1].replace(',', '.').trim();
+      let u = unitMatch[2].toLowerCase();
+      if (u === 'gr') u = 'g';
+      if (u === 'lt') u = 'l';
+      if (u === 'lbs') u = 'lb';
+      if (u === 'pk') u = 'pack';
+      if (u === 'btl') u = 'bottle';
+      if (u === 'un' || u === 'unid' || u === 'unit') u = 'each';
 
-    if (u === 'each') {
-      unit = 'each';
-    } else {
-      unit = `${amount}${['g','kg','ml','l','oz','lb'].includes(u) ? u : ` ${u}`}`.trim();
+      if (u === 'each') {
+        unit = 'each';
+      } else {
+        unit = `${amount}${['g','kg','ml','l','oz','lb'].includes(u) ? u : ` ${u}`}`.trim();
+      }
+      console.log(`📏 Row ${index}: Unit extracted: "${unitMatch[0]}" → "${unit}"`);
     }
   }
   
   const errors: string[] = [...priceErrors];
-  if (!name || name.trim() === '') errors.push('Name is required (Column A)');
-  if (!brand || brand.trim() === '') errors.push('Brand/description is required (Column B)');
-  if (!finalPrice || finalPrice <= 0) errors.push('Valid price required (Column C or D)');
+  if (!name || name.trim() === '') errors.push('Product name is required (Column A) or could not be carried forward');
+  // Column B (brand/description) is now optional - user said it can be empty
+  if (!finalPrice || finalPrice <= 0) errors.push('Valid price required in Column C (CRC) or D (USD)');
+  
+  console.log(`🏁 Row ${index}: Final result - Name:"${name}" Price:$${finalPrice} Errors:${errors.length}`);
   
   return {
       name,
-      description: brand || '', // Map column B to description field
+      description: brand || '', // Column B is now optional
       price: finalPrice,
-      category_id: '', // Will be set by AI
+      category_id: '', // Will be set by AI or bulk assignment
       category_hint: categoryHint || undefined,
       unit,
-      origin: brand,
+      origin: brand || '', // Use brand as origin if available
       image_url: imageUrl,
       stock_quantity: 10, // Default
       rowIndex: index,
@@ -473,6 +508,9 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
 const processedRows: any[] = [];
 let lastCategoryHint = '';
 
+// Reset carry-forward name at the start of processing
+lastCarriedName = '';
+
 rawData.slice(1).forEach((rowArr: any, idx: number) => {
   const cells = Array.isArray(rowArr) ? rowArr : [];
   const nonEmpty = cells.filter((c: any) => c !== undefined && c !== null && String(c).trim() !== '');
@@ -484,14 +522,24 @@ rawData.slice(1).forEach((rowArr: any, idx: number) => {
 
   if (isCategoryHeader) {
     lastCategoryHint = firstCell;
+    console.log(`📁 Row ${idx + 2}: Category header detected: "${firstCell}"`);
     return; // Do not push header rows into products
   }
 
-  // Skip empty rows
-  if (nonEmpty.length === 0) return;
+  // Skip completely empty rows
+  if (nonEmpty.length === 0) {
+    console.log(`⬜ Row ${idx + 2}: Skipping empty row`);
+    return;
+  }
 
-  // Only include rows that look like products (should have some price-like value)
-  if (!hasPriceLike) return;
+  // Include rows that have price-like values OR could be carry-forward candidates
+  // (rows with only brand/description but no name, if they have a price)
+  const couldBeCarryForward = !firstCell && hasPriceLike && cells[1]; // No name but has brand/price
+  
+  if (!hasPriceLike && !couldBeCarryForward) {
+    console.log(`⏭️ Row ${idx + 2}: Skipping non-product row (no price data)`);
+    return;
+  }
 
   // Build object with consistent keys and attach hint
   const obj: any = {};
@@ -503,6 +551,7 @@ rawData.slice(1).forEach((rowArr: any, idx: number) => {
   // CRITICAL: Preserve original Excel row number for image mapping
   obj.__rowNum__ = idx + 2; // Convert to 1-based row number (idx starts at 0, +1 for header)
 
+  console.log(`➕ Row ${idx + 2}: Added to processing - Name:"${firstCell}" Price-like:${hasPriceLike} Carry-forward:${couldBeCarryForward}`);
   processedRows.push(obj);
 });
 
