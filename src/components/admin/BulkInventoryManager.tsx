@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3, Image } from 'lucide-react';
+import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3, Image, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -962,6 +962,31 @@ console.log('Filtered data:', filteredData.length, 'product rows');
     }
   };
 
+  // Admin action: clear cached images from product-images/bulk-upload
+  const clearCachedImages = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('cleanup-bulk-images', {
+        body: { prefix: 'bulk-upload/' },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Cached Images Cleared',
+        description: `${data?.deletedCount ?? 0} images removed from storage.`,
+      });
+      // Reset local state to avoid stale references
+      setExcelData([]);
+      setImageMapping(null);
+      setFileName('');
+    } catch (err: any) {
+      console.error('Error clearing cached images:', err);
+      toast({
+        title: 'Cleanup Failed',
+        description: err?.message || 'Could not delete cached images.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status: ExcelProduct['status']) => {
     switch (status) {
       case 'pending':
@@ -1005,6 +1030,10 @@ console.log('Filtered data:', filteredData.length, 'product rows');
               <Button onClick={downloadTemplate} variant="outline" className="flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Download A-E Template
+              </Button>
+              <Button onClick={clearCachedImages} variant="destructive" className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                Clear Cached Images
               </Button>
               
               <div className="flex items-center gap-2">
