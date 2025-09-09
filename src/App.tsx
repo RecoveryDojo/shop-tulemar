@@ -25,6 +25,7 @@ import NotFound from "@/pages/NotFound";
 import Sitemap from "@/pages/Sitemap";
 import FeatureShowcase from "@/pages/FeatureShowcase";
 import ShopperDashboard from "@/pages/ShopperDashboard";
+import CustomerDashboard from "@/pages/CustomerDashboard";
 import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => {
                   <Route path="/work-tracker" element={<WorkTracker />} />
                   <Route path="/dashboard" element={<MainDashboard />} />
                   <Route path="/shopper" element={<ShopperDashboard />} />
+                  <Route path="/customer" element={<CustomerDashboard />} />
                   <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin" element={<Admin />} />
