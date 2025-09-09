@@ -640,10 +640,10 @@ console.log('Filtered data:', filteredData.length, 'product rows');
               console.log(`📋 DEBUG: Available mappings:`, imageRowMapping.map(m => `Row ${m.excelRow} → ${m.fileName}`));
               console.log(`🎯 DEBUG: Searching for excelRow === ${originalRowIndex}`);
               
-              // Find the exact image for this Excel row (shift by +1 to fix off-by-one)
-              const imageRowToFind = originalRowIndex + 1;
+              // Use product sequence to find image (first product → row 3, second → row 4, etc.)
+              const imageRowToFind = index + 3; // index 0 → row 3, index 1 → row 4, etc.
               const mappedImage = imageRowMapping.find(mapping => {
-                console.log(`🔍 Checking mapping: ${mapping.excelRow} === ${imageRowToFind}? (original row ${originalRowIndex})`, mapping.excelRow === imageRowToFind);
+                console.log(`🔍 Product ${index + 1} (${product.name}) looking for image row ${imageRowToFind} (Excel row ${originalRowIndex})`);
                 return mapping.excelRow === imageRowToFind;
               });
               
