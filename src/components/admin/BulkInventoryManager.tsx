@@ -637,9 +637,14 @@ console.log('Filtered data:', filteredData.length, 'product rows');
               const debugInfo = (extractedImageMapping as any).__debugInfo;
               
               console.log(`🔍 ROBUST MAPPING: Looking for image for Excel row ${originalRowIndex}`);
+              console.log(`📋 DEBUG: Available mappings:`, imageRowMapping.map(m => `Row ${m.excelRow} → ${m.fileName}`));
+              console.log(`🎯 DEBUG: Searching for excelRow === ${originalRowIndex}`);
               
               // Find the exact image for this Excel row
-              const mappedImage = imageRowMapping.find(mapping => mapping.excelRow === originalRowIndex);
+              const mappedImage = imageRowMapping.find(mapping => {
+                console.log(`🔍 Checking mapping: ${mapping.excelRow} === ${originalRowIndex}?`, mapping.excelRow === originalRowIndex);
+                return mapping.excelRow === originalRowIndex;
+              });
               
               if (mappedImage) {
                 product.image_url = mappedImage.imageUrl;
