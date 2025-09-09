@@ -107,10 +107,21 @@ const BulkInventoryManager = () => {
     setExcelData(prev => prev.map(product => {
       const errors: string[] = [];
       
+      // Auto-assign category based on category_hint if not already set
+      let categoryId = product.category_id;
+      if (!categoryId && product.category_hint) {
+        const matchingCategory = categories.find(cat => 
+          cat.name.toLowerCase() === product.category_hint.toLowerCase()
+        );
+        if (matchingCategory) {
+          categoryId = matchingCategory.id;
+        }
+      }
+      
       // Validate required fields
       if (!product.name || product.name.trim() === '') errors.push('Name is required');
       if (!product.price || product.price <= 0) errors.push('Valid price is required');
-      if (!product.category_id || product.category_id.trim() === '') errors.push('Category is required');
+      if (!categoryId || categoryId.trim() === '') errors.push('Category is required');
       if (!product.unit || product.unit.trim() === '') errors.push('Unit is required');
       
       const newStatus = errors.length === 0 ? 'validated' as const : 'error' as const;
@@ -123,6 +134,7 @@ const BulkInventoryManager = () => {
 
       return {
         ...product,
+        category_id: categoryId || product.category_id,
         status: newStatus,
         errors
       };
