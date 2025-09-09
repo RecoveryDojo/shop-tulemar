@@ -28,7 +28,11 @@ import {
   Target,
   Zap,
   TrendingUp,
-  Award
+  Award,
+  Truck,
+  Phone,
+  Upload,
+  Package
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/currency';
@@ -51,6 +55,7 @@ interface ShoppingOrder {
   id: string;
   customer_name: string;
   customer_avatar?: string;
+  customer_phone?: string;
   store_name: string;
   total_items: number;
   estimated_time: number;
@@ -60,7 +65,9 @@ interface ShoppingOrder {
   customer_rating?: number;
   tip_amount?: number;
   delivery_address: string;
+  delivery_instructions?: string;
   batch_number?: number;
+  workflow_phase: 'shopping' | 'ready_for_delivery' | 'in_transit' | 'delivered';
 }
 
 interface ShopperStats {
@@ -75,6 +82,7 @@ interface ShopperStats {
 export function EnhancedShopperDashboard() {
   const [activeOrder, setActiveOrder] = useState<ShoppingOrder | null>(null);
   const [availableOrders, setAvailableOrders] = useState<ShoppingOrder[]>([]);
+  const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
   const [shopperStats, setShopperStats] = useState<ShopperStats>({
     daily_earnings: 0,
     weekly_earnings: 0,
@@ -88,21 +96,25 @@ export function EnhancedShopperDashboard() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [customerMessage, setCustomerMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [deliveryProof, setDeliveryProof] = useState<string | null>(null);
 
   // Mock data for demo
   useEffect(() => {
-    const mockOrders: ShoppingOrder[] = [
+    const mockShoppingOrders: ShoppingOrder[] = [
       {
-        id: '1',
+        id: 'SHOP-001',
         customer_name: 'Sarah Johnson',
         customer_avatar: '/placeholder-avatar.jpg',
+        customer_phone: '+1-555-0123',
         store_name: 'Whole Foods Market',
         total_items: 12,
         estimated_time: 45,
         priority: 'express',
         tip_amount: 15.50,
         delivery_address: '123 Oak Street, Apt 4B',
+        delivery_instructions: 'Ring doorbell, leave at door if no answer',
         batch_number: 1,
+        workflow_phase: 'shopping',
         items: [
           {
             id: '1',
@@ -122,15 +134,50 @@ export function EnhancedShopperDashboard() {
             category: 'Dairy',
             aisle_location: 'Aisle 7 - Refrigerated',
             customer_notes: 'Prefer organic if available',
-            found_status: 'substitution_needed',
-            substitution_reason: 'Out of unsweetened, have vanilla available'
+            found_status: 'pending'
+          }
+        ]
+      }
+    ];
+
+    const mockDeliveryOrders: ShoppingOrder[] = [
+      {
+        id: 'DEL-001',
+        customer_name: 'Mike Chen',
+        customer_avatar: '/placeholder-avatar.jpg',
+        customer_phone: '+1-555-0456',
+        store_name: 'Whole Foods Market',
+        total_items: 8,
+        estimated_time: 25,
+        priority: 'standard',
+        tip_amount: 8.00,
+        delivery_address: '456 Pine Street, Unit 12',
+        delivery_instructions: 'Buzz apartment, leave with doorman if not home',
+        workflow_phase: 'ready_for_delivery',
+        items: [
+          {
+            id: '3',
+            product_name: 'Greek Yogurt',
+            quantity: 3,
+            unit_price: 4.99,
+            category: 'Dairy',
+            found_status: 'found'
+          },
+          {
+            id: '4',
+            product_name: 'Chicken Breast',
+            quantity: 2,
+            unit_price: 12.99,
+            category: 'Meat',
+            found_status: 'found'
           }
         ]
       }
     ];
     
-    setAvailableOrders(mockOrders);
-    setActiveOrder(mockOrders[0]);
+    setAvailableOrders(mockShoppingOrders);
+    setActiveOrder(mockShoppingOrders[0]);
+    setDeliveryQueue(mockDeliveryOrders);
     
     setShopperStats({
       daily_earnings: 156.75,
@@ -166,10 +213,42 @@ export function EnhancedShopperDashboard() {
     });
   };
 
+  const completeShoppingAndStartDelivery = () => {
+    if (!activeOrder) return;
+    
+    const completedOrder = {
+      ...activeOrder,
+      workflow_phase: 'ready_for_delivery' as const
+    };
+    
+    setDeliveryQueue(prev => [...prev, completedOrder]);
+    setActiveOrder(null);
+    setActiveTab('delivery');
+  };
+
+  const startDelivery = (orderId: string) => {
+    setDeliveryQueue(prev => prev.map(order =>
+      order.id === orderId 
+        ? { ...order, workflow_phase: 'in_transit' as const }
+        : order
+    ));
+  };
+
+  const completeDelivery = (orderId: string) => {
+    setDeliveryQueue(prev => prev.map(order =>
+      order.id === orderId 
+        ? { ...order, workflow_phase: 'delivered' as const }
+        : order
+    ));
+  };
+
+  const captureDeliveryProof = () => {
+    setDeliveryProof('delivery-proof-captured.jpg');
+  };
+
   const sendCustomerMessage = async () => {
     if (!customerMessage.trim()) return;
     
-    // Here would be the actual messaging implementation
     console.log('Sending message to customer:', customerMessage);
     setCustomerMessage('');
   };
@@ -177,6 +256,7 @@ export function EnhancedShopperDashboard() {
   const completedItems = activeOrder?.items.filter(item => item.found_status === 'found').length || 0;
   const totalItems = activeOrder?.items.length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+  const allItemsFound = activeOrder && activeOrder.items.every(item => item.found_status === 'found');
 
   const categories = ['all', 'Produce', 'Dairy', 'Meat', 'Bakery', 'Frozen', 'Pantry'];
   
@@ -240,9 +320,10 @@ export function EnhancedShopperDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="shopping">Active Shopping</TabsTrigger>
-          <TabsTrigger value="available">Available Orders</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="shopping">Shopping</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
+          <TabsTrigger value="available">Available</TabsTrigger>
           <TabsTrigger value="communication">Messages</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -312,6 +393,21 @@ export function EnhancedShopperDashboard() {
                         <p className="text-sm text-blue-800">{activeOrder.special_instructions}</p>
                       </div>
                     )}
+
+                    {allItemsFound && (
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-green-800">Shopping Complete!</p>
+                            <p className="text-sm text-green-700">Ready to start delivery</p>
+                          </div>
+                          <Button onClick={completeShoppingAndStartDelivery} className="bg-green-600 hover:bg-green-700">
+                            <Truck className="h-4 w-4 mr-2" />
+                            Start Delivery
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -346,9 +442,6 @@ export function EnhancedShopperDashboard() {
                         </option>
                       ))}
                     </select>
-                    <Button variant="outline" size="sm">
-                      <Filter className="h-4 w-4" />
-                    </Button>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -451,16 +544,11 @@ export function EnhancedShopperDashboard() {
                                 Found
                               </div>
                             )}
-                            
+
                             {item.found_status === 'substitution_needed' && (
-                              <div className="space-y-2">
-                                <div className="flex items-center text-yellow-600">
-                                  <AlertTriangle className="h-4 w-4 mr-1" />
-                                  Pending
-                                </div>
-                                <Button size="sm" variant="outline">
-                                  Message Customer
-                                </Button>
+                              <div className="flex items-center text-yellow-600">
+                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                Pending
                               </div>
                             )}
                           </div>
@@ -468,21 +556,128 @@ export function EnhancedShopperDashboard() {
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="mt-6 pt-4 border-t">
-                    <Button className="w-full" size="lg">
-                      Complete Shopping & Proceed to Checkout
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </>
           ) : (
             <Card>
-              <CardContent className="text-center py-12">
-                <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Active Orders</h3>
-                <p className="text-muted-foreground">Check available orders to start shopping</p>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Active Shopping Order</h3>
+                <p className="text-muted-foreground text-center">
+                  Accept an order from the Available tab to start shopping
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Delivery Tab */}
+        <TabsContent value="delivery" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Delivery Queue</h3>
+            <Badge variant="outline">
+              {deliveryQueue.filter(o => o.workflow_phase !== 'delivered').length} ready
+            </Badge>
+          </div>
+
+          {deliveryQueue.length > 0 ? (
+            <div className="space-y-4">
+              {deliveryQueue.map(order => (
+                <Card key={order.id} className="border-blue-200">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage src={order.customer_avatar} />
+                          <AvatarFallback>{order.customer_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Truck className="h-5 w-5 text-blue-600" />
+                            <span>{order.customer_name}</span>
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Order #{order.id} • {order.total_items} items
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {order.delivery_address}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={order.workflow_phase === 'in_transit' ? 'default' : 'secondary'}>
+                        {order.workflow_phase === 'ready_for_delivery' ? 'Ready' : 
+                         order.workflow_phase === 'in_transit' ? 'In Transit' : 'Delivered'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Tip:</span>
+                        <span className="font-bold text-green-600">+{formatCurrency(order.tip_amount || 0)}</span>
+                      </div>
+
+                      {order.delivery_instructions && (
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <p className="text-sm font-medium text-blue-900">Delivery Instructions:</p>
+                          <p className="text-sm text-blue-800">{order.delivery_instructions}</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        {order.workflow_phase === 'ready_for_delivery' && (
+                          <>
+                            <Button onClick={() => startDelivery(order.id)} className="flex-1">
+                              <Navigation className="h-4 w-4 mr-2" />
+                              Start Delivery
+                            </Button>
+                            <Button variant="outline" size="icon">
+                              <Phone className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+
+                        {order.workflow_phase === 'in_transit' && (
+                          <>
+                            <Button onClick={captureDeliveryProof} variant="outline" className="flex-1">
+                              <Camera className="h-4 w-4 mr-2" />
+                              Photo Proof
+                            </Button>
+                            <Button onClick={() => completeDelivery(order.id)} className="flex-1">
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Complete
+                            </Button>
+                          </>
+                        )}
+
+                        {order.workflow_phase === 'delivered' && (
+                          <div className="flex items-center text-green-600 font-medium">
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Delivered Successfully
+                          </div>
+                        )}
+                      </div>
+
+                      {deliveryProof && order.workflow_phase === 'in_transit' && (
+                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                          <p className="text-sm font-medium text-green-800">✓ Delivery proof captured</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Truck className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Deliveries Ready</h3>
+                <p className="text-muted-foreground text-center">
+                  Complete shopping orders to add them to the delivery queue
+                </p>
               </CardContent>
             </Card>
           )}
@@ -490,28 +685,47 @@ export function EnhancedShopperDashboard() {
 
         {/* Available Orders Tab */}
         <TabsContent value="available" className="space-y-4">
-          {availableOrders.map((order) => (
-            <Card key={order.id}>
+          {availableOrders.map(order => (
+            <Card key={order.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarImage src={order.customer_avatar} />
-                      <AvatarFallback>{order.customer_name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium flex items-center space-x-2">
-                        <span>{order.customer_name}</span>
-                        {order.priority === 'express' && (
-                          <Badge variant="destructive">Express</Badge>
-                        )}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {order.store_name} • {order.total_items} items • {formatCurrency(order.tip_amount || 0)} tip
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold">Order #{order.id}</h3>
+                    <p className="text-sm text-muted-foreground">{order.customer_name}</p>
                   </div>
-                  <Button onClick={() => setActiveOrder(order)}>
+                  <Badge variant={order.priority === 'express' ? 'destructive' : 'secondary'}>
+                    {order.priority.toUpperCase()}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Items:</span>
+                    <p className="font-semibold">{order.total_items}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Time:</span>
+                    <p className="font-semibold">{order.estimated_time}min</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Store:</span>
+                    <p className="font-semibold">{order.store_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tip:</span>
+                    <p className="font-semibold text-green-600">+{formatCurrency(order.tip_amount || 0)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Delivery: </span>
+                    <span className="font-medium">{order.delivery_address}</span>
+                  </div>
+                  <Button 
+                    size="sm"
+                    onClick={() => setActiveOrder(order)}
+                  >
                     Accept Order
                   </Button>
                 </div>
@@ -521,7 +735,7 @@ export function EnhancedShopperDashboard() {
         </TabsContent>
 
         {/* Communication Tab */}
-        <TabsContent value="communication" className="space-y-4">
+        <TabsContent value="communication" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -529,74 +743,34 @@ export function EnhancedShopperDashboard() {
                 <span>Customer Communication</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                <div className="bg-blue-100 p-3 rounded ml-8">
-                  <p className="text-sm">Hi! I'm starting your shopping now. I'll keep you updated!</p>
-                  <p className="text-xs text-muted-foreground mt-1">You - 2:30 PM</p>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg min-h-48">
+                  <p className="text-sm text-muted-foreground">Messages will appear here...</p>
                 </div>
-                <div className="bg-white p-3 rounded mr-8">
-                  <p className="text-sm">Great! Thank you. If you can't find the organic almond milk, regular is fine.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Sarah - 2:35 PM</p>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Textarea
-                  placeholder="Type your message..."
-                  value={customerMessage}
-                  onChange={(e) => setCustomerMessage(e.target.value)}
-                  className="flex-1"
-                />
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    size="sm"
-                    onClick={sendCustomerMessage}
-                    disabled={!customerMessage.trim()}
-                  >
+                
+                <div className="flex space-x-2">
+                  <Textarea
+                    placeholder="Type your message..."
+                    value={customerMessage}
+                    onChange={(e) => setCustomerMessage(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={sendCustomerMessage}>
                     Send
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsRecording(!isRecording)}
-                    className={isRecording ? 'bg-red-100' : ''}
-                  >
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Camera className="h-4 w-4" />
-                  </Button>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm">
-                  🍌 Found item
-                </Button>
-                <Button variant="outline" size="sm">
-                  ❌ Out of stock
-                </Button>
-                <Button variant="outline" size="sm">
-                  🔄 Substitution needed
-                </Button>
-                <Button variant="outline" size="sm">
-                  ✅ Heading to checkout
-                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="analytics" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5" />
-                  <span>Weekly Performance</span>
-                </CardTitle>
+                <CardTitle>Weekly Performance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -609,33 +783,30 @@ export function EnhancedShopperDashboard() {
                     <span className="font-bold">{formatCurrency(shopperStats.weekly_earnings)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Avg. Order Value</span>
-                    <span className="font-bold">{formatCurrency(shopperStats.weekly_earnings / shopperStats.orders_completed)}</span>
+                    <span>Average Rating</span>
+                    <span className="font-bold">{shopperStats.customer_rating}/5.0</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Award className="h-5 w-5" />
-                  <span>Achievements</span>
-                </CardTitle>
+                <CardTitle>Achievements</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary">🏆</Badge>
-                    <span className="text-sm">Top Performer This Week</span>
+                    <Award className="h-5 w-5 text-yellow-500" />
+                    <span className="text-sm">Super Shopper Badge</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary">⚡</Badge>
-                    <span className="text-sm">Speed Demon (Sub 30min avg)</span>
+                    <Target className="h-5 w-5 text-green-500" />
+                    <span className="text-sm">95%+ Find Rate</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary">🎯</Badge>
-                    <span className="text-sm">Perfect Find Rate (7 days)</span>
+                    <Zap className="h-5 w-5 text-blue-500" />
+                    <span className="text-sm">Speed Demon</span>
                   </div>
                 </div>
               </CardContent>
