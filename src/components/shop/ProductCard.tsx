@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/currency';
 
 // Function to get appropriate product image based on category
 const getProductImage = (product: Product): string => {
@@ -56,11 +57,11 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden h-32 sm:h-40 md:h-48">
           <img
             src={getProductImage(product)}
-            alt={product.name}
+            alt={`${product.name} - ${product.description || 'Product image'}`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = '/placeholder.svg';
+              target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
             }}
           />
         </div>
@@ -87,7 +88,7 @@ export function ProductCard({ product }: ProductCardProps) {
           
           <div className="flex items-center justify-between pt-2">
             <span className="text-lg sm:text-xl font-bold text-primary">
-              ${product.price.toFixed(2)}
+              {formatCurrency(product.price)}
             </span>
             
             <div className="flex items-center gap-2">
@@ -98,6 +99,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   className="h-7 w-7 p-0 sm:h-8 sm:w-8"
                   onClick={decrementQuantity}
                   disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -109,6 +111,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   size="sm"
                   className="h-7 w-7 p-0 sm:h-8 sm:w-8"
                   onClick={incrementQuantity}
+                  aria-label="Increase quantity"
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -123,6 +126,7 @@ export function ProductCard({ product }: ProductCardProps) {
           onClick={handleAddToCart} 
           className="w-full bg-gradient-tropical hover:opacity-90 text-white border-0 text-sm sm:text-base"
           size="sm"
+          aria-label={`Add ${quantity} ${product.name} to cart`}
         >
           Add to Cart
         </Button>

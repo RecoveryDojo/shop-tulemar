@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency, getDeliveryFee, TAX_RATE } from '@/lib/currency';
+
 import { toast } from 'sonner';
 
 export default function ShopCheckout() {
@@ -32,10 +34,9 @@ export default function ShopCheckout() {
     dietary_restrictions: [] as string[],
   });
 
-  const deliveryFee = 5.00;
-  const taxRate = 0.13; // Costa Rica IVA
   const subtotal = total;
-  const tax = subtotal * taxRate;
+  const deliveryFee = getDeliveryFee(subtotal);
+  const tax = subtotal * TAX_RATE;
   const finalTotal = subtotal + tax + deliveryFee;
 
   const handleInputChange = (field: string, value: string) => {
@@ -301,11 +302,11 @@ export default function ShopCheckout() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {item.quantity} × ${item.price.toFixed(2)}
+                              {item.quantity} × {formatCurrency(item.price)}
                             </p>
                           </div>
                           <span className="text-sm font-medium text-foreground ml-2">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {formatCurrency(item.price * item.quantity)}
                           </span>
                         </div>
                       ))}
@@ -317,20 +318,22 @@ export default function ShopCheckout() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span className="text-foreground">${subtotal.toFixed(2)}</span>
+                        <span className="text-foreground">{formatCurrency(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Delivery Fee</span>
-                        <span className="text-foreground">${deliveryFee.toFixed(2)}</span>
+                        <span className="text-muted-foreground">
+                          {deliveryFee === 0 ? 'Delivery Fee (FREE!)' : 'Delivery Fee'}
+                        </span>
+                        <span className="text-foreground">{formatCurrency(deliveryFee)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Tax (IVA 13%)</span>
-                        <span className="text-foreground">${tax.toFixed(2)}</span>
+                        <span className="text-foreground">{formatCurrency(tax)}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span className="text-foreground">Total</span>
-                        <span className="text-primary">${finalTotal.toFixed(2)}</span>
+                        <span className="text-primary">{formatCurrency(finalTotal)}</span>
                       </div>
                     </div>
 

@@ -30,6 +30,8 @@ export const useProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchCategories = async () => {
@@ -54,6 +56,11 @@ export const useProducts = () => {
 
   const fetchProducts = async (categoryId?: string) => {
     try {
+      // Set appropriate loading state
+      if (categoryId) {
+        setCategoryLoading(true);
+      }
+      
       let query = supabase
         .from('products')
         .select('*')
@@ -69,26 +76,43 @@ export const useProducts = () => {
       const { data, error } = await query;
 
       if (error) throw error;
+      // Always set products state, even if empty
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setProducts([]); // Clear products on error
       toast({
         title: "Error loading products",
         description: "Failed to load products. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      if (categoryId) {
+        setCategoryLoading(false);
+      }
     }
   };
 
   const fetchAllProducts = async () => {
-    await fetchProducts();
+    setLoading(true);
+    try {
+      await fetchProducts();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchProductsByCategory = async (categoryId: string) => {
-    await fetchProducts(categoryId);
+    setCategoryLoading(true);
+    try {
+      await fetchProducts(categoryId);
+    } finally {
+      setCategoryLoading(false);
+    }
   };
 
   const searchProducts = async (query: string) => {
+    setSearchLoading(true);
     try {
       const { data, error } = await supabase
         .from('products')
@@ -101,11 +125,14 @@ export const useProducts = () => {
       setProducts(data || []);
     } catch (error) {
       console.error('Error searching products:', error);
+      setProducts([]); // Clear products on error
       toast({
         title: "Search error",
         description: "Failed to search products. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -144,6 +171,8 @@ export const useProducts = () => {
     products,
     categories,
     loading,
+    searchLoading,
+    categoryLoading,
     fetchAllProducts,
     fetchProductsByCategory,
     searchProducts,

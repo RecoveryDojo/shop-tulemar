@@ -94,7 +94,7 @@ export function ShopNavigation() {
           </DropdownMenuTrigger>
           <DropdownMenuContent 
             align="end" 
-            className="w-56 bg-background border border-border shadow-lg z-50"
+            className="w-56 bg-background border border-border shadow-lg z-[9999]"
             sideOffset={5}
           >
             {navigationItems.map((item, index) => (

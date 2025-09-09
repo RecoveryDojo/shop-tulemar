@@ -207,10 +207,10 @@ export default function ShopHowItWorks() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="secondary" size="lg" asChild>
-              <Link to="/shop/categories">Browse Categories</Link>
+              <Link to="/categories">Browse Categories</Link>
             </Button>
             <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
-              <Link to="/shop/order">Place Order</Link>
+              <Link to="/order">Place Order</Link>
             </Button>
           </div>
         </div>

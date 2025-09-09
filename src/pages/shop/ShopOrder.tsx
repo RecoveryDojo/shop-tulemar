@@ -171,7 +171,7 @@ export default function ShopOrder() {
                   />
                 </div>
 
-                <Button variant="hero" size="lg" className="w-full">
+                <Button className="w-full bg-gradient-tropical hover:opacity-90 text-white" size="lg">
                   Submit Grocery Order
                 </Button>
               </CardContent>
@@ -255,7 +255,7 @@ export default function ShopOrder() {
               </CardHeader>
               <CardContent>
                 <Button variant="secondary" size="sm" className="w-full" asChild>
-                  <Link to="/order">Contact Support</Link>
+                  <a href="mailto:support@tulemar-shop.com">Contact Support</a>
                 </Button>
               </CardContent>
             </Card>

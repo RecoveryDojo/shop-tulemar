@@ -12,23 +12,15 @@ import { useCart } from '@/contexts/CartContext';
 
 export default function ShopSearch() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const { searchProducts, categories } = useProducts();
+  const { searchProducts, categories, products, searchLoading } = useProducts();
   const { itemCount } = useCart();
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
     
-    setLoading(true);
     setHasSearched(true);
-    try {
-      await searchProducts(searchQuery);
-      // The search results will be set in the products state by the hook
-    } finally {
-      setLoading(false);
-    }
+    await searchProducts(searchQuery);
   }, [searchQuery, searchProducts]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -63,10 +55,10 @@ export default function ShopSearch() {
             </div>
             <Button 
               onClick={handleSearch}
-              disabled={!searchQuery.trim() || loading}
+              disabled={!searchQuery.trim() || searchLoading}
               className="bg-gradient-tropical hover:opacity-90 text-white px-8"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
 
@@ -91,17 +83,17 @@ export default function ShopSearch() {
           {/* Search Results */}
           {hasSearched && (
             <div>
-              {loading ? (
+              {searchLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : searchResults.length > 0 ? (
+              ) : products.length > 0 ? (
                 <div>
                   <h3 className="text-xl font-semibold text-foreground mb-6">
-                    Search Results for "{searchQuery}"
+                    Search Results for "{searchQuery}" ({products.length} found)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {searchResults.map((product) => (
+                    {products.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
                   </div>
@@ -135,10 +127,10 @@ export default function ShopSearch() {
                       key={term}
                       variant="outline"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         setSearchQuery(term);
-                        // Auto-search when clicking popular terms
-                        setTimeout(() => handleSearch(), 100);
+                        setHasSearched(true);
+                        await searchProducts(term);
                       }}
                       className="text-sm"
                     >

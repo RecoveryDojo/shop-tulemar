@@ -7,13 +7,37 @@ import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Link } from 'react-router-dom';
 
+import { formatCurrency, getDeliveryFee, TAX_RATE } from '@/lib/currency';
+
+// Function to get appropriate product image based on category
+const getProductImage = (product: { image_url?: string; category_id: string }): string => {
+  // If product has an image URL, use it
+  if (product.image_url && product.image_url.trim() !== '') {
+    return product.image_url;
+  }
+  
+  // Fallback to category-based default images
+  const categoryImages: Record<string, string> = {
+    'fresh-produce': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop',
+    'coffee-beverages': 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop',
+    'fresh-seafood': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop',
+    'meat-poultry': 'https://images.unsplash.com/photo-1588347818481-ca5ad9039cea?w=400&h=400&fit=crop',
+    'bakery-grains': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=400&fit=crop',
+    'wines-spirits': 'https://images.unsplash.com/photo-1559181567-c3190ca9959b?w=400&h=400&fit=crop',
+    'baby-family': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop',
+    'organic-health': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop',
+    'dairy-eggs': 'https://images.unsplash.com/photo-1569288052389-dac9b01ac467?w=400&h=400&fit=crop',
+  };
+  
+  return categoryImages[product.category_id] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
+};
+
 export default function ShopCart() {
   const { items, total, updateQuantity, removeFromCart, clearCart } = useCart();
 
-  const deliveryFee = 5.00;
-  const taxRate = 0.13; // Costa Rica IVA
   const subtotal = total;
-  const tax = subtotal * taxRate;
+  const deliveryFee = getDeliveryFee(subtotal);
+  const tax = subtotal * TAX_RATE;
   const finalTotal = subtotal + tax + deliveryFee;
 
   if (items.length === 0) {
@@ -62,9 +86,13 @@ export default function ShopCart() {
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                          <img
-                           src={item.image_url || '/placeholder.svg'}
+                           src={getProductImage(item)}
                            alt={item.name}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
+                          }}
                         />
                       </div>
                       
@@ -87,7 +115,7 @@ export default function ShopCart() {
                       
                       <div className="flex flex-col items-end gap-3 flex-shrink-0">
                         <span className="text-lg font-bold text-primary">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.price * item.quantity)}
                         </span>
                         
                         <div className="flex items-center gap-2">
@@ -138,26 +166,28 @@ export default function ShopCart() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground">${subtotal.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Delivery Fee</span>
-                  <span className="text-foreground">${deliveryFee.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax (IVA 13%)</span>
-                  <span className="text-foreground">${tax.toFixed(2)}</span>
-                </div>
-                
-                <Separator />
-                
-                <div className="flex justify-between text-lg font-bold">
-                  <span className="text-foreground">Total</span>
-                  <span className="text-primary">${finalTotal.toFixed(2)}</span>
-                </div>
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-foreground">{formatCurrency(subtotal)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {deliveryFee === 0 ? 'Delivery Fee (FREE!)' : 'Delivery Fee'}
+                    </span>
+                    <span className="text-foreground">{formatCurrency(deliveryFee)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax (IVA 13%)</span>
+                    <span className="text-foreground">{formatCurrency(tax)}</span>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex justify-between text-lg font-bold">
+                    <span className="text-foreground">Total</span>
+                    <span className="text-primary">{formatCurrency(finalTotal)}</span>
+                  </div>
                 
                 <div className="space-y-3 pt-4">
                   <Link to="/checkout" className="block">
@@ -173,11 +203,11 @@ export default function ShopCart() {
                   </Link>
                 </div>
                 
-                <div className="text-xs text-muted-foreground mt-4">
-                  <p>• Free delivery on orders over $50</p>
-                  <p>• Delivery within 2-4 hours to your vacation rental</p>
-                  <p>• All prices in USD</p>
-                </div>
+                  <div className="text-xs text-muted-foreground mt-4">
+                    <p>• {deliveryFee === 0 ? 'Free delivery applied!' : 'Free delivery on orders over $50'}</p>
+                    <p>• Delivery within 2-4 hours to your vacation rental</p>
+                    <p>• All prices in USD</p>
+                  </div>
               </CardContent>
             </Card>
           </div>
