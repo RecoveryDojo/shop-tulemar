@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   ShoppingCart, 
   MapPin, 
@@ -32,7 +33,12 @@ import {
   Truck,
   Phone,
   Upload,
-  Package
+  Package,
+  Info,
+  ChevronRight,
+  CheckCircle,
+  PlayCircle,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/currency';
@@ -83,6 +89,7 @@ export function EnhancedShopperDashboard() {
   const [activeOrder, setActiveOrder] = useState<ShoppingOrder | null>(null);
   const [availableOrders, setAvailableOrders] = useState<ShoppingOrder[]>([]);
   const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
   const [shopperStats, setShopperStats] = useState<ShopperStats>({
     daily_earnings: 0,
     weekly_earnings: 0,
@@ -259,6 +266,80 @@ export function EnhancedShopperDashboard() {
   const allItemsFound = activeOrder && activeOrder.items.every(item => item.found_status === 'found');
 
   const categories = ['all', 'Produce', 'Dairy', 'Meat', 'Bakery', 'Frozen', 'Pantry'];
+
+  // Step-by-step protocols
+  const getShoppingSteps = () => [
+    {
+      id: 1,
+      title: "Review Order Details",
+      description: "Check special instructions, delivery address, and customer preferences",
+      completed: activeOrder !== null,
+      action: "Order accepted"
+    },
+    {
+      id: 2,
+      title: "Navigate to Store",
+      description: "Use GPS navigation to reach the store efficiently",
+      completed: activeOrder !== null,
+      action: "Arrive at store"
+    },
+    {
+      id: 3,
+      title: "Shop Items",
+      description: `Find all ${totalItems} items on the shopping list`,
+      completed: allItemsFound,
+      action: `${completedItems}/${totalItems} items found`
+    },
+    {
+      id: 4,
+      title: "Complete Shopping",
+      description: "Review cart, process payment, and prepare for delivery",
+      completed: allItemsFound,
+      action: allItemsFound ? "Ready for delivery" : "Continue shopping"
+    }
+  ];
+
+  const getDeliverySteps = () => [
+    {
+      id: 1,
+      title: "Load Vehicle",
+      description: "Organize items by temperature requirements (frozen, refrigerated, pantry)",
+      completed: false,
+      action: "Check insulated bags"
+    },
+    {
+      id: 2,
+      title: "Navigate to Customer",
+      description: "Use GPS to reach delivery address, review delivery instructions",
+      completed: false,
+      action: "Start navigation"
+    },
+    {
+      id: 3,
+      title: "Contact Customer",
+      description: "Call/text customer when arriving to coordinate delivery",
+      completed: false,
+      action: "Call customer"
+    },
+    {
+      id: 4,
+      title: "Complete Delivery",
+      description: "Deliver items, take photo proof, collect feedback",
+      completed: false,
+      action: "Take delivery photo"
+    }
+  ];
+
+  const getCurrentProtocol = () => {
+    if (!activeOrder) return "Select an available order to begin";
+    if (activeOrder.workflow_phase === 'shopping') {
+      if (!allItemsFound) return "Continue finding items on your shopping list";
+      return "All items found! Ready to start delivery";
+    }
+    if (activeOrder.workflow_phase === 'ready_for_delivery') return "Load vehicle and start delivery";
+    if (activeOrder.workflow_phase === 'in_transit') return "Navigate to customer and complete delivery";
+    return "Order completed successfully";
+  };
   
   const filteredItems = activeOrder?.items.filter(item => {
     const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -319,6 +400,25 @@ export function EnhancedShopperDashboard() {
         </Card>
       </div>
 
+      {/* Live Protocol Guide */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-blue-50">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
+              <div>
+                <p className="font-semibold text-primary">Current Protocol</p>
+                <p className="text-sm text-muted-foreground">{getCurrentProtocol()}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="hover-scale">
+              <Info className="h-4 w-4 mr-2" />
+              Guide
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="shopping">Shopping</TabsTrigger>
@@ -332,6 +432,49 @@ export function EnhancedShopperDashboard() {
         <TabsContent value="shopping" className="space-y-6">
           {activeOrder ? (
             <>
+              {/* Shopping Process Steps */}
+              <Card className="border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <PlayCircle className="h-5 w-5 text-blue-600" />
+                    <span>Shopping Protocol</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {getShoppingSteps().map((step, index) => (
+                      <div key={step.id} className="flex items-center space-x-4">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+                          step.completed 
+                            ? 'bg-green-500 border-green-500 text-white' 
+                            : index === currentStep 
+                            ? 'border-blue-500 bg-blue-50 text-blue-600'
+                            : 'border-gray-300 text-gray-400'
+                        }`}>
+                          {step.completed ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            step.id
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-medium ${step.completed ? 'text-green-600' : 'text-gray-900'}`}>
+                            {step.title}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{step.description}</p>
+                        </div>
+                        <Badge variant={step.completed ? "default" : "outline"} className="animate-fade-in">
+                          {step.action}
+                        </Badge>
+                        {!step.completed && index === currentStep && (
+                          <ArrowRight className="h-4 w-4 text-blue-500 animate-pulse" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Order Header */}
               <Card>
                 <CardHeader>
@@ -574,6 +717,44 @@ export function EnhancedShopperDashboard() {
 
         {/* Delivery Tab */}
         <TabsContent value="delivery" className="space-y-6">
+          {/* Delivery Process Steps */}
+          <Card className="border-orange-200">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Truck className="h-5 w-5 text-orange-600" />
+                <span>Delivery Protocol</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {getDeliverySteps().map((step, index) => (
+                  <div key={step.id} className="flex items-center space-x-4">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+                      step.completed 
+                        ? 'bg-green-500 border-green-500 text-white' 
+                        : 'border-orange-300 bg-orange-50 text-orange-600'
+                    }`}>
+                      {step.completed ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        step.id
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${step.completed ? 'text-green-600' : 'text-gray-900'}`}>
+                        {step.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                    </div>
+                    <Badge variant={step.completed ? "default" : "outline"} className="animate-fade-in">
+                      {step.action}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Delivery Queue</h3>
             <Badge variant="outline">

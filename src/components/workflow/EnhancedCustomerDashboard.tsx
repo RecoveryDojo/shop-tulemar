@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Package, 
   MapPin, 
@@ -30,7 +31,13 @@ import {
   ThumbsDown,
   ShoppingCart,
   User,
-  Home
+  Home,
+  Info,
+  PlayCircle,
+  ArrowRight,
+  CheckCircle,
+  Eye,
+  ChevronRight
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 
@@ -253,8 +260,85 @@ export function EnhancedCustomerDashboard() {
     }
   };
 
+  // Customer guidance based on order status
+  const getCustomerProtocol = () => {
+    switch (order.status) {
+      case 'confirmed':
+        return "Your order is confirmed! Your shopper will start shopping soon. You can track progress here.";
+      case 'shopping':
+        return "Your shopper is finding your items. Watch for substitution requests and photos of items.";
+      case 'checked_out':
+        return "Shopping complete! Your order is being prepared for delivery.";
+      case 'out_for_delivery':
+        return "Your order is on the way! Track your driver and prepare to receive your delivery.";
+      case 'delivered':
+        return "Order delivered! Please rate your experience and leave feedback.";
+      default:
+        return "Track your order status and communicate with your shopper.";
+    }
+  };
+
+  const getNextSteps = () => {
+    switch (order.status) {
+      case 'confirmed':
+        return ["Shopper will start shopping within 15 minutes", "You'll receive photos of items", "Watch for substitution requests"];
+      case 'shopping':
+        return ["Respond to substitution requests quickly", "Track shopping progress", "Prepare delivery area"];
+      case 'checked_out':
+        return ["Driver is loading your order", "Ensure delivery address is accessible", "Have phone ready for delivery updates"];
+      case 'out_for_delivery':
+        return ["Driver is en route to you", "Be available for delivery", "Check delivery instructions"];
+      case 'delivered':
+        return ["Rate your shopper and driver", "Review substitutions", "Schedule your next order"];
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
+      {/* Customer Guidance Protocol */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-blue-50">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-3 w-3 rounded-full bg-blue-500 animate-pulse"></div>
+              <div>
+                <p className="font-semibold text-primary">What to Expect</p>
+                <p className="text-sm text-muted-foreground">{getCustomerProtocol()}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="hover-scale">
+              <Info className="h-4 w-4 mr-2" />
+              Guide
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Next Steps Card */}
+      <Card className="border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <PlayCircle className="h-5 w-5 text-green-600" />
+            <span>Your Next Steps</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {getNextSteps().map((step, index) => (
+              <div key={index} className="flex items-center space-x-3 animate-fade-in">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-600 text-sm font-medium">
+                  {index + 1}
+                </div>
+                <p className="text-sm">{step}</p>
+                <ChevronRight className="h-4 w-4 text-green-500 ml-auto" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Order Status Header */}
       <Card>
         <CardContent className="p-6">
@@ -262,7 +346,7 @@ export function EnhancedCustomerDashboard() {
             <div>
               <h1 className="text-2xl font-bold mb-2">Order #{order.order_number}</h1>
               <div className="flex items-center space-x-3">
-                <Badge className={`${getStatusColor(order.status)} text-white`}>
+                <Badge className={`${getStatusColor(order.status)} text-white animate-pulse`}>
                   {getStatusText(order.status)}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
