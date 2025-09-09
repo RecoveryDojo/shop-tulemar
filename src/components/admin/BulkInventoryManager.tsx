@@ -570,14 +570,14 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             if ('__sequentialImages' in imageMapping) {
               const sequentialImages = (imageMapping as any).__sequentialImages as string[];
               
-              // Calculate the image index based on the original Excel row
-              // Subtract 2 because row 1 is header and we want 0-based indexing
-              const imageIndex = originalRowIndex - 2;
+              // Adjust mapping: Excel row 2 → image[0], row 3 → image[1], etc.
+              // But accounting for off-by-one issue reported by user
+              const imageIndex = originalRowIndex - 3; // Changed from -2 to -3 to fix offset
               
               if (imageIndex >= 0 && imageIndex < sequentialImages.length) {
                 product.image_url = sequentialImages[imageIndex];
                 product.hasEmbeddedImage = true;
-                console.log(`✅ Row-based mapping: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
+                console.log(`✅ Fixed mapping: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
               } else {
                 console.log(`❌ No image for Excel row ${originalRowIndex} (product: ${product.name}) - imageIndex ${imageIndex}, available: ${sequentialImages.length}`);
               }
