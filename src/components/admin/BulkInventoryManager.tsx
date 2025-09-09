@@ -460,9 +460,9 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
           excelRow = drawingRelationships[imageNumber];
           console.log(`📍 PRECISE MAPPING: Image ${imageNumber} → Excel row ${excelRow} (from drawing XML)`);
         } else {
-          // Fallback: Sequential mapping starting from row 2 (assuming row 1 is header)
-          excelRow = i + 2;
-          console.log(`📍 SEQUENTIAL MAPPING: Image ${imageNumber} → Excel row ${excelRow} (fallback)`);
+          // Fallback: Sequential mapping starting from row 3 (row 1 is header, row 2 might be empty/header)
+          excelRow = i + 3;
+          console.log(`📍 SEQUENTIAL MAPPING: Image ${imageNumber} → Excel row ${excelRow} (fallback - first product at row 3)`);
         }
         
         try {
