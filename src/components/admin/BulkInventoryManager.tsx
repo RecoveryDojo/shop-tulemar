@@ -664,12 +664,12 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             else if ('__sequentialImages' in extractedImageMapping) {
               console.log(`⚠️ FALLBACK: Using legacy sequential mapping for row ${originalRowIndex}`);
               const sequentialImages = (extractedImageMapping as any).__sequentialImages as string[];
-              const imageIndex = originalRowIndex - 2; // Legacy offset
+              const imageIndex = originalRowIndex - 3; // Fixed offset: row 3 is first product, image 0
               
               if (imageIndex >= 0 && imageIndex < sequentialImages.length) {
                 product.image_url = sequentialImages[imageIndex];
                 product.hasEmbeddedImage = true;
-                console.log(`📦 LEGACY: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
+                console.log(`📦 LEGACY: Excel row ${originalRowIndex} → image ${imageIndex + 1} (offset -3) → ${sequentialImages[imageIndex].split('/').pop()}`);
               }
             }
             
