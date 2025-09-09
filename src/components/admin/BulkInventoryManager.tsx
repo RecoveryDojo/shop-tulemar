@@ -561,19 +561,25 @@ console.log('Filtered data:', filteredData.length, 'product rows');
 
           const parsedProducts = filteredData.map((row, index) => {
             const originalRowIndex = (row.__rowNum__ || (index + 2));
-            console.log(`🔍 Processing product ${index + 1}/${filteredData.length}: ${row.col_0 || 'unnamed'}`);
+            console.log(`🔍 Processing product ${index + 1}/${filteredData.length}: ${row.col_0 || 'unnamed'} (Excel row ${originalRowIndex})`);
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Use sequential mapping: image 0 → product 0, image 1 → product 1, etc.
+            // Fixed image mapping: Use Excel row number to align with extracted images
+            // Since images are extracted sequentially from Excel, we need to map by original row position
             if ('__sequentialImages' in imageMapping) {
               const sequentialImages = (imageMapping as any).__sequentialImages as string[];
-              if (index < sequentialImages.length) {
-                product.image_url = sequentialImages[index];
+              
+              // Calculate the image index based on the original Excel row
+              // Subtract 2 because row 1 is header and we want 0-based indexing
+              const imageIndex = originalRowIndex - 2;
+              
+              if (imageIndex >= 0 && imageIndex < sequentialImages.length) {
+                product.image_url = sequentialImages[imageIndex];
                 product.hasEmbeddedImage = true;
-                console.log(`✅ Sequential mapping ${index + 1}: ${product.name} → ${sequentialImages[index].split('/').pop()}`);
+                console.log(`✅ Row-based mapping: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
               } else {
-                console.log(`❌ No image for product ${index + 1} (${product.name}) - only ${sequentialImages.length} images available`);
+                console.log(`❌ No image for Excel row ${originalRowIndex} (product: ${product.name}) - imageIndex ${imageIndex}, available: ${sequentialImages.length}`);
               }
             }
             
