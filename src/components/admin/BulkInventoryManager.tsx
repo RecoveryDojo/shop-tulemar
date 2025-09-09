@@ -1204,18 +1204,33 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             </div>
 
             {excelData.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <span className="text-sm text-muted-foreground">
-                  {excelData.length} products loaded from {fileName}
-                </span>
-                <Button 
-                  onClick={clearExcelData}
-                  variant="outline"
-                  size="sm"
-                  className="ml-auto"
-                >
-                  Clear Data
-                </Button>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-green-800 font-medium">
+                    ✅ {excelData.length} products loaded from {fileName}
+                  </span>
+                  <Button 
+                    onClick={clearExcelData}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear Data
+                  </Button>
+                </div>
+                
+                {/* MAIN ACTION BUTTON */}
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={markAllAsValid}
+                    variant="default"
+                    size="lg"
+                    className="flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 text-lg"
+                    disabled={isPublishing}
+                  >
+                    <Check className="h-6 w-6" />
+                    {isPublishing ? 'Publishing...' : 'VALIDATE & PUBLISH ALL PRODUCTS'}
+                  </Button>
+                </div>
               </div>
             )}
 
