@@ -105,6 +105,37 @@ const BulkInventoryManager = () => {
     let validCount = 0;
     let errorCount = 0;
 
+    // Create a mapping for common category hints to actual category IDs
+    const categoryMap = {
+      'breads': 'bakery-grains',
+      'bread': 'bakery-grains', 
+      'bakery': 'bakery-grains',
+      'grains': 'bakery-grains',
+      'dairy': 'dairy-eggs',
+      'dairy & eggs': 'dairy-eggs',
+      'dairy and eggs': 'dairy-eggs',
+      'eggs': 'dairy-eggs',
+      'produce': 'fresh-produce',
+      'fresh produce': 'fresh-produce',
+      'fruits': 'fresh-produce',
+      'vegetables': 'fresh-produce',
+      'meat': 'meat-poultry',
+      'poultry': 'meat-poultry',
+      'meat & poultry': 'meat-poultry',
+      'seafood': 'fresh-seafood',
+      'fish': 'fresh-seafood',
+      'beverages': 'coffee-beverages',
+      'coffee': 'coffee-beverages',
+      'drinks': 'coffee-beverages',
+      'organic': 'organic-health',
+      'health': 'organic-health',
+      'baby': 'baby-family',
+      'family': 'baby-family',
+      'wines': 'wines-spirits',
+      'spirits': 'wines-spirits',
+      'alcohol': 'wines-spirits'
+    };
+
     const updatedProducts = excelData.map(product => {
       console.log(`🔄 Processing product: ${product.name}, category_hint: ${product.category_hint}, current category_id: ${product.category_id}`);
       const errors: string[] = [];
@@ -112,30 +143,28 @@ const BulkInventoryManager = () => {
       // Auto-assign category based on category_hint if not already set
       let categoryId = product.category_id;
       if (!categoryId && product.category_hint && categories.length > 0) {
-        // Try exact match first
-        let matchingCategory = categories.find(cat => 
-          cat.name.toLowerCase() === product.category_hint.toLowerCase()
-        );
+        const hint = product.category_hint.toLowerCase().trim();
         
-        // If no exact match, try partial matching
-        if (!matchingCategory) {
-          matchingCategory = categories.find(cat => 
-            cat.name.toLowerCase().includes(product.category_hint.toLowerCase()) ||
-            product.category_hint.toLowerCase().includes(cat.name.toLowerCase())
-          );
-        }
-        
-        // If still no match, just use the first available category as fallback
-        if (!matchingCategory && categories.length > 0) {
-          matchingCategory = categories[0];
-          console.log(`🔄 Using fallback category: ${matchingCategory.name} for ${product.category_hint}`);
-        }
-        
-        if (matchingCategory) {
-          categoryId = matchingCategory.id;
-          console.log(`✅ Matched category: ${product.category_hint} -> ${matchingCategory.name} (${categoryId})`);
+        // Try direct mapping first
+        if (categoryMap[hint]) {
+          categoryId = categoryMap[hint];
+          console.log(`✅ Direct mapping: ${product.category_hint} -> ${categoryId}`);
         } else {
-          console.log(`❌ No category match found for: ${product.category_hint}`);
+          // Try partial matching as fallback
+          const matchingCategory = categories.find(cat => 
+            cat.name.toLowerCase().includes(hint) ||
+            hint.includes(cat.name.toLowerCase()) ||
+            cat.name.toLowerCase() === hint
+          );
+          
+          if (matchingCategory) {
+            categoryId = matchingCategory.id;
+            console.log(`✅ Partial match: ${product.category_hint} -> ${matchingCategory.name} (${categoryId})`);
+          } else {
+            // Last resort: use first available category
+            categoryId = categories[0].id;
+            console.log(`🔄 Using fallback category: ${categories[0].name} for ${product.category_hint}`);
+          }
         }
       }
       
