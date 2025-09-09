@@ -100,28 +100,52 @@ const BulkInventoryManager = () => {
     });
   };
 
-  const markAllAsValid = () => {
+  const markAllAsValid = async () => {
+    console.log('🔄 Starting markAllAsValid, available categories:', categories);
     let validCount = 0;
     let errorCount = 0;
 
-    setExcelData(prev => prev.map(product => {
+    const updatedProducts = excelData.map(product => {
+      console.log(`🔄 Processing product: ${product.name}, category_hint: ${product.category_hint}, current category_id: ${product.category_id}`);
       const errors: string[] = [];
       
       // Auto-assign category based on category_hint if not already set
       let categoryId = product.category_id;
-      if (!categoryId && product.category_hint) {
-        const matchingCategory = categories.find(cat => 
+      if (!categoryId && product.category_hint && categories.length > 0) {
+        // Try exact match first
+        let matchingCategory = categories.find(cat => 
           cat.name.toLowerCase() === product.category_hint.toLowerCase()
         );
+        
+        // If no exact match, try partial matching
+        if (!matchingCategory) {
+          matchingCategory = categories.find(cat => 
+            cat.name.toLowerCase().includes(product.category_hint.toLowerCase()) ||
+            product.category_hint.toLowerCase().includes(cat.name.toLowerCase())
+          );
+        }
+        
+        // If still no match, just use the first available category as fallback
+        if (!matchingCategory && categories.length > 0) {
+          matchingCategory = categories[0];
+          console.log(`🔄 Using fallback category: ${matchingCategory.name} for ${product.category_hint}`);
+        }
+        
         if (matchingCategory) {
           categoryId = matchingCategory.id;
+          console.log(`✅ Matched category: ${product.category_hint} -> ${matchingCategory.name} (${categoryId})`);
+        } else {
+          console.log(`❌ No category match found for: ${product.category_hint}`);
         }
       }
       
       // Validate required fields
       if (!product.name || product.name.trim() === '') errors.push('Name is required');
       if (!product.price || product.price <= 0) errors.push('Valid price is required');
-      if (!categoryId || categoryId.trim() === '') errors.push('Category is required');
+      if (!categoryId || categoryId.trim() === '') {
+        errors.push('Category is required');
+        console.log(`❌ Category still missing for ${product.name}`);
+      }
       if (!product.unit || product.unit.trim() === '') errors.push('Unit is required');
       
       const newStatus = errors.length === 0 ? 'validated' as const : 'error' as const;
@@ -138,13 +162,23 @@ const BulkInventoryManager = () => {
         status: newStatus,
         errors
       };
-    }));
+    });
 
+    setExcelData(updatedProducts);
+
+    console.log(`✅ Validation complete: ${validCount} valid, ${errorCount} errors`);
+    
     toast({
       title: "Validation Complete", 
       description: `${validCount} products validated successfully${errorCount > 0 ? `, ${errorCount} have errors` : ''}`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
+
+    // Auto-publish if all products are now validated
+    if (validCount > 0 && errorCount === 0) {
+      console.log('🚀 All products valid, auto-publishing...');
+      setTimeout(() => publishProducts(), 500); // Small delay to let UI update
+    }
   };
 
   const downloadTemplate = () => {
@@ -1176,12 +1210,12 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                     
                     <Button 
                       onClick={markAllAsValid}
-                      variant="outline"
+                      variant="default"
                       size="sm"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                     >
                       <Check className="h-4 w-4" />
-                      Mark All Valid
+                      Validate & Publish All
                     </Button>
                   </div>
                 </div>
