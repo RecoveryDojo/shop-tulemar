@@ -50,6 +50,7 @@ const BulkInventoryManager = () => {
   const [importJobId, setImportJobId] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState(500); // CRC to USD default rate
   const [selectedCategoryForAll, setSelectedCategoryForAll] = useState<string>('');
+  const [imageMapping, setImageMapping] = useState<any>(null); // Store image mapping data
   const { categories, refetch } = useProducts();
 
   // Debug effect to track excelData changes
@@ -66,6 +67,7 @@ const BulkInventoryManager = () => {
     setFileName('');
     setImportJobId(null);
     setSelectedCategoryForAll('');
+    setImageMapping(null); // Clear image mapping when clearing data
     console.log('🗑️ Cleared Excel data and reset state for new upload');
     toast({
       title: "Data Cleared",
@@ -393,18 +395,44 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
     };
 };
 
-  const extractEmbeddedImages = async (file: File): Promise<{ __sequentialImages: string[] }> => {
-    // Simple sequential image extraction: first image goes to first product, etc.
+  const extractEmbeddedImages = async (file: File): Promise<{ __imageRowMapping: any[], __debugInfo: any }> => {
+    // STEP 1: Establish Ground Truth - Comprehensive image-to-row mapping
     try {
       const arrayBuffer = await file.arrayBuffer();
       const zip = new JSZip();
       await zip.loadAsync(arrayBuffer);
 
-      // Extract all images from Excel media folder sequentially
+      // STEP 2: Create Robust Mapping Logic - Get Excel drawing relationships
       const mediaFolder = zip.folder('xl/media');
+      const drawingsFolder = zip.folder('xl/drawings');
+      
       if (!mediaFolder) {
-        console.log('No media folder found in Excel file');
-        return { __sequentialImages: [] };
+        console.log('🔍 DEBUG: No media folder found in Excel file');
+        return { __imageRowMapping: [], __debugInfo: { totalImages: 0, mappingMethod: 'none' } };
+      }
+
+      // Parse drawing relationships to get precise row positions
+      let drawingRelationships = {};
+      if (drawingsFolder) {
+        try {
+          const drawingFiles = Object.keys(drawingsFolder.files).filter(name => name.endsWith('.xml'));
+          for (const drawingFile of drawingFiles) {
+            const drawingXml = await drawingsFolder.files[drawingFile].async('text');
+            // Parse XML to extract image positions and row relationships
+            const rowMatches = drawingXml.match(/row="(\d+)"/g) || [];
+            const imageMatches = drawingXml.match(/r:embed="rId(\d+)"/g) || [];
+            
+            rowMatches.forEach((rowMatch, index) => {
+              const row = parseInt(rowMatch.match(/row="(\d+)"/)?.[1] || '0') + 1; // Convert to 1-based
+              const imageId = imageMatches[index]?.match(/r:embed="rId(\d+)"/)?.[1];
+              if (imageId) {
+                drawingRelationships[imageId] = row;
+              }
+            });
+          }
+        } catch (error) {
+          console.log('⚠️ Could not parse drawing relationships, falling back to sequential mapping');
+        }
       }
 
       const imageFiles = Object.keys(mediaFolder.files)
@@ -415,13 +443,27 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
           const numB = parseInt(b.match(/image(\d+)/)?.[1] || '0');
           return numA - numB;
         });
-      console.log(`🔄 Extracting ${imageFiles.length} images sequentially (sorted by filename number):`, imageFiles.map(f => f.split('/').pop()));
       
-      const sequentialImages = [];
+      console.log(`🔍 GROUND TRUTH: Found ${imageFiles.length} images in Excel:`, imageFiles.map(f => f.split('/').pop()));
+      console.log(`🔍 DRAWING RELATIONSHIPS:`, drawingRelationships);
+      
+      const imageRowMapping = [];
       
       for (let i = 0; i < imageFiles.length; i++) {
         const fileName = imageFiles[i];
-        console.log(`📸 Processing image ${i + 1}/${imageFiles.length}: ${fileName}`);
+        const imageNumber = parseInt(fileName.match(/image(\d+)/)?.[1] || '0');
+        
+        // STEP 3: Handle Edge Cases - Determine Excel row for this image
+        let excelRow;
+        if (Object.keys(drawingRelationships).length > 0 && drawingRelationships[imageNumber]) {
+          // Use drawing relationship if available
+          excelRow = drawingRelationships[imageNumber];
+          console.log(`📍 PRECISE MAPPING: Image ${imageNumber} → Excel row ${excelRow} (from drawing XML)`);
+        } else {
+          // Fallback: Sequential mapping starting from row 2 (assuming row 1 is header)
+          excelRow = i + 2;
+          console.log(`📍 SEQUENTIAL MAPPING: Image ${imageNumber} → Excel row ${excelRow} (fallback)`);
+        }
         
         try {
           const imageFile = mediaFolder.files[fileName];
@@ -443,19 +485,39 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
             .from('product-images')
             .getPublicUrl(uploadName);
 
-          sequentialImages.push(publicUrl);
-          console.log(`✅ Uploaded image ${i + 1}: ${publicUrl.split('/').pop()}`);
+          // STEP 2 CONTINUED: Store the mapping with Excel row number
+          imageRowMapping.push({
+            excelRow: excelRow,
+            imageUrl: publicUrl,
+            fileName: fileName.split('/').pop(),
+            imageIndex: i,
+            mappingMethod: Object.keys(drawingRelationships).length > 0 ? 'drawing-xml' : 'sequential'
+          });
+          
+          console.log(`✅ MAPPED: Image ${i + 1} → Excel row ${excelRow} → ${publicUrl.split('/').pop()}`);
         } catch (error) {
           console.error(`❌ Error processing image ${i + 1}:`, error);
         }
       }
       
-      console.log(`🎯 Successfully extracted ${sequentialImages.length} images in sequence`);
-      return { __sequentialImages: sequentialImages };
-
+      // STEP 4: Add Debugging Tools - Comprehensive mapping report
+      console.log(`🗺️ FINAL IMAGE MAPPING TABLE:`);
+      imageRowMapping.forEach(mapping => {
+        console.log(`  Excel Row ${mapping.excelRow} → ${mapping.fileName} (${mapping.mappingMethod})`);
+      });
+      
+      const debugInfo = {
+        totalImages: imageRowMapping.length,
+        mappingMethod: Object.keys(drawingRelationships).length > 0 ? 'drawing-xml' : 'sequential',
+        drawingRelationships: drawingRelationships,
+        imageRowMapping: imageRowMapping
+      };
+      
+      console.log(`✅ EXTRACTION COMPLETE: ${imageRowMapping.length} images mapped with ${debugInfo.mappingMethod} method`);
+      return { __imageRowMapping: imageRowMapping, __debugInfo: debugInfo };
     } catch (error) {
-      console.error('Error extracting embedded images:', error);
-      return { __sequentialImages: [] };
+      console.error('❌ Error extracting embedded images:', error);
+      return { __imageRowMapping: [], __debugInfo: { totalImages: 0, mappingMethod: 'error', error: error.message } };
     }
   };
 
@@ -488,8 +550,11 @@ const parseColumnAEData = (row: any, index: number, exchangeRate: number): Excel
 
     try {
       // Extract embedded images from Column E and upload them
-      const imageMapping = await extractEmbeddedImages(file);
-      console.log('Extracted embedded images from Column E:', imageMapping);
+      const extractedImageMapping = await extractEmbeddedImages(file);
+      console.log('Extracted embedded images from Column E:', extractedImageMapping);
+      
+      // STEP 5: Store mapping in state for debugging
+      setImageMapping(extractedImageMapping);
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -565,21 +630,46 @@ console.log('Filtered data:', filteredData.length, 'product rows');
             
             const product = parseColumnAEData(row, originalRowIndex, exchangeRate);
             
-            // Fixed image mapping: Use Excel row number to align with extracted images
-            // Since images are extracted sequentially from Excel, we need to map by original row position
-            if ('__sequentialImages' in imageMapping) {
-              const sequentialImages = (imageMapping as any).__sequentialImages as string[];
+            // STEP 5: Lock in the Solution - Use robust row-based mapping
+            // Find the image that corresponds to this Excel row using our mapping table
+            if ('__imageRowMapping' in extractedImageMapping) {
+              const imageRowMapping = (extractedImageMapping as any).__imageRowMapping as any[];
+              const debugInfo = (extractedImageMapping as any).__debugInfo;
               
-              // Adjust mapping: Excel row 2 → image[0], row 3 → image[1], etc.
-              // But accounting for off-by-one issue reported by user
-              const imageIndex = originalRowIndex - 3; // Changed from -2 to -3 to fix offset
+              console.log(`🔍 ROBUST MAPPING: Looking for image for Excel row ${originalRowIndex}`);
+              
+              // Find the exact image for this Excel row
+              const mappedImage = imageRowMapping.find(mapping => mapping.excelRow === originalRowIndex);
+              
+              if (mappedImage) {
+                product.image_url = mappedImage.imageUrl;
+                product.hasEmbeddedImage = true;
+                console.log(`✅ PERFECT MATCH: Excel row ${originalRowIndex} → ${mappedImage.fileName} (${mappedImage.mappingMethod})`);
+              } else {
+                console.log(`❌ NO MAPPING: Excel row ${originalRowIndex} has no corresponding image`);
+                console.log(`📋 AVAILABLE MAPPINGS:`, imageRowMapping.map(m => `Row ${m.excelRow} → ${m.fileName}`));
+              }
+              
+              // STEP 4: Add Debugging Tools - Show mapping validation
+              console.log(`🛠️ MAPPING DEBUG for row ${originalRowIndex}:`, {
+                productName: product.name,
+                foundImage: !!mappedImage,
+                imageName: mappedImage?.fileName || 'none',
+                mappingMethod: debugInfo.mappingMethod,
+                totalMappings: imageRowMapping.length
+              });
+            }
+            
+            // Fallback to old sequential method if new mapping not available
+            else if ('__sequentialImages' in extractedImageMapping) {
+              console.log(`⚠️ FALLBACK: Using legacy sequential mapping for row ${originalRowIndex}`);
+              const sequentialImages = (extractedImageMapping as any).__sequentialImages as string[];
+              const imageIndex = originalRowIndex - 2; // Legacy offset
               
               if (imageIndex >= 0 && imageIndex < sequentialImages.length) {
                 product.image_url = sequentialImages[imageIndex];
                 product.hasEmbeddedImage = true;
-                console.log(`✅ Fixed mapping: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
-              } else {
-                console.log(`❌ No image for Excel row ${originalRowIndex} (product: ${product.name}) - imageIndex ${imageIndex}, available: ${sequentialImages.length}`);
+                console.log(`📦 LEGACY: Excel row ${originalRowIndex} → image ${imageIndex + 1} → ${sequentialImages[imageIndex].split('/').pop()}`);
               }
             }
             
@@ -1014,6 +1104,42 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                     </Button>
                   </div>
                 </div>
+
+                {/* STEP 4: Visual Image Mapping Debug Tool */}
+                {imageMapping && '__imageRowMapping' in imageMapping && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
+                      🗺️ Image Mapping Debug Tool
+                    </h4>
+                    <div className="text-sm text-blue-700 mb-3">
+                      Mapping Method: <span className="font-mono font-bold">{(imageMapping as any).__debugInfo?.mappingMethod}</span> | 
+                      Total Images: <span className="font-mono font-bold">{(imageMapping as any).__debugInfo?.totalImages}</span>
+                    </div>
+                    <div className="grid gap-2 max-h-48 overflow-y-auto">
+                      {((imageMapping as any).__imageRowMapping as any[]).map((mapping, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-white rounded border text-sm">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono bg-blue-100 px-2 py-1 rounded">Row {mapping.excelRow}</span>
+                            <span className="text-gray-600">→</span>
+                            <span className="font-mono">{mapping.fileName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={mapping.mappingMethod === 'drawing-xml' ? 'default' : 'secondary'}>
+                              {mapping.mappingMethod}
+                            </Badge>
+                            {mapping.imageUrl && (
+                              <img 
+                                src={mapping.imageUrl} 
+                                alt={mapping.fileName}
+                                className="w-8 h-8 object-cover rounded border"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* AI Processing Actions */}
                 <div className="flex gap-4 flex-wrap">
