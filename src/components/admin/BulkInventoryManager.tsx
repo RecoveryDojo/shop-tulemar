@@ -27,7 +27,7 @@ interface ExcelProduct {
   image_url?: string;
   stock_quantity?: number;
   rowIndex: number;
-  status: 'pending' | 'validated' | 'error' | 'published' | 'suggested' | 'ready';
+  status: 'pending' | 'validated' | 'error' | 'published' | 'suggested' | 'ready' | 'duplicate';
   errors: string[];
   suggestions?: string[];
   original_data?: any;
@@ -913,95 +913,108 @@ console.log('Filtered data:', filteredData.length, 'product rows');
   };
 
   const publishProducts = async () => {
-    const validProducts = excelData.filter(p => p.status === 'validated' || p.status === 'ready' || p.status === 'suggested');
+    const validProducts = excelData.filter(product => product.status === 'validated');
+    
     if (validProducts.length === 0) {
       toast({
         title: "No Valid Products",
-        description: "Please fix validation errors before publishing.",
+        description: "Please validate some products before publishing",
         variant: "destructive",
       });
       return;
     }
 
     setIsPublishing(true);
-
+    let publishedCount = 0;
+    let skippedCount = 0;
+    
     try {
-      // Check for duplicates before publishing
-      const duplicates = await checkForDuplicateProducts(validProducts);
+      // Check for existing products and handle duplicates
+      const updatedExcelData = [...excelData];
       
-      if (duplicates.length > 0) {
-        toast({
-          title: "Duplicate Products Found",
-          description: `Found ${duplicates.length} potential duplicates. Please review them before publishing.`,
-          variant: "destructive",
-        });
-        setIsPublishing(false);
-        return;
-      }
+      for (let i = 0; i < validProducts.length; i++) {
+        const product = validProducts[i];
+        const productIndex = excelData.findIndex(p => p.rowIndex === product.rowIndex);
+        
+        // Check if product already exists by name
+        const { data: existingProduct, error: checkError } = await supabase
+          .from('products')
+          .select('id, name')
+          .eq('name', product.name)
+          .eq('is_active', true)
+          .maybeSingle();
 
-      let successCount = 0;
-      let errorCount = 0;
+        if (checkError) {
+          console.error('Error checking for duplicate:', checkError);
+        }
 
-      for (const product of validProducts) {
-        try {
-          const { error } = await supabase
+        if (existingProduct) {
+          // Mark as duplicate in our local data
+          updatedExcelData[productIndex] = {
+            ...product,
+            status: 'duplicate' as const,
+            errors: ['Product already exists in catalog']
+          };
+          skippedCount++;
+          console.log(`⏭️ Skipping duplicate product: ${product.name}`);
+        } else {
+          // Try to insert the new product
+          const productData = {
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            category_id: product.category_id,
+            unit: product.unit,
+            origin: product.origin,
+            stock_quantity: product.stock_quantity || 0,
+            image_url: product.image_url,
+            is_active: true,
+            is_test_product: true
+          };
+
+          const { error: insertError } = await supabase
             .from('products')
-            .insert({
-              name: product.name,
-              description: product.description,
-              price: product.price,
-              category_id: product.category_id,
-              unit: product.unit,
-              origin: product.origin || null,
-              image_url: product.image_url || null,
-              stock_quantity: product.stock_quantity,
-              is_active: true,
-              is_test_product: true // Mark as test product initially
-            });
+            .insert([productData]);
 
-          if (error) {
-            // Handle unique constraint violation gracefully
-            if (error.code === '23505') {
-              throw new Error(`Product "${product.name}" already exists in this category`);
-            }
-            throw error;
+          if (insertError) {
+            console.error(`Error inserting ${product.name}:`, insertError);
+            // Mark as error
+            updatedExcelData[productIndex] = {
+              ...product,
+              status: 'error' as const,
+              errors: [insertError.message || 'Failed to insert product']
+            };
+          } else {
+            publishedCount++;
+            console.log(`✅ Published product: ${product.name}`);
+            // Mark as published
+            updatedExcelData[productIndex] = {
+              ...product,
+              status: 'published' as const,
+              errors: []
+            };
           }
-
-          // Update status in UI
-          setExcelData(prev => prev.map(p => 
-            p.rowIndex === product.rowIndex 
-              ? { ...p, status: 'published' as const }
-              : p
-          ));
-          
-          successCount++;
-        } catch (error: any) {
-          // Update status in UI
-          setExcelData(prev => prev.map(p => 
-            p.rowIndex === product.rowIndex 
-              ? { ...p, status: 'error' as const, errors: [...p.errors, error.message] }
-              : p
-          ));
-          
-          errorCount++;
         }
       }
 
+      // Update the Excel data with duplicate/error statuses
+      setExcelData(updatedExcelData);
+
       toast({
         title: "Publishing Complete",
-        description: `${successCount} products published as test products${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
-        variant: errorCount > 0 ? "destructive" : "default",
+        description: `${publishedCount} products published, ${skippedCount} duplicates skipped`,
+        variant: publishedCount > 0 ? "default" : "destructive",
       });
 
-      if (successCount > 0) {
+      if (publishedCount > 0) {
         refetch(); // Refresh product list
       }
-
+      
     } catch (error) {
-      console.error('Error during publishing:', error);
+      console.error('Error publishing products:', error);
       toast({
-        title: "Publishing Failed",
-        description: "An error occurred during publishing. Please try again.",
+        title: "Publishing Error",
+        description: error instanceof Error ? error.message : "Failed to publish products",
         variant: "destructive",
       });
     } finally {
@@ -1083,6 +1096,8 @@ console.log('Filtered data:', filteredData.length, 'product rows');
         return <Badge variant="destructive">Error</Badge>;
       case 'published':
         return <Badge variant="default" className="bg-blue-100 text-blue-800">Published</Badge>;
+      case 'duplicate':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Duplicate (skipped)</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
