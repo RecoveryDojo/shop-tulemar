@@ -1210,13 +1210,28 @@ console.log('Filtered data:', filteredData.length, 'product rows');
                     ✅ {excelData.length} products loaded from {fileName}
                   </span>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={markAllAsValid}
-                      className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md flex items-center gap-2"
-                      disabled={isPublishing}
-                    >
-                      ✅ {isPublishing ? 'Publishing...' : 'VALIDATE & PUBLISH ALL'}
-                    </button>
+                    {(() => {
+                      console.log('🔍 Button should render now - excelData.length:', excelData.length);
+                      return (
+                        <button 
+                          onClick={() => {
+                            console.log('🚀 Button clicked!');
+                            markAllAsValid();
+                          }}
+                          style={{
+                            backgroundColor: '#16a34a',
+                            color: 'white',
+                            padding: '8px 16px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🚀 VALIDATE & PUBLISH ALL
+                        </button>
+                      );
+                    })()}
                     <Button 
                       onClick={clearExcelData}
                       variant="outline"
