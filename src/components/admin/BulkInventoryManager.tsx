@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3, Image, Trash2 } from 'lucide-react';
+import { Upload, Download, Eye, Check, X, AlertCircle, Package, Bot, Sparkles, Edit3, Image, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -52,6 +52,7 @@ const BulkInventoryManager = () => {
   const [selectedCategoryForAll, setSelectedCategoryForAll] = useState<string>('');
   const [imageMapping, setImageMapping] = useState<any>(null); // Store image mapping data
   const { categories, refetch } = useProducts();
+  const [isResetting, setIsResetting] = useState(false);
 
   // Debug effect to track excelData changes
   useEffect(() => {
@@ -987,6 +988,35 @@ console.log('Filtered data:', filteredData.length, 'product rows');
     }
   };
 
+  const resetCatalog = async () => {
+    const confirmed = window.confirm('This will disable all products and remove cached bulk-upload images. Continue?');
+    if (!confirmed) return;
+    try {
+      setIsResetting(true);
+      const { data, error } = await supabase.functions.invoke('reset-product-catalog', {
+        body: { delete_categories: false, prefix: 'bulk-upload/' },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Catalog Reset',
+        description: `${data?.productsUpdated ?? 0} products disabled, ${data?.imagesDeleted ?? 0} images removed.`,
+      });
+      setExcelData([]);
+      setImageMapping(null);
+      setFileName('');
+      refetch?.();
+    } catch (err: any) {
+      console.error('Error resetting catalog:', err);
+      toast({
+        title: 'Reset Failed',
+        description: err?.message || 'Could not reset catalog.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const getStatusBadge = (status: ExcelProduct['status']) => {
     switch (status) {
       case 'pending':
@@ -1034,6 +1064,10 @@ console.log('Filtered data:', filteredData.length, 'product rows');
               <Button onClick={clearCachedImages} variant="destructive" className="flex items-center gap-2">
                 <Trash2 className="h-4 w-4" />
                 Clear Cached Images
+              </Button>
+              <Button onClick={resetCatalog} variant="destructive" disabled={isResetting} className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                {isResetting ? 'Resetting…' : 'Reset Catalog'}
               </Button>
               
               <div className="flex items-center gap-2">
