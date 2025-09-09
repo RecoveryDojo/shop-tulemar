@@ -26,6 +26,9 @@ import Sitemap from "@/pages/Sitemap";
 import FeatureShowcase from "@/pages/FeatureShowcase";
 import ShopperDashboard from "@/pages/ShopperDashboard";
 import CustomerDashboard from "@/pages/CustomerDashboard";
+import ConciergeDashboard from "@/pages/ConciergeDashboard";
+import DriverDashboard from "@/pages/DriverDashboard";
+import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
 import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
@@ -54,6 +57,9 @@ const App = () => {
                   <Route path="/dashboard" element={<MainDashboard />} />
                   <Route path="/shopper" element={<ShopperDashboard />} />
                   <Route path="/customer" element={<CustomerDashboard />} />
+                  <Route path="/concierge" element={<ConciergeDashboard />} />
+                  <Route path="/driver" element={<DriverDashboard />} />
+                  <Route path="/store-manager" element={<StoreManagerDashboard />} />
                   <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin" element={<Admin />} />

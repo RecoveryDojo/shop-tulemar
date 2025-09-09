@@ -20,7 +20,8 @@ import {
   Star,
   AlertTriangle,
   Target,
-  Eye
+  Eye,
+  Store
 } from "lucide-react";
 
 interface Order {
@@ -575,10 +576,77 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
     );
   };
 
+  const StoreManagerDashboard = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Store className="h-5 w-5" />
+          Store Manager Interface
+        </CardTitle>
+        <CardDescription>
+          Coordinate operations, manage shoppers, and ensure quality service
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <h4 className="font-semibold">Core Responsibilities:</h4>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <div>• Order assignment and shopper coordination</div>
+                <div>• Quality assurance and substitution oversight</div>
+                <div>• Inventory coordination with store staff</div>
+                <div>• Performance monitoring and optimization</div>
+                <div>• Real-time issue resolution</div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">Current Operations:</h4>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span>Active Orders:</span>
+                  <Badge>{orders.filter(o => !['completed', 'cancelled'].includes(o.status)).length}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span>Assigned Shoppers:</span>
+                  <Badge variant="secondary">3</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span>Avg Order Time:</span>
+                  <Badge variant="outline">28m</Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3">
+            <h4 className="font-semibold mb-2">Quick Actions</h4>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => window.location.href = '/store-manager'}>
+                <Eye className="h-4 w-4 mr-1" />
+                Full Dashboard
+              </Button>
+              <Button size="sm" variant="outline">
+                <Users className="h-4 w-4 mr-1" />
+                Manage Shoppers
+              </Button>
+              <Button size="sm" variant="outline">
+                <Package className="h-4 w-4 mr-1" />
+                Inventory Status
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const roleComponents = {
     shopper: ShopperDashboard,
     driver: DriverDashboard,
     concierge: ConciergeDashboard,
+    store_manager: StoreManagerDashboard,
     admin: AdminDashboard
   };
 
@@ -589,7 +657,7 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
       {/* Role Selector */}
       <div className="flex justify-center">
         <Tabs value={selectedRole} onValueChange={setSelectedRole}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="shopper" className="gap-2">
               <ShoppingCart className="h-4 w-4" />
               Shopper
@@ -601,6 +669,10 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
             <TabsTrigger value="concierge" className="gap-2">
               <Home className="h-4 w-4" />
               Concierge
+            </TabsTrigger>
+            <TabsTrigger value="store_manager" className="gap-2">
+              <Store className="h-4 w-4" />
+              Store Manager
             </TabsTrigger>
             <TabsTrigger value="admin" className="gap-2">
               <Shield className="h-4 w-4" />
