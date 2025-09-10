@@ -101,6 +101,7 @@ export function ConciergeDashboard() {
   const [loading, setLoading] = useState(true);
   const [completionNotes, setCompletionNotes] = useState("");
   const [qualityChecks, setQualityChecks] = useState<Record<string, boolean>>({});
+  const [notificationMessage, setNotificationMessage] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -255,6 +256,7 @@ export function ConciergeDashboard() {
     if (!activeOrder) return;
 
     try {
+      // Update order status to completed
       const { error } = await supabase
         .from('orders')
         .update({ status: 'completed' })
@@ -262,43 +264,123 @@ export function ConciergeDashboard() {
 
       if (error) throw error;
 
-      // Send final notification
-      await supabase.functions.invoke('notification-orchestrator', {
-        body: {
-          orderId: activeOrder.id,
-          notificationType: 'stocking_complete',
-          phase: 'completion'
-        }
-      });
+      // Send notifications to ALL stakeholders
+      await sendCompletionNotifications(activeOrder);
 
-      // Log completion
+      // Log completion in workflow
       await supabase
         .from('order_workflow_log')
         .insert({
           order_id: activeOrder.id,
           phase: 'completion',
           action: 'order_completed',
-          notes: `Kitchen stocking completed. ${completionNotes}`,
+          actor_role: 'concierge',
+          notes: `Rental unit stocked and organized. All stakeholders notified. ${completionNotes}`,
           metadata: {
             completion_notes: completionNotes,
             quality_checks: qualityChecks,
-            completion_time: new Date().toISOString()
+            completion_time: new Date().toISOString(),
+            property_address: activeOrder.property_address,
+            stakeholders_notified: ['customer', 'store_manager', 'driver', 'admin']
           }
         });
 
       toast({
         title: "Order Complete!",
-        description: "Kitchen is ready for guest arrival",
+        description: "Rental unit stocked successfully. All stakeholders have been notified.",
       });
 
       setActiveOrder(null);
       setStockingTasks([]);
       setCompletionNotes("");
       setQualityChecks({});
+      setNotificationMessage("");
       
       fetchStockingOrders();
     } catch (error) {
       console.error('Error completing stocking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete stocking process",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendCompletionNotifications = async (order: StockingOrder) => {
+    try {
+      // Notification to customer
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: order.id,
+          recipient_type: 'customer',
+          recipient_identifier: order.customer_email,
+          notification_type: 'stocking_complete',
+          channel: 'email',
+          message_content: notificationMessage || `Great news! Your groceries have been delivered and professionally organized at ${order.property_address}. Everything is stocked and ready for your arrival on ${new Date(order.arrival_date).toLocaleDateString()}. Welcome package has been prepared. Enjoy your stay!`,
+          metadata: {
+            property_address: order.property_address,
+            arrival_date: order.arrival_date,
+            guest_count: order.guest_count,
+            completion_time: new Date().toISOString()
+          }
+        });
+
+      // Notification to store manager
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: order.id,
+          recipient_type: 'store_manager',
+          recipient_identifier: 'store_manager',
+          notification_type: 'stocking_complete',
+          channel: 'system',
+          message_content: `Order ${order.id.slice(-8)} has been successfully stocked and organized at rental property ${order.property_address}. Customer: ${order.customer_name}. Order total: $${order.total_amount}. All quality checks completed.`,
+          metadata: {
+            order_value: order.total_amount,
+            completion_notes: completionNotes,
+            quality_checks: qualityChecks
+          }
+        });
+
+      // Notification to driver (delivery confirmation)
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: order.id,
+          recipient_type: 'driver',
+          recipient_identifier: 'driver',
+          notification_type: 'delivery_confirmed',
+          channel: 'system',
+          message_content: `Delivery to ${order.property_address} has been confirmed complete by concierge. Order has been professionally stocked and organized. Final delivery status: COMPLETED.`,
+          metadata: {
+            final_confirmation: true,
+            stocking_completed: true
+          }
+        });
+
+      // Notification to admin/operations
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: order.id,
+          recipient_type: 'admin',
+          recipient_identifier: 'operations',
+          notification_type: 'order_complete',
+          channel: 'system',
+          message_content: `Order workflow completed. Order ${order.id.slice(-8)} delivered, stocked, and guest-ready at ${order.property_address}. Revenue: $${order.total_amount}.`,
+          metadata: {
+            workflow_complete: true,
+            revenue: order.total_amount,
+            completion_time: new Date().toISOString()
+          }
+        });
+
+      console.log('All stakeholder notifications sent successfully');
+    } catch (error) {
+      console.error('Error sending completion notifications:', error);
+      // Still continue with order completion even if notifications fail
     }
   };
 
@@ -535,6 +617,15 @@ export function ConciergeDashboard() {
                   />
                 </div>
 
+                <div>
+                  <div className="text-sm font-medium mb-2">Customer Notification Message</div>
+                  <Textarea
+                    placeholder="Customize the completion message sent to the customer (optional - default message will be used if empty)..."
+                    value={notificationMessage}
+                    onChange={(e) => setNotificationMessage(e.target.value)}
+                  />
+                </div>
+
                 <Button variant="outline" size="sm" className="w-full">
                   <Camera className="h-4 w-4 mr-2" />
                   Take Completion Photo
@@ -547,7 +638,7 @@ export function ConciergeDashboard() {
                     size="lg"
                   >
                     <Star className="h-4 w-4 mr-2" />
-                    Complete Order
+                    Complete & Notify All Stakeholders
                   </Button>
                 )}
               </CardContent>
