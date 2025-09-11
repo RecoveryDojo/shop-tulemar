@@ -29,6 +29,7 @@ import CustomerDashboard from "@/pages/CustomerDashboard";
 import ConciergeDashboard from "@/pages/ConciergeDashboard";
 import DriverDashboard from "@/pages/DriverDashboard";
 import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
+import Profile from "@/pages/Profile";
 import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => {
                   <Route path="/driver" element={<DriverDashboard />} />
                   <Route path="/store-manager" element={<StoreManagerDashboard />} />
                   <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
+                  <Route path="/profile" element={<Profile />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/admin/product/:productId" element={<ProductEdit />} />
