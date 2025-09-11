@@ -394,6 +394,54 @@ export type Database = {
           },
         ]
       }
+      email_preferences: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          email_frequency: string
+          emergency_notifications: boolean
+          id: string
+          message_notifications: boolean
+          order_notifications: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          system_notifications: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          email_frequency?: string
+          emergency_notifications?: boolean
+          id?: string
+          message_notifications?: boolean
+          order_notifications?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          system_notifications?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          email_frequency?: string
+          emergency_notifications?: boolean
+          id?: string
+          message_notifications?: boolean
+          order_notifications?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          system_notifications?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       external_data_sources: {
         Row: {
           api_key_required: boolean | null
@@ -622,6 +670,42 @@ export type Database = {
           stats_total_rows?: number | null
           stats_valid_rows?: number | null
           status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      message_threads: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_archived: boolean
+          last_message_at: string
+          participant_ids: string[]
+          subject: string
+          thread_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          participant_ids: string[]
+          subject: string
+          thread_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string
+          participant_ids?: string[]
+          subject?: string
+          thread_type?: string
           updated_at?: string
         }
         Relationships: []
@@ -944,29 +1028,44 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          contact_hours: string | null
           created_at: string
           display_name: string | null
           email: string | null
+          emergency_contact: string | null
           id: string
           phone: string | null
+          preferences: Json | null
+          status: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          contact_hours?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
+          emergency_contact?: string | null
           id: string
           phone?: string | null
+          preferences?: Json | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          contact_hours?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
+          emergency_contact?: string | null
           id?: string
           phone?: string | null
+          preferences?: Json | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1335,6 +1434,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_messages: {
+        Row: {
+          attachments: Json | null
+          content: string
+          created_at: string
+          email_sent_at: string | null
+          id: string
+          is_read: boolean
+          message_type: string
+          metadata: Json | null
+          priority: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+          sent_via_email: boolean
+          subject: string | null
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          created_at?: string
+          email_sent_at?: string | null
+          id?: string
+          is_read?: boolean
+          message_type?: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+          sent_via_email?: boolean
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          created_at?: string
+          email_sent_at?: string | null
+          id?: string
+          is_read?: boolean
+          message_type?: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+          sent_via_email?: boolean
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
