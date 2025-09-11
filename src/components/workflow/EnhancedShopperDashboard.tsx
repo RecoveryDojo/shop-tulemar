@@ -45,6 +45,7 @@ import { formatCurrency } from '@/lib/currency';
 import { ShopperGuideDialog } from './ShopperGuideDialog';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useNotifications } from '@/hooks/useNotifications';
 
 interface OrderItem {

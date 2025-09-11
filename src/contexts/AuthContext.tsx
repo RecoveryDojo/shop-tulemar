@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-export type UserRole = 'admin' | 'driver' | 'client' | 'concierge' | 'sysadmin';
+export type UserRole = 'admin' | 'driver' | 'client' | 'concierge' | 'sysadmin' | 'store_manager' | 'shopper';
 
 interface UserProfile {
   id: string;
