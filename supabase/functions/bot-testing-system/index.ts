@@ -261,12 +261,35 @@ async function createBotUser(botProfile: any) {
 
     if (authError || !user) {
       console.error('Auth user creation error (will try to fetch existing):', authError);
-      const { data: existing, error: getErr } = await supabase.auth.admin.getUserByEmail(botProfile.email);
-      if (getErr) {
-        console.error('getUserByEmail error:', getErr);
+      // Try to find existing user by email via admin list
+      let foundUser: any = null;
+      try {
+        const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const users = (list as any)?.users || [];
+        foundUser = users.find((u: any) => u.email?.toLowerCase() === botProfile.email.toLowerCase()) || null;
+      } catch (e) {
+        console.error('listUsers error:', e);
       }
-      if (existing?.user) {
-        user = existing.user;
+      
+      // Fallback: check profiles table for ID, then fetch by ID
+      if (!foundUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('email', botProfile.email)
+          .maybeSingle();
+        if (profile?.id) {
+          try {
+            const { data: byId } = await supabase.auth.admin.getUserById(profile.id);
+            foundUser = (byId as any)?.user || null;
+          } catch (e2) {
+            console.error('getUserById error:', e2);
+          }
+        }
+      }
+      
+      if (foundUser) {
+        user = foundUser;
       } else {
         return null;
       }
@@ -312,7 +335,7 @@ async function createOrder(user: any, orderData: any) {
       .from('orders')
       .insert({
         customer_email: user.email,
-        customer_name: user.user_metadata.display_name,
+        customer_name: (user as any)?.user_metadata?.display_name || (user as any)?.email?.split('@')[0] || 'Test Bot',
         customer_phone: '+1-555-0123',
         property_address: '123 Vacation Villa Rd, Manuel Antonio, Costa Rica',
         arrival_date: new Date().toISOString().split('T')[0],
