@@ -43,6 +43,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/currency';
 import { ShopperGuideDialog } from './ShopperGuideDialog';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface OrderItem {
   id: string;
@@ -105,6 +108,8 @@ export function EnhancedShopperDashboard() {
   const [customerMessage, setCustomerMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [deliveryProof, setDeliveryProof] = useState<string | null>(null);
+  const [showGuideDialog, setShowGuideDialog] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Mock data for demo
@@ -351,6 +356,29 @@ export function EnhancedShopperDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
+      {/* Header with Notifications */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Shopper Dashboard</h1>
+          <p className="text-muted-foreground">Manage your shopping orders and deliveries</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <NotificationDropdown 
+            userRole="shopper" 
+            onViewAll={() => setShowNotificationCenter(true)}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowGuideDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Info className="h-4 w-4" />
+            Guide
+          </Button>
+        </div>
+      </div>
+
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -999,11 +1027,35 @@ export function EnhancedShopperDashboard() {
       </Tabs>
 
       <ShopperGuideDialog 
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-        currentProtocol={activeTab}
-        currentStep={currentStep}
+        open={showGuideDialog}
+        onOpenChange={setShowGuideDialog}
+        activeTab={activeTab}
+        currentStep={getCurrentProtocol()}
+        onTabChange={setActiveTab}
       />
+      
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl mx-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Notification Center</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotificationCenter(false)}
+                >
+                  Close
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <NotificationCenter userRole="shopper" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
