@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Trash2,
   Database,
-  Workflow,
+  GitBranch,
   Users,
   ShoppingCart,
   Clock,
@@ -67,7 +67,7 @@ export function ErrorManagement({ errors, onErrorFixed, onErrorRetry, onClearErr
     switch (type) {
       case 'auth_error': return <Users className="h-4 w-4" />;
       case 'order_error': return <ShoppingCart className="h-4 w-4" />;
-      case 'workflow_error': return <Workflow className="h-4 w-4" />;
+      case 'workflow_error': return <GitBranch className="h-4 w-4" />;
       case 'api_error': return <Bug className="h-4 w-4" />;
       case 'database_error': return <Database className="h-4 w-4" />;
       default: return <AlertTriangle className="h-4 w-4" />;

@@ -147,11 +147,12 @@ export default function BotTestingDashboard() {
         throw new Error(response.error.message);
       }
 
-      const testResults = response.data as BotTestResults;
+      const payload: any = response.data;
+      const testResults = (payload?.results ?? payload) as BotTestResults;
       setResults(testResults);
       
       // Parse and set detailed errors
-      const parsedErrors = parseErrors(testResults.errors);
+      const parsedErrors = parseErrors(testResults.errors || []);
       setDetailedErrors(parsedErrors);
 
       // Simulate progress updates

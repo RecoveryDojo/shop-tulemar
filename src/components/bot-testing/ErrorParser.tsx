@@ -1,6 +1,7 @@
 import { DetailedError } from './ErrorManagement';
 
-export function parseErrors(errorList: string[]): DetailedError[] {
+export function parseErrors(errorList: string[] = []): DetailedError[] {
+  if (!Array.isArray(errorList) || errorList.length === 0) return [];
   return errorList.map((errorMessage, index) => {
     const errorId = `error_${Date.now()}_${index}`;
     
