@@ -31,7 +31,7 @@ import ConciergeDashboard from "@/pages/ConciergeDashboard";
 import DriverDashboard from "@/pages/DriverDashboard";
 import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
 import Profile from "@/pages/Profile";
-import ProductionReadiness from "@/pages/ProductionReadiness";
+import BotTesting from "@/pages/BotTesting";
 
 const queryClient = new QueryClient();
 
@@ -78,7 +78,7 @@ function AppContent() {
                   <Route path="/admin/product/:productId" element={<ProductEdit />} />
                   
                   <Route path="/feature-showcase" element={<FeatureShowcase />} />
-          <Route path="/production-status" element={<ProductionReadiness />} />
+          <Route path="/bot-testing" element={<BotTesting />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
