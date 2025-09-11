@@ -40,6 +40,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
+import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 
 interface OrderItem {
   id: string;
@@ -354,10 +355,13 @@ export function EnhancedCustomerDashboard() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" onClick={() => setShowDeliveryMap(!showDeliveryMap)}>
-              <MapPin className="h-4 w-4 mr-2" />
-              Track Live
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => setShowDeliveryMap(!showDeliveryMap)}>
+                <MapPin className="h-4 w-4 mr-2" />
+                Track Live
+              </Button>
+              <UserProfileMenu />
+            </div>
           </div>
 
           {/* Progress Bar */}

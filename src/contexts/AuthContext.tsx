@@ -24,8 +24,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  assignRole: (userId: string, role: UserRole) => Promise<{ error: any }>;
-  removeRole: (userId: string, role: UserRole) => Promise<{ error: any }>;
+  assignRole: (userId: string, role: any) => Promise<{ error: any }>;
+  removeRole: (userId: string, role: any) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -180,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const assignRole = async (userId: string, role: UserRole) => {
+  const assignRole = async (userId: string, role: any) => {
     const { error } = await supabase
       .from('user_roles')
       .insert({ user_id: userId, role });
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const removeRole = async (userId: string, role: UserRole) => {
+  const removeRole = async (userId: string, role: any) => {
     const { error } = await supabase
       .from('user_roles')
       .delete()

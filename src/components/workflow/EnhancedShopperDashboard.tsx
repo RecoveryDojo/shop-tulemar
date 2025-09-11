@@ -368,6 +368,7 @@ export function EnhancedShopperDashboard() {
             userRole="shopper" 
             onViewAll={() => setShowNotificationCenter(true)}
           />
+          <UserProfileMenu />
           <Button
             variant="outline"
             size="sm"
