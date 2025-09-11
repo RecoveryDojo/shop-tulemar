@@ -674,6 +674,93 @@ export type Database = {
         }
         Relationships: []
       }
+      message_analytics: {
+        Row: {
+          event_type: string
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          is_global: boolean
+          title: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_global?: boolean
+          title: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_global?: boolean
+          title?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
       message_threads: {
         Row: {
           created_at: string
@@ -1435,6 +1522,30 @@ export type Database = {
           },
         ]
       }
+      typing_indicators: {
+        Row: {
+          id: string
+          is_typing: boolean
+          thread_id: string | null
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_typing?: boolean
+          thread_id?: string | null
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_typing?: boolean
+          thread_id?: string | null
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_messages: {
         Row: {
           attachments: Json | null
@@ -1569,6 +1680,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_typing_indicators: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_daily_summary: {
         Args: { summary_date: string; summary_user_id: string }
         Returns: string
@@ -1599,6 +1714,15 @@ export type Database = {
       is_admin_or_sysadmin: {
         Args: { _user_id: string }
         Returns: boolean
+      }
+      log_message_event: {
+        Args: {
+          p_event_type: string
+          p_message_id: string
+          p_metadata?: Json
+          p_user_id: string
+        }
+        Returns: undefined
       }
       record_ai_pattern_success: {
         Args: {

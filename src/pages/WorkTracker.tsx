@@ -224,7 +224,7 @@ function WorkTrackerContent() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeView} onValueChange={setActiveView}>
-              <TabsList className="grid w-full grid-cols-12">
+              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12">
                 <TabsTrigger value="overview" className="gap-2">
                   <Target className="h-4 w-4" />
                   Overview
@@ -272,6 +272,10 @@ function WorkTrackerContent() {
                 <TabsTrigger value="backfill" className="gap-2">
                   <FileText className="h-4 w-4" />
                   Backfill
+                </TabsTrigger>
+                <TabsTrigger value="enhancements" className="gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Enhancements
                 </TabsTrigger>
               </TabsList>
 
@@ -456,6 +460,10 @@ function WorkTrackerContent() {
 
               <TabsContent value="auto-tracker">
                 <AutomatedDailyTracker />
+              </TabsContent>
+
+              <TabsContent value="enhancements">
+                <EnhancementTracker />
               </TabsContent>
             </Tabs>
           </>
