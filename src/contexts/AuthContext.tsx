@@ -58,12 +58,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching profile:', error);
+        // Don't throw error, just log it and continue
         return;
       }
 
       setProfile(data);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
+      // Graceful degradation - app continues to work without profile data
     }
   };
 
@@ -76,12 +78,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching roles:', error);
+        // Set default client role if fetch fails
+        setRoles(['client']);
         return;
       }
 
-      setRoles(data.map(r => r.role as UserRole));
+      const userRoles = data?.map(r => r.role as UserRole) || ['client'];
+      setRoles(userRoles.length > 0 ? userRoles : ['client']);
     } catch (error) {
       console.error('Error in fetchRoles:', error);
+      // Graceful degradation - default to client role
+      setRoles(['client']);
     }
   };
 
