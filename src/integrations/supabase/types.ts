@@ -726,6 +726,7 @@ export type Database = {
           metadata: Json | null
           notification_type: string
           order_id: string
+          read_at: string | null
           recipient_identifier: string
           recipient_type: string
           sent_at: string | null
@@ -741,6 +742,7 @@ export type Database = {
           metadata?: Json | null
           notification_type: string
           order_id: string
+          read_at?: string | null
           recipient_identifier: string
           recipient_type: string
           sent_at?: string | null
@@ -756,6 +758,7 @@ export type Database = {
           metadata?: Json | null
           notification_type?: string
           order_id?: string
+          read_at?: string | null
           recipient_identifier?: string
           recipient_type?: string
           sent_at?: string | null

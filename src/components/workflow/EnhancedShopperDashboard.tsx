@@ -1027,11 +1027,10 @@ export function EnhancedShopperDashboard() {
       </Tabs>
 
       <ShopperGuideDialog 
-        open={showGuideDialog}
-        onOpenChange={setShowGuideDialog}
-        activeTab={activeTab}
-        currentStep={getCurrentProtocol()}
-        onTabChange={setActiveTab}
+        isOpen={showGuideDialog}
+        onClose={() => setShowGuideDialog(false)}
+        currentProtocol={activeTab}
+        currentStep={0}
       />
       
       {/* Notification Center Modal */}
