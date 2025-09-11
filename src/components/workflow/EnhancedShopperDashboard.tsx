@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/currency';
+import { ShopperGuideDialog } from './ShopperGuideDialog';
 
 interface OrderItem {
   id: string;
@@ -104,6 +105,7 @@ export function EnhancedShopperDashboard() {
   const [customerMessage, setCustomerMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [deliveryProof, setDeliveryProof] = useState<string | null>(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Mock data for demo
   useEffect(() => {
@@ -411,7 +413,7 @@ export function EnhancedShopperDashboard() {
                 <p className="text-sm text-muted-foreground">{getCurrentProtocol()}</p>
               </div>
             </div>
-            <Button size="sm" variant="outline" className="hover-scale">
+            <Button size="sm" variant="outline" className="hover-scale" onClick={() => setIsGuideOpen(true)}>
               <Info className="h-4 w-4 mr-2" />
               Guide
             </Button>
@@ -995,6 +997,13 @@ export function EnhancedShopperDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ShopperGuideDialog 
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        currentProtocol={activeTab}
+        currentStep={currentStep}
+      />
     </div>
   );
 }
