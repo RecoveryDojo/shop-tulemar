@@ -216,16 +216,17 @@ async function generateOrderWithAI(botProfile: any) {
 }
 
 function generateFallbackOrder(botProfile: any) {
-  const [minItems, maxItems] = botProfile.orderStyle.itemCount;
+  const orderStyle = botProfile.orderStyle || { itemCount: [5, 15], categories: ['basics', 'snacks', 'beverages'] };
+  const [minItems, maxItems] = orderStyle.itemCount;
   const numItems = Math.floor(Math.random() * (maxItems - minItems + 1)) + minItems;
-  const preferredCategories = botProfile.orderStyle.categories;
+  const preferredCategories = orderStyle.categories || ['basics'];
   
-  const items = [];
+  const items: any[] = [];
   let total = 0;
   
   for (let i = 0; i < numItems; i++) {
     const category = preferredCategories[Math.floor(Math.random() * preferredCategories.length)];
-    const categoryItems = productCategories[category] || productCategories.basics;
+    const categoryItems = (productCategories as any)[category] || (productCategories as any).basics;
     const item = categoryItems[Math.floor(Math.random() * categoryItems.length)];
     const quantity = Math.floor(Math.random() * 3) + 1;
     
@@ -411,8 +412,10 @@ async function runBotSimulation() {
     botsCreated: 0,
     ordersPlaced: 0,
     workflowsCompleted: 0,
-    errors: []
+    errors: [] as string[]
   };
+
+  const workflowPromises: Promise<void>[] = [];
 
   for (const botProfile of botProfiles) {
     try {
@@ -426,6 +429,11 @@ async function runBotSimulation() {
       }
       results.botsCreated++;
 
+      // Only clients place orders
+      if (botProfile.role !== 'client') {
+        continue;
+      }
+
       // Generate realistic order
       const orderData = await generateOrderWithAI(botProfile);
       console.log(`Generated order for ${botProfile.display_name}: ${orderData.total_items} items, $${orderData.estimated_total.toFixed(2)}`);
@@ -438,22 +446,28 @@ async function runBotSimulation() {
       }
       results.ordersPlaced++;
 
-      // Run order workflow simulation (don't await - run in parallel)
-      simulateOrderWorkflow(order, botProfile).then(() => {
-        results.workflowsCompleted++;
-        console.log(`✅ Completed workflow for ${botProfile.display_name}`);
-      }).catch(error => {
-        results.errors.push(`Workflow failed for ${botProfile.display_name}: ${error.message}`);
-      });
+      // Run order workflow simulation (track and await all at end)
+      const p = simulateOrderWorkflow(order, botProfile)
+        .then(() => {
+          results.workflowsCompleted++;
+          console.log(`✅ Completed workflow for ${botProfile.display_name}`);
+        })
+        .catch(error => {
+          results.errors.push(`Workflow failed for ${botProfile.display_name}: ${error.message}`);
+        });
+      workflowPromises.push(p);
 
       // Stagger bot creation
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error with bot ${botProfile.display_name}:`, error);
       results.errors.push(`Bot ${botProfile.display_name}: ${error.message}`);
     }
   }
+
+  // Wait for all workflows to complete
+  await Promise.all(workflowPromises);
 
   return results;
 }
