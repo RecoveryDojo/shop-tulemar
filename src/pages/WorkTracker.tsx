@@ -273,10 +273,6 @@ function WorkTrackerContent() {
                   <FileText className="h-4 w-4" />
                   Backfill
                 </TabsTrigger>
-                <TabsTrigger value="enhancements" className="gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Enhancements
-                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
@@ -462,9 +458,6 @@ function WorkTrackerContent() {
                 <AutomatedDailyTracker />
               </TabsContent>
 
-              <TabsContent value="enhancements">
-                <EnhancementTracker />
-              </TabsContent>
             </Tabs>
           </>
         ) : (

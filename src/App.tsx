@@ -4,8 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { CartProvider } from "@/contexts/CartContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import ShopIndex from "@/pages/shop/ShopIndex";
 import ShopCategories from "@/pages/shop/ShopCategories";
 import CategoryPage from "@/pages/shop/CategoryPage";
@@ -34,17 +35,26 @@ import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+function AppContent() {
+  const { user, loading, hasCompletedOnboarding } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show onboarding for authenticated users who haven't completed it
+  if (user && !hasCompletedOnboarding()) {
+    return <UserOnboarding onComplete={() => window.location.reload()} />;
+  }
+
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AuthProvider>
-            <CartProvider>
-              <BrowserRouter>
-                <Routes>
+    <CartProvider>
+      <BrowserRouter>
+        <Routes>
                   <Route path="/" element={<ShopIndex />} />
                   <Route path="/categories" element={<ShopCategories />} />
                   <Route path="/category/:categoryId" element={<CategoryPage />} />
@@ -69,10 +79,22 @@ const App = () => {
                   <Route path="/navigation" element={<Navigation />} />
                   <Route path="/feature-showcase" element={<FeatureShowcase />} />
                   <Route path="/sitemap" element={<Sitemap />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </CartProvider>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </CartProvider>
+  );
+}
+
+const App = () => {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <AppContent />
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

@@ -11,6 +11,7 @@ interface UserProfile {
   avatar_url: string | null;
   email: string | null;
   phone: string | null;
+  preferences?: any;
 }
 
 interface AuthContextType {
@@ -26,6 +27,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   assignRole: (userId: string, role: any) => Promise<{ error: any }>;
   removeRole: (userId: string, role: any) => Promise<{ error: any }>;
+  updateProfile: () => Promise<void>;
+  hasCompletedOnboarding: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -240,6 +243,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAdmin = hasRole('admin') || hasRole('sysadmin');
 
+  const updateProfile = async () => {
+    if (!user) return;
+    
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    
+    if (profileData) {
+      setProfile(profileData);
+      setRoles(userRoles?.map(r => r.role) || []);
+    }
+  };
+
+  const hasCompletedOnboarding = () => {
+    return profile?.preferences?.onboardingCompleted === true;
+  };
+
   const value = {
     user,
     session,
@@ -253,6 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     assignRole,
     removeRole,
+    updateProfile,
+    hasCompletedOnboarding,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

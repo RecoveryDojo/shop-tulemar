@@ -395,8 +395,8 @@ export function useEnhancedMessages({
           content: sanitizedContent,
           message_type: options.messageType || 'direct',
           priority: options.priority || 'normal',
-          attachments: attachments,
-          metadata: optimisticMessage.metadata
+          attachments: attachments || [],
+          metadata: optimisticMessage.metadata || {}
         })
         .select()
         .single();
