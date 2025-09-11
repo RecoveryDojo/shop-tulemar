@@ -257,16 +257,26 @@ async function createBotUser(botProfile: any) {
       }
     });
 
-    if (authError) {
-      console.error('Auth user creation error:', authError);
-      return null;
+    let user = authData?.user;
+
+    if (authError || !user) {
+      console.error('Auth user creation error (will try to fetch existing):', authError);
+      const { data: existing, error: getErr } = await supabase.auth.admin.getUserByEmail(botProfile.email);
+      if (getErr) {
+        console.error('getUserByEmail error:', getErr);
+      }
+      if (existing?.user) {
+        user = existing.user;
+      } else {
+        return null;
+      }
     }
 
-    // Create profile
+    // Create/update profile
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
-        id: authData.user.id,
+        id: user.id,
         display_name: botProfile.display_name,
         email: botProfile.email,
         bio: botProfile.bio,
@@ -281,7 +291,7 @@ async function createBotUser(botProfile: any) {
     const { error: roleError } = await supabase
       .from('user_roles')
       .upsert({
-        user_id: authData.user.id,
+        user_id: user.id,
         role: botProfile.role
       });
 
@@ -289,7 +299,7 @@ async function createBotUser(botProfile: any) {
       console.error('Role assignment error:', roleError);
     }
 
-    return authData.user;
+    return user;
   } catch (error) {
     console.error('Bot user creation failed:', error);
     return null;
