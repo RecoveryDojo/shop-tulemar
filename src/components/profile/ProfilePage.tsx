@@ -24,7 +24,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageCenter } from './MessageCenter';
-import { EnhancedMessageCenter } from './EnhancedMessageCenter';
 
 interface ProfileData {
   id: string;

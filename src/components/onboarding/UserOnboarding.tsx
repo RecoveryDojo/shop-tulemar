@@ -25,11 +25,11 @@ const steps: OnboardingStep[] = [
 ];
 
 const roleOptions = [
-  { id: 'client', label: 'Property Owner/Guest', description: 'I own or rent vacation properties', icon: Home },
-  { id: 'store_manager', label: 'Store Manager', description: 'I manage grocery/supply operations', icon: Building2 },
+  { id: 'client', label: 'Customer', description: 'I am here to get groceries', icon: Home },
   { id: 'shopper', label: 'Personal Shopper', description: 'I shop and prepare orders for guests', icon: Users },
   { id: 'driver', label: 'Delivery Driver', description: 'I deliver orders to properties', icon: Truck },
-  { id: 'concierge', label: 'Concierge', description: 'I provide guest services and coordination', icon: HeadphonesIcon }
+  { id: 'concierge', label: 'Concierge', description: 'I provide guest services and coordination', icon: HeadphonesIcon },
+  { id: 'store_manager', label: 'Store Manager', description: 'I manage grocery/supply operations', icon: Building2 }
 ];
 
 export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
