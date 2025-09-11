@@ -6,6 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShopLayout } from '@/components/shop/ShopLayout';
+import { ErrorManagement, DetailedError } from '@/components/bot-testing/ErrorManagement';
+import { parseErrors } from '@/components/bot-testing/ErrorParser';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -123,6 +125,7 @@ export default function BotTestingDashboard() {
   const [results, setResults] = useState<BotTestResults | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const [detailedErrors, setDetailedErrors] = useState<DetailedError[]>([]);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -146,6 +149,10 @@ export default function BotTestingDashboard() {
 
       const testResults = response.data as BotTestResults;
       setResults(testResults);
+      
+      // Parse and set detailed errors
+      const parsedErrors = parseErrors(testResults.errors);
+      setDetailedErrors(parsedErrors);
 
       // Simulate progress updates
       for (let i = 0; i <= 100; i += 10) {
@@ -175,6 +182,22 @@ export default function BotTestingDashboard() {
     } catch (error: any) {
       console.error('Bot testing error:', error);
       addLog(`❌ Error: ${error.message}`);
+      
+      // Create detailed error for the main failure
+      const systemError: DetailedError = {
+        id: `system_error_${Date.now()}`,
+        type: 'system_error',
+        severity: 'critical',
+        title: 'Bot Testing System Failure',
+        message: error.message,
+        timestamp: new Date().toISOString(),
+        fixable: true,
+        fixAttempts: 0,
+        fixStatus: 'none',
+        context: { systemFailure: true }
+      };
+      setDetailedErrors([systemError]);
+      
       toast.error('Bot testing failed: ' + error.message);
     } finally {
       setIsRunning(false);
@@ -212,6 +235,27 @@ export default function BotTestingDashboard() {
       case 'store_manager': return <BarChart3 className="h-4 w-4" />;
       default: return <Bot className="h-4 w-4" />;
     }
+  };
+
+  const handleErrorFixed = (errorId: string) => {
+    setDetailedErrors(prev => prev.map(error => 
+      error.id === errorId 
+        ? { ...error, fixStatus: 'success', fixAttempts: error.fixAttempts + 1, lastFixAttempt: new Date().toISOString() }
+        : error
+    ));
+  };
+
+  const handleErrorRetry = (errorId: string) => {
+    setDetailedErrors(prev => prev.map(error => 
+      error.id === errorId 
+        ? { ...error, fixAttempts: error.fixAttempts + 1, lastFixAttempt: new Date().toISOString() }
+        : error
+    ));
+  };
+
+  const handleClearErrors = () => {
+    setDetailedErrors([]);
+    setResults(prev => prev ? { ...prev, errors: [] } : null);
   };
 
   return (
@@ -482,21 +526,14 @@ export default function BotTestingDashboard() {
           </CardContent>
         </Card>
 
-        {/* Error Reporting */}
-        {results && results.errors.length > 0 && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <div className="font-medium">Test completed with {results.errors.length} errors:</div>
-                <ul className="text-sm space-y-1">
-                  {results.errors.map((error, index) => (
-                    <li key={index}>• {error}</li>
-                  ))}
-                </ul>
-              </div>
-            </AlertDescription>
-          </Alert>
+        {/* Enhanced Error Management */}
+        {detailedErrors.length > 0 && (
+          <ErrorManagement
+            errors={detailedErrors}
+            onErrorFixed={handleErrorFixed}
+            onErrorRetry={handleErrorRetry}
+            onClearErrors={handleClearErrors}
+          />
         )}
       </div>
     </ShopLayout>
