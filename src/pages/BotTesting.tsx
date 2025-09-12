@@ -148,7 +148,33 @@ export default function BotTestingDashboard() {
       }
 
       const payload: any = response.data;
-      const testResults = (payload?.results ?? payload) as BotTestResults;
+      console.log('Bot test response:', payload);
+      
+      // Handle different response structures
+      let testResults: BotTestResults;
+      if (payload?.results) {
+        testResults = payload.results;
+      } else if (payload?.simulation_summary) {
+        // Map from simulation_summary to BotTestResults format
+        testResults = {
+          botsCreated: payload.simulation_summary.total_bots || 0,
+          ordersPlaced: payload.simulation_summary.orders_created || 0,
+          workflowsCompleted: payload.simulation_summary.workflows_completed || 0,
+          errors: payload.simulation_summary.errors || [],
+          timestamp: new Date().toISOString()
+        };
+      } else {
+        // Fallback structure
+        testResults = {
+          botsCreated: payload?.total_bots || payload?.botsCreated || 0,
+          ordersPlaced: payload?.orders_created || payload?.ordersPlaced || 0, 
+          workflowsCompleted: payload?.workflows_completed || payload?.workflowsCompleted || 0,
+          errors: payload?.errors || [],
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      console.log('Parsed test results:', testResults);
       setResults(testResults);
       
       // Parse and set detailed errors
