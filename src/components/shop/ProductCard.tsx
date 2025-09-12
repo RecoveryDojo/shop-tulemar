@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
-import { Product } from '@/hooks/useProducts';
+import { Product } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 

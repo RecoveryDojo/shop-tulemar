@@ -52,37 +52,35 @@ function AppContent() {
   }
 
   return (
-    <CartProvider>
-      <BrowserRouter>
-        <Routes>
-                  <Route path="/" element={<ShopIndex />} />
-                  <Route path="/categories" element={<ShopCategories />} />
-                  <Route path="/category/:categoryId" element={<CategoryPage />} />
-                  <Route path="/cart" element={<ShopCart />} />
-                  <Route path="/checkout" element={<ShopCheckout />} />
-                  <Route path="/order-success/:orderId" element={<OrderSuccess />} />
-                  <Route path="/order" element={<ShopOrder />} />
-                  <Route path="/search" element={<ShopSearch />} />
-                  <Route path="/how-it-works" element={<ShopHowItWorks />} />
-                  <Route path="/work-tracker" element={<WorkTracker />} />
-                  <Route path="/dashboard" element={<MainDashboard />} />
-                  <Route path="/shopper" element={<ShopperDashboard />} />
-                  <Route path="/customer" element={<CustomerDashboard />} />
-                  <Route path="/concierge" element={<ConciergeDashboard />} />
-                  <Route path="/driver" element={<DriverDashboard />} />
-                  <Route path="/store-manager" element={<StoreManagerDashboard />} />
-                  <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/admin/product/:productId" element={<ProductEdit />} />
-                  
-                  <Route path="/feature-showcase" element={<FeatureShowcase />} />
-          <Route path="/bot-testing" element={<BotTesting />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </CartProvider>
+    <BrowserRouter>
+      <Routes>
+                <Route path="/" element={<ShopIndex />} />
+                <Route path="/categories" element={<ShopCategories />} />
+                <Route path="/category/:categoryId" element={<CategoryPage />} />
+                <Route path="/cart" element={<ShopCart />} />
+                <Route path="/checkout" element={<ShopCheckout />} />
+                <Route path="/order-success/:orderId" element={<OrderSuccess />} />
+                <Route path="/order" element={<ShopOrder />} />
+                <Route path="/search" element={<ShopSearch />} />
+                <Route path="/how-it-works" element={<ShopHowItWorks />} />
+                <Route path="/work-tracker" element={<WorkTracker />} />
+                <Route path="/dashboard" element={<MainDashboard />} />
+                <Route path="/shopper" element={<ShopperDashboard />} />
+                <Route path="/customer" element={<CustomerDashboard />} />
+                <Route path="/concierge" element={<ConciergeDashboard />} />
+                <Route path="/driver" element={<DriverDashboard />} />
+                <Route path="/store-manager" element={<StoreManagerDashboard />} />
+                <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/product/:productId" element={<ProductEdit />} />
+                
+                <Route path="/feature-showcase" element={<FeatureShowcase />} />
+        <Route path="/bot-testing" element={<BotTesting />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
@@ -93,9 +91,11 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
+          <CartProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </CartProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

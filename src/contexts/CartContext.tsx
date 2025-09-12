@@ -10,6 +10,10 @@ export interface Product {
   unit: string;
   origin?: string;
   stock_quantity?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  is_test_product?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -119,10 +123,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
+    console.log('Cart state changed:', state);
     localStorage.setItem('tulemar-cart', JSON.stringify(state.items));
   }, [state.items]);
 
   const addToCart = (product: Product, quantity = 1) => {
+    console.log('Adding to cart:', { product, quantity });
     dispatch({ type: 'ADD_TO_CART', product, quantity });
   };
 
