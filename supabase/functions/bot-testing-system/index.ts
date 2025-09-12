@@ -322,6 +322,9 @@ async function createBotUser(botProfile: any) {
       console.error('Role assignment error:', roleError);
     }
 
+    // Store user_id in botProfile for messaging
+    botProfile.user_id = user.id;
+
     return user;
   } catch (error) {
     console.error('Bot user creation failed:', error);
@@ -377,17 +380,72 @@ async function createOrder(user: any, orderData: any) {
   }
 }
 
-async function simulateOrderWorkflow(order: any, botProfile: any) {
+async function sendBotMessage(senderId: string, recipientId: string, messageType: string, orderData: any, results?: any) {
+  try {
+    const messages = {
+      order_confirmation: `Hi! Your order #${orderData.id.slice(-8)} has been confirmed! Total: $${orderData.total_amount}. We'll start shopping for you shortly.`,
+      assignment_notification: `Great news! I'm Maria, your personal shopper for today. I'll be carefully selecting your ${orderData.items?.length || 'items'} items. Any specific preferences I should know about?`,
+      shopping_update: `Currently shopping for your order! Found some beautiful organic produce and checking expiration dates carefully. About 60% complete.`,
+      purchase_complete: `All done shopping! Everything looks perfect. Your items are being packed and will be ready for delivery soon.`,
+      ready_for_pickup: `Hi, this is Carlos your delivery driver. I've picked up your order and it's secured in my vehicle. ETA to your location is 15-20 minutes.`,
+      delivery_update: `On my way to your property now! I have your groceries and will place them according to your delivery instructions.`,
+      delivery_confirmation: `Delivered! Your groceries have been placed safely. Everything looks great. Enjoy your stay!`,
+      order_complete: `Your order has been completed successfully! Thank you for choosing our service. We hope you enjoyed everything!`
+    };
+
+    const message = messages[messageType] || `Update on your order #${orderData.id.slice(-8)}`;
+
+    const { error } = await supabase
+      .from('user_messages')
+      .insert({
+        sender_id: senderId,
+        recipient_id: recipientId,
+        content: message,
+        subject: `Order Update - ${messageType.replace('_', ' ').toUpperCase()}`,
+        message_type: 'order_update',
+        priority: messageType.includes('confirmation') || messageType.includes('complete') ? 'high' : 'normal'
+      });
+
+    if (error) {
+      console.error('Message sending error:', error);
+    } else {
+      console.log(`📧 Message sent: ${messageType} from ${senderId} to ${recipientId}`);
+      // Track message statistics if results object is passed
+      if (results) {
+        results.messagesSent++;
+      }
+    }
+
+  } catch (error) {
+    console.error('Failed to send bot message:', error);
+  }
+}
+
+async function simulateOrderWorkflow(order: any, botProfile: any, results: any) {
   const steps = [
-    { status: 'confirmed', delay: 1000, action: 'Order confirmed and payment processed' },
-    { status: 'assigned', delay: 2000, action: 'Assigned to personal shopper' },
-    { status: 'shopping', delay: 5000, action: 'Shopping in progress' },
-    { status: 'purchased', delay: 8000, action: 'Items purchased and being prepared' },
-    { status: 'ready_for_delivery', delay: 3000, action: 'Ready for delivery pickup' },
-    { status: 'out_for_delivery', delay: 2000, action: 'Out for delivery' },
-    { status: 'delivered', delay: 10000, action: 'Delivered to property' },
-    { status: 'completed', delay: 1000, action: 'Order completed successfully' }
+    { status: 'confirmed', delay: 1000, action: 'Order confirmed and payment processed', messageType: 'order_confirmation' },
+    { status: 'assigned', delay: 2000, action: 'Assigned to personal shopper', messageType: 'assignment_notification' },
+    { status: 'shopping', delay: 5000, action: 'Shopping in progress', messageType: 'shopping_update' },
+    { status: 'purchased', delay: 8000, action: 'Items purchased and being prepared', messageType: 'purchase_complete' },
+    { status: 'ready_for_delivery', delay: 3000, action: 'Ready for delivery pickup', messageType: 'ready_for_pickup' },
+    { status: 'out_for_delivery', delay: 2000, action: 'Out for delivery', messageType: 'delivery_update' },
+    { status: 'delivered', delay: 10000, action: 'Delivered to property', messageType: 'delivery_confirmation' },
+    { status: 'completed', delay: 1000, action: 'Order completed successfully', messageType: 'order_complete' }
   ];
+
+  // Get all staff bot users for messaging
+  const { data: staffUsers } = await supabase
+    .from('user_roles')
+    .select('user_id, role')
+    .in('role', ['shopper', 'driver', 'concierge', 'store_manager']);
+
+  const staffByRole = {};
+  if (staffUsers) {
+    staffUsers.forEach(user => {
+      if (!staffByRole[user.role]) staffByRole[user.role] = [];
+      staffByRole[user.role].push(user.user_id);
+    });
+  }
 
   for (const step of steps) {
     await new Promise(resolve => setTimeout(resolve, step.delay));
@@ -418,6 +476,17 @@ async function simulateOrderWorkflow(order: any, botProfile: any) {
         }
       });
 
+    // Send realistic messages between bots based on workflow stage
+    const actorRole = getActorRole(step.status);
+    if (staffByRole[actorRole] && staffByRole[actorRole].length > 0) {
+      const staffUserId = staffByRole[actorRole][0]; // Use first available staff member
+      const clientUserId = botProfile.user_id; // This should be set when creating the bot user
+      
+      if (clientUserId && staffUserId) {
+        await sendBotMessage(staffUserId, clientUserId, step.messageType, order, results);
+      }
+    }
+
     console.log(`Order ${order.id}: ${step.action}`);
   }
 
@@ -445,6 +514,7 @@ async function runBotSimulation() {
     botsCreated: 0,
     ordersPlaced: 0,
     workflowsCompleted: 0,
+    messagesSent: 0,
     errors: [] as string[]
   };
 
@@ -480,7 +550,7 @@ async function runBotSimulation() {
       results.ordersPlaced++;
 
       // Run order workflow simulation (track and await all at end)
-      const p = simulateOrderWorkflow(order, botProfile)
+      const p = simulateOrderWorkflow(order, botProfile, results)
         .then(() => {
           results.workflowsCompleted++;
           console.log(`✅ Completed workflow for ${botProfile.display_name}`);
