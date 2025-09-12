@@ -19,17 +19,19 @@ interface OnboardingStep {
 const steps: OnboardingStep[] = [
   { id: 1, title: "Welcome", description: "Tell us about yourself" },
   { id: 2, title: "Your Role", description: "What best describes you?" },
-  { id: 3, title: "Experience", description: "Your background with vacation rentals" },
-  { id: 4, title: "Preferences", description: "How can we help you best?" },
-  { id: 5, title: "Complete", description: "You're all set!" }
+  { id: 3, title: "Complete", description: "You're all set!" }
 ];
 
-const roleOptions = [
-  { id: 'client', label: 'Customer', description: 'I am here to get groceries', icon: Home },
-  { id: 'shopper', label: 'Personal Shopper', description: 'I shop and prepare orders for guests', icon: Users },
-  { id: 'driver', label: 'Delivery Driver', description: 'I deliver orders to properties', icon: Truck },
-  { id: 'concierge', label: 'Concierge', description: 'I provide guest services and coordination', icon: HeadphonesIcon },
-  { id: 'store_manager', label: 'Store Manager', description: 'I manage grocery/supply operations', icon: Building2 }
+const userTypeOptions = [
+  { id: 'client', label: 'Guest', description: 'Here to buy groceries', icon: Home },
+  { id: 'staff', label: 'Shop Staff', description: 'Here to support guests', icon: Users }
+];
+
+const staffRoleOptions = [
+  { id: 'shopper', label: 'Shopper', description: 'I shop and prepare orders for guests', icon: Users },
+  { id: 'driver', label: 'Driver', description: 'I deliver orders to properties', icon: Truck },
+  { id: 'store_manager', label: 'Store Manager', description: 'I manage grocery/supply operations', icon: Building2 },
+  { id: 'concierge', label: 'Concierge', description: 'I provide guest services and coordination', icon: HeadphonesIcon }
 ];
 
 export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
@@ -37,12 +39,8 @@ export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
   const [formData, setFormData] = useState({
     displayName: '',
     phone: '',
-    role: '',
-    experience: '',
-    propertyCount: '',
-    primaryLocation: '',
-    specialties: '',
-    goals: ''
+    userType: '',
+    role: ''
   });
   const { user, updateProfile } = useAuth();
 
@@ -61,23 +59,19 @@ export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
           display_name: formData.displayName,
           phone: formData.phone,
           preferences: {
-            experience: formData.experience,
-            propertyCount: formData.propertyCount,
-            primaryLocation: formData.primaryLocation,
-            specialties: formData.specialties,
-            goals: formData.goals,
             onboardingCompleted: true
           }
         })
         .eq('id', user?.id);
 
-      // Assign role
-      if (formData.role && formData.role !== 'client') {
+      // Assign role (use 'client' for guests, actual role for staff)
+      const finalRole = formData.userType === 'client' ? 'client' : formData.role;
+      if (finalRole && finalRole !== 'client') {
         await supabase
           .from('user_roles')
           .insert({
             user_id: user?.id,
-            role: formData.role as any
+            role: finalRole as any
           });
       }
 
@@ -126,119 +120,79 @@ export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold mb-2">What best describes your role?</h2>
+              <h2 className="text-xl font-bold mb-2">What brings you here?</h2>
               <p className="text-muted-foreground">This helps us customize your experience</p>
             </div>
-            <RadioGroup
-              value={formData.role}
-              onValueChange={(value) => setFormData({...formData, role: value})}
-              className="space-y-3"
-            >
-              {roleOptions.map((option) => {
-                const Icon = option.icon;
-                return (
-                  <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer">
-                    <RadioGroupItem value={option.id} id={option.id} />
-                    <Icon className="h-5 w-5 text-primary" />
-                    <div className="flex-1">
-                      <Label htmlFor={option.id} className="font-medium cursor-pointer">
-                        {option.label}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">{option.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-bold mb-2">Tell us about your experience</h2>
-              <p className="text-muted-foreground">This helps us provide better support</p>
-            </div>
-            <RadioGroup
-              value={formData.experience}
-              onValueChange={(value) => setFormData({...formData, experience: value})}
-              className="space-y-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="new" id="new" />
-                <Label htmlFor="new">New to vacation rentals</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="some" id="some" />
-                <Label htmlFor="some">Some experience (1-3 years)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="experienced" id="experienced" />
-                <Label htmlFor="experienced">Very experienced (3+ years)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="professional" id="professional" />
-                <Label htmlFor="professional">Industry professional</Label>
-              </div>
-            </RadioGroup>
             
-            {formData.role === 'client' && (
-              <div className="mt-4">
-                <Label htmlFor="propertyCount">How many properties do you manage?</Label>
-                <Input
-                  id="propertyCount"
-                  value={formData.propertyCount}
-                  onChange={(e) => setFormData({...formData, propertyCount: e.target.value})}
-                  placeholder="e.g., 1, 2-5, 6-10, 10+"
-                />
+            {!formData.userType && (
+              <RadioGroup
+                value={formData.userType}
+                onValueChange={(value) => setFormData({...formData, userType: value, role: value === 'client' ? 'client' : ''})}
+                className="space-y-3"
+              >
+                {userTypeOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <div key={option.id} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer">
+                      <RadioGroupItem value={option.id} id={option.id} />
+                      <Icon className="h-6 w-6 text-primary" />
+                      <div className="flex-1">
+                        <Label htmlFor={option.id} className="font-medium cursor-pointer text-base">
+                          {option.label}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">{option.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </RadioGroup>
+            )}
+
+            {formData.userType === 'staff' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Select your role:</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setFormData({...formData, userType: '', role: ''})}
+                  >
+                    Change
+                  </Button>
+                </div>
+                <RadioGroup
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({...formData, role: value})}
+                  className="space-y-3"
+                >
+                  {staffRoleOptions.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer">
+                        <RadioGroupItem value={option.id} id={option.id} />
+                        <Icon className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <Label htmlFor={option.id} className="font-medium cursor-pointer">
+                            {option.label}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">{option.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
+            )}
+
+            {formData.userType === 'client' && (
+              <div className="bg-accent/50 p-4 rounded-lg">
+                <p className="text-sm">Perfect! You're all set to start shopping for groceries.</p>
               </div>
             )}
           </div>
         );
 
-      case 4:
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-bold mb-2">How can we help you best?</h2>
-              <p className="text-muted-foreground">Customize your experience</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="primaryLocation">Primary location/region</Label>
-                <Input
-                  id="primaryLocation"
-                  value={formData.primaryLocation}
-                  onChange={(e) => setFormData({...formData, primaryLocation: e.target.value})}
-                  placeholder="e.g., Manuel Antonio, Costa Rica"
-                />
-              </div>
-              <div>
-                <Label htmlFor="specialties">Areas of interest/specialties (optional)</Label>
-                <Textarea
-                  id="specialties"
-                  value={formData.specialties}
-                  onChange={(e) => setFormData({...formData, specialties: e.target.value})}
-                  placeholder="e.g., luxury properties, family-friendly, eco-tourism..."
-                  rows={2}
-                />
-              </div>
-              <div>
-                <Label htmlFor="goals">What are your main goals? (optional)</Label>
-                <Textarea
-                  id="goals"
-                  value={formData.goals}
-                  onChange={(e) => setFormData({...formData, goals: e.target.value})}
-                  placeholder="e.g., streamline guest services, increase bookings, improve efficiency..."
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
+      case 3:
         return (
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -247,14 +201,27 @@ export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
             <h2 className="text-2xl font-bold">You're all set!</h2>
             <p className="text-muted-foreground">
               Welcome to Tulemar Concierge, {formData.displayName}! 
-              Your profile has been customized based on your role as a {roleOptions.find(r => r.id === formData.role)?.label}.
+              {formData.userType === 'client' 
+                ? "You're ready to start shopping for groceries."
+                : `Your profile has been set up as a ${staffRoleOptions.find(r => r.id === formData.role)?.label || 'team member'}.`
+              }
             </p>
             <div className="bg-accent/50 p-4 rounded-lg text-sm">
               <p className="font-medium mb-2">Next steps:</p>
               <ul className="text-left space-y-1 text-muted-foreground">
-                <li>• Explore your personalized dashboard</li>
-                <li>• Connect with other team members</li>
-                <li>• Set up your first project or order</li>
+                {formData.userType === 'client' ? (
+                  <>
+                    <li>• Browse available products</li>
+                    <li>• Add items to your cart</li>
+                    <li>• Place your first order</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Explore your personalized dashboard</li>
+                    <li>• Connect with other team members</li>
+                    <li>• Start managing orders and tasks</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -270,11 +237,9 @@ export function UserOnboarding({ onComplete }: { onComplete: () => void }) {
       case 1:
         return formData.displayName.trim().length > 0;
       case 2:
-        return formData.role.length > 0;
-      case 3:
-        return formData.experience.length > 0;
-      case 4:
-        return formData.primaryLocation.trim().length > 0;
+        if (formData.userType === 'client') return true;
+        if (formData.userType === 'staff') return formData.role.length > 0;
+        return formData.userType.length > 0;
       default:
         return true;
     }
