@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,16 +10,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft, CreditCard, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, getDeliveryFee, TAX_RATE } from '@/lib/currency';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { toast } from 'sonner';
 
 export default function ShopCheckout() {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
+  const { user, profile, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -33,6 +35,18 @@ export default function ShopCheckout() {
     special_instructions: '',
     dietary_restrictions: [] as string[],
   });
+
+  // Auto-fill form with user data when authenticated
+  useEffect(() => {
+    if (user && profile) {
+      setFormData(prev => ({
+        ...prev,
+        customer_name: profile.display_name || '',
+        customer_email: user.email || '',
+        customer_phone: profile.phone || '',
+      }));
+    }
+  }, [user, profile]);
 
   const subtotal = total;
   const deliveryFee = getDeliveryFee(subtotal);
@@ -121,6 +135,49 @@ export default function ShopCheckout() {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <ShopLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-3xl font-bold text-foreground mb-4">Loading...</h1>
+          </div>
+        </div>
+      </ShopLayout>
+    );
+  }
+
+  // Require authentication for checkout
+  if (!user) {
+    return (
+      <ShopLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto text-center">
+            <LogIn className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-foreground mb-4">Sign In Required</h1>
+            <p className="text-muted-foreground mb-8">
+              Please sign in to your account to proceed with checkout. This helps us track your order and provide better service.
+            </p>
+            <div className="space-x-4">
+              <Link to="/auth">
+                <Button className="bg-gradient-tropical hover:opacity-90 text-white">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In / Sign Up
+                </Button>
+              </Link>
+              <Link to="/cart">
+                <Button variant="outline">
+                  Back to Cart
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </ShopLayout>
+    );
+  }
 
   if (items.length === 0) {
     return (

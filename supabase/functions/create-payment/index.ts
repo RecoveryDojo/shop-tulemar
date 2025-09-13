@@ -38,6 +38,55 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Check if user exists, create if needed (Option C - Guest Account Creation)
+    let userCreated = false;
+    const { data: existingUser } = await supabaseClient.auth.admin.listUsers();
+    const userExists = existingUser.users.some(u => u.email === orderData.customerEmail);
+    
+    if (!userExists) {
+      console.log("Creating new user account for guest checkout:", orderData.customerEmail);
+      
+      // Create user account
+      const { data: newUser, error: userError } = await supabaseClient.auth.admin.createUser({
+        email: orderData.customerEmail,
+        password: Math.random().toString(36).slice(-8) + "A1!", // Random secure password
+        email_confirm: true, // Skip email confirmation for guest accounts
+        user_metadata: {
+          display_name: orderData.customerName,
+          created_via: 'guest_checkout'
+        }
+      });
+
+      if (userError) {
+        console.error("Failed to create user account:", userError);
+        // Continue with order creation even if user creation fails
+      } else {
+        console.log("User account created:", newUser.user?.id);
+        userCreated = true;
+
+        // Create profile for the new user
+        await supabaseClient
+          .from("profiles")
+          .insert({
+            id: newUser.user!.id,
+            display_name: orderData.customerName,
+            email: orderData.customerEmail,
+            phone: orderData.customerPhone,
+            preferences: { created_via: 'guest_checkout' }
+          });
+
+        // Assign client role
+        await supabaseClient
+          .from("user_roles")
+          .insert({
+            user_id: newUser.user!.id,
+            role: 'client'
+          });
+
+        console.log("Profile and role created for new user");
+      }
+    }
+
     // Create order in database first
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
@@ -168,11 +217,17 @@ serve(async (req) => {
 
     console.log("Stripe session created:", session.id);
 
+    // Log if we created a new user account
+    if (userCreated) {
+      console.log("New user account created during checkout for:", orderData.customerEmail);
+    }
+
     return new Response(
       JSON.stringify({ 
         url: session.url,
         orderId: order.id,
-        accessToken: order.access_token
+        accessToken: order.access_token,
+        userCreated: userCreated
       }), 
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
