@@ -31,6 +31,7 @@ import ConciergeDashboard from "@/pages/ConciergeDashboard";
 import DriverDashboard from "@/pages/DriverDashboard";
 import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
 import Profile from "@/pages/Profile";
+import SystemArchitecture from "@/pages/SystemArchitecture";
 import BotTesting from "@/pages/BotTesting";
 import ResetPassword from "@/pages/ResetPassword";
 
@@ -73,6 +74,7 @@ function AppContent() {
                 <Route path="/store-manager" element={<StoreManagerDashboard />} />
                 <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/system-architecture" element={<SystemArchitecture />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/admin" element={<Admin />} />

@@ -16,6 +16,7 @@ export const Navigation = () => {
 
   const authRequiredRoutes = [
     { path: "/work-tracker", label: "Work Tracker", icon: BarChart3, description: "Project and task management" },
+    { path: "/system-architecture", label: "System Architecture", icon: BarChart3, description: "Technical diagrams and order lifecycle" },
   ];
 
   const adminRoutes = [
