@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: string
+          admin_user_id: string
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          target_user_id: string | null
+          timestamp: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          target_user_id?: string | null
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          target_user_id?: string | null
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       ai_learning_patterns: {
         Row: {
           confidence_score: number | null
@@ -1680,6 +1713,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: Json
+      }
       cleanup_old_typing_indicators: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1732,6 +1772,13 @@ export type Database = {
           pattern_type_param: string
         }
         Returns: string
+      }
+      remove_user_role: {
+        Args: {
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {

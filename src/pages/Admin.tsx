@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
+import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
 
 interface UserWithRoles {
   id: string;
@@ -118,6 +119,7 @@ const Admin = () => {
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
           <TabsContent value="inventory">
@@ -251,6 +253,10 @@ const Admin = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <AdminActivityLog />
           </TabsContent>
         </Tabs>
       </div>

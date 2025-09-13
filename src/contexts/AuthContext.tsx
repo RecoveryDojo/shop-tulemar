@@ -191,57 +191,101 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const assignRole = async (userId: string, role: any) => {
-    const { error } = await supabase
-      .from('user_roles')
-      .insert({ user_id: userId, role });
+    try {
+      const { data, error } = await supabase
+        .rpc('assign_user_role', {
+          target_user_id: userId,
+          target_role: role
+        });
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Role Assignment Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (!result.success) {
+        toast({
+          title: "Role Assignment Error",
+          description: result.error || "Failed to assign role",
+          variant: "destructive",
+        });
+        return { error: new Error(result.error || "Failed to assign role") };
+      }
+
+      toast({
+        title: "Success",
+        description: result.message || "Role assigned successfully",
+      });
+      
+      // Refresh roles if it's current user
+      if (userId === user?.id) {
+        fetchRoles(userId);
+      }
+
+      return { error: null };
+    } catch (error: any) {
       toast({
         title: "Role Assignment Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
+      return { error };
+    }
+  };
+
+  const removeRole = async (userId: string, role: any) => {
+    try {
+      const { data, error } = await supabase
+        .rpc('remove_user_role', {
+          target_user_id: userId,
+          target_role: role
+        });
+
+      if (error) {
+        toast({
+          title: "Role Removal Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (!result.success) {
+        toast({
+          title: "Role Removal Error",
+          description: result.error || "Failed to remove role",
+          variant: "destructive",
+        });
+        return { error: new Error(result.error || "Failed to remove role") };
+      }
+
       toast({
         title: "Success",
-        description: `Role ${role} assigned successfully`,
+        description: result.message || "Role removed successfully",
       });
       
       // Refresh roles if it's current user
       if (userId === user?.id) {
         fetchRoles(userId);
       }
-    }
 
-    return { error };
-  };
-
-  const removeRole = async (userId: string, role: any) => {
-    const { error } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId)
-      .eq('role', role);
-
-    if (error) {
+      return { error: null };
+    } catch (error: any) {
       toast({
         title: "Role Removal Error",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Success",
-        description: `Role ${role} removed successfully`,
-      });
-      
-      // Refresh roles if it's current user
-      if (userId === user?.id) {
-        fetchRoles(userId);
-      }
+      return { error };
     }
-
-    return { error };
   };
 
   const hasRole = (role: UserRole): boolean => {
