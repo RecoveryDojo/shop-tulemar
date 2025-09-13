@@ -116,13 +116,19 @@ export default function CategoryPage() {
                 <p className="text-muted-foreground mb-4">
                   {searchQuery 
                     ? `No products match "${searchQuery}" in this category.`
-                    : "This category doesn't have any products yet."
+                    : `This category doesn't have any products available at the moment.`
                   }
                 </p>
-                {searchQuery && (
+                {searchQuery ? (
                   <Button onClick={() => setSearchQuery('')} variant="outline">
                     Clear search
                   </Button>
+                ) : (
+                  <Link to="/categories">
+                    <Button variant="outline">
+                      Browse Other Categories
+                    </Button>
+                  </Link>
                 )}
               </div>
             )}

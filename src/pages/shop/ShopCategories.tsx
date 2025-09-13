@@ -3,82 +3,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Coffee, Apple, Fish, Beef, ShoppingBag, Wine, Baby, Leaf } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useProducts } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ShopCategories() {
-  const categories = [
-    {
-      id: "dairy-eggs",
-      icon: "🥛",
-      name: "Dairy & Eggs",
-      description: "Fresh dairy products, eggs, cheese, and milk",
-      items: "10+ items",
-      color: "from-blue-400 to-cyan-500"
-    },
-    {
-      id: "fresh-produce",
-      icon: Apple,
-      name: "Fresh Produce",
-      description: "Tropical fruits, vegetables, and herbs",
-      items: "10+ items",
-      color: "from-green-500 to-emerald-600"
-    },
-    {
-      id: "coffee-beverages",
-      icon: Coffee,
-      name: "Coffee & Beverages",
-      description: "Premium Costa Rican coffee, teas, and juices",
-      items: "10+ items",
-      color: "from-amber-600 to-orange-600"
-    },
-    {
-      id: "fresh-seafood",
-      icon: Fish,
-      name: "Fresh Seafood",
-      description: "Daily catch from Pacific and Caribbean coasts",
-      items: "10+ items",
-      color: "from-blue-500 to-cyan-600"
-    },
-    {
-      id: "meat-poultry",
-      icon: Beef,
-      name: "Meat & Poultry",
-      description: "Locally sourced beef, pork, and chicken",
-      items: "10+ items",
-      color: "from-red-500 to-pink-600"
-    },
-    {
-      id: "bakery-grains",
-      icon: ShoppingBag,
-      name: "Bakery & Grains",
-      description: "Fresh bread, rice, pasta, and cereals",
-      items: "10+ items",
-      color: "from-yellow-500 to-amber-600"
-    },
-    {
-      id: "wines-spirits",
-      icon: Wine,
-      name: "Wines & Spirits",
-      description: "Local and imported alcoholic beverages",
-      items: "10+ items",
-      color: "from-purple-500 to-indigo-600"
-    },
-    {
-      id: "baby-family",
-      icon: Baby,
-      name: "Baby & Family",
-      description: "Baby food, diapers, and family essentials",
-      items: "10+ items",
-      color: "from-pink-400 to-rose-500"
-    },
-    {
-      id: "organic-health",
-      icon: Leaf,
-      name: "Organic & Health",
-      description: "Organic products and health supplements",
-      items: "10+ items",
-      color: "from-emerald-400 to-green-500"
-    }
-  ];
+  const { categories: dbCategories, products, loading } = useProducts();
+
+  // Icon mapping for categories
+  const iconMap: Record<string, any> = {
+    "dairy-eggs": "🥛",
+    "fresh-produce": Apple,
+    "coffee-beverages": Coffee,
+    "fresh-seafood": Fish,
+    "meat-poultry": Beef,
+    "bakery-grains": ShoppingBag,
+    "wines-spirits": Wine,
+    "baby-family": Baby,
+    "organic-health": Leaf
+  };
+
+  // Color mapping for categories
+  const colorMap: Record<string, string> = {
+    "dairy-eggs": "from-blue-400 to-cyan-500",
+    "fresh-produce": "from-green-500 to-emerald-600",
+    "coffee-beverages": "from-amber-600 to-orange-600",
+    "fresh-seafood": "from-blue-500 to-cyan-600",
+    "meat-poultry": "from-red-500 to-pink-600",
+    "bakery-grains": "from-yellow-500 to-amber-600",
+    "wines-spirits": "from-purple-500 to-indigo-600",
+    "baby-family": "from-pink-400 to-rose-500",
+    "organic-health": "from-emerald-400 to-green-500"
+  };
+
+  // Get product count for each category
+  const getProductCount = (categoryId: string) => {
+    const count = products.filter(p => p.category_id === categoryId).length;
+    return count === 0 ? "No items" : count === 1 ? "1 item" : `${count} items`;
+  };
+
+  // Filter out categories with no products
+  const categoriesWithProducts = dbCategories.filter(category => {
+    const productCount = products.filter(p => p.category_id === category.id).length;
+    return productCount > 0;
+  });
 
   return (
     <ShopLayout>
@@ -100,35 +67,60 @@ export default function ShopCategories() {
       {/* Categories Grid */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {categories.map((category, index) => (
-              <Card key={index} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale group">
-                <CardHeader className="text-center">
-                  <div className={`bg-gradient-to-r ${category.color} p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                    {typeof category.icon === 'string' ? (
-                      <span className="text-3xl">{category.icon}</span>
-                    ) : (
-                      <category.icon className="h-10 w-10 text-white" />
-                    )}
-                  </div>
-                  <CardTitle className="text-xl">{category.name}</CardTitle>
-                  <CardDescription className="text-base">
-                    {category.description}
-                  </CardDescription>
-                  <div className="text-sm text-primary font-medium">
-                    {category.items}
-                  </div>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link to={`/category/${category.id}`}>
-                      Browse {category.name}
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i} className="border-0 shadow-elegant">
+                  <CardHeader className="text-center">
+                    <Skeleton className="w-20 h-20 rounded-full mx-auto mb-4" />
+                    <Skeleton className="h-6 w-32 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-24 mx-auto" />
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <Skeleton className="h-8 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {categoriesWithProducts.map((category) => {
+                const IconComponent = iconMap[category.id];
+                const color = colorMap[category.id] || "from-gray-400 to-gray-500";
+                
+                return (
+                  <Card key={category.id} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale group">
+                    <CardHeader className="text-center">
+                      <div className={`bg-gradient-to-r ${color} p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        {typeof IconComponent === 'string' ? (
+                          <span className="text-3xl">{IconComponent}</span>
+                        ) : IconComponent ? (
+                          <IconComponent className="h-10 w-10 text-white" />
+                        ) : (
+                          <span className="text-3xl">{category.icon}</span>
+                        )}
+                      </div>
+                      <CardTitle className="text-xl">{category.name}</CardTitle>
+                      <CardDescription className="text-base">
+                        {category.description}
+                      </CardDescription>
+                      <div className="text-sm text-primary font-medium">
+                        {getProductCount(category.id)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <Link to={`/category/${category.id}`}>
+                          Browse {category.name}
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

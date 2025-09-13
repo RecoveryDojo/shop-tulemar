@@ -105,7 +105,9 @@ export const useProducts = () => {
   const fetchProductsByCategory = async (categoryId: string) => {
     setCategoryLoading(true);
     try {
+      console.log('Fetching products for category:', categoryId);
       await fetchProducts(categoryId);
+      console.log('Products loaded for category:', categoryId, products.length);
     } finally {
       setCategoryLoading(false);
     }
