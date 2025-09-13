@@ -618,36 +618,82 @@ export default function SystemArchitecture() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/50 p-6 rounded-lg">
-                  <pre className="text-sm overflow-x-auto">
-{`flowchart TD
-    A[🛒 Customer Places Order] --> B[💳 Payment Processing]
-    B --> C{✅ Payment Successful?}
-    C -->|Yes| D[📋 Order Confirmed]
-    C -->|No| E[❌ Payment Failed]
-    
-    D --> F[👥 Assign Team Members]
-    F --> G[🛍️ Shopper Collects Items]
-    G --> H[📦 Items Packed]
-    H --> I[🚚 Driver Picks Up]
-    I --> J[🏠 Delivery to Property]
-    J --> K[🍽️ Concierge Stocks Kitchen]
-    K --> L[🎉 Order Complete]
-    
-    E --> M[📧 Notify Customer]
-    M --> N[🔄 Retry Payment Option]
-    
-    style A fill:#e3f2fd
-    style D fill:#e8f5e8
-    style L fill:#f3e5f5
-    style E fill:#ffebee
-    style F fill:#fff3e0
-    style G fill:#f1f8e9
-    style H fill:#e0f2f1
-    style I fill:#fce4ec
-    style J fill:#e8eaf6
-    style K fill:#f9fbe7`}
-                  </pre>
+                <div className="flex flex-col items-center space-y-8 p-6">
+                  {/* Order Placement */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">🛒</div>
+                      <div className="font-semibold">Customer Places Order</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Payment */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-yellow-100 border-2 border-yellow-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">💳</div>
+                      <div className="font-semibold">Payment Processing</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Confirmation */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">✅</div>
+                      <div className="font-semibold">Order Confirmed</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Team Assignment */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-purple-100 border-2 border-purple-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">👥</div>
+                      <div className="font-semibold">Assign Team</div>
+                      <div className="text-xs text-gray-600 mt-1">Shopper, Driver, Concierge</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Shopping */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-orange-100 border-2 border-orange-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">🛍️</div>
+                      <div className="font-semibold">Shopping Phase</div>
+                      <div className="text-xs text-gray-600 mt-1">Collect & Pack Items</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Delivery */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-indigo-100 border-2 border-indigo-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">🚚</div>
+                      <div className="font-semibold">Delivery</div>
+                      <div className="text-xs text-gray-600 mt-1">Transport to Property</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Stocking */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-teal-100 border-2 border-teal-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">🍽️</div>
+                      <div className="font-semibold">Kitchen Stocking</div>
+                      <div className="text-xs text-gray-600 mt-1">Organize & Store</div>
+                    </div>
+                    <ArrowRight className="h-6 w-6 text-gray-400 mt-2 rotate-90" />
+                  </div>
+
+                  {/* Completion */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-emerald-100 border-2 border-emerald-300 rounded-lg p-4 w-48 text-center">
+                      <div className="text-2xl mb-2">🎉</div>
+                      <div className="font-semibold">Order Complete</div>
+                      <div className="text-xs text-gray-600 mt-1">Customer Satisfied</div>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
