@@ -113,10 +113,12 @@ export default function ShopCheckout() {
       });
 
       if (error) {
+        console.error("Payment creation error details:", error);
         throw new Error(error.message || "Failed to create payment session");
       }
 
       if (!data?.url) {
+        console.error("Payment response data:", data);
         throw new Error("No payment URL received");
       }
 
