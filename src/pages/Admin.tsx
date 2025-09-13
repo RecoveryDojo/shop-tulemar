@@ -30,8 +30,44 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
+  const [isCreatingJessica, setIsCreatingJessica] = useState(false);
 
   const roles: UserRole[] = ['admin', 'driver', 'client', 'concierge', 'sysadmin'];
+
+  const handleCreateJessicaAccount = async () => {
+    setIsCreatingJessica(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-jessica-account', {
+        body: {}
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.alreadyExists) {
+        toast({
+          title: "Account Status",
+          description: "Jessica's account already exists!",
+        });
+      } else {
+        toast({
+          title: "Account Created",
+          description: `Jessica's account created! Temp password: ${data.tempPassword}`,
+        });
+      }
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Failed to create Jessica\'s account:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to create account',
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingJessica(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -183,6 +219,25 @@ const Admin = () => {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>
+              Administrative shortcuts and emergency fixes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={handleCreateJessicaAccount}
+              disabled={isCreatingJessica}
+              className="mb-4"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              {isCreatingJessica ? 'Creating...' : 'Create Jessica\'s Account'}
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card className="mb-8">
           <CardHeader>
