@@ -267,10 +267,161 @@ export default function SystemArchitecture() {
               <CollapsibleContent className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Order Processing Flow</CardTitle>
+                    <CardTitle>Complete Order Workflow System</CardTitle>
+                    <CardDescription>
+                      Comprehensive diagram showing automated workflow engine, stakeholder management, and real-time tracking
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="bg-muted/50 p-6 rounded-lg mb-6">
+                      <pre className="text-sm overflow-x-auto">
+{`graph TB
+    subgraph "Order Submission & Payment"
+        A[Customer Places Order] --> B[Payment Processing]
+        B --> C{Payment Success?}
+        C -->|Yes| D[Order Confirmed]
+        C -->|No| E[Payment Failed]
+        E --> F[Customer Notified]
+    end
+    
+    subgraph "Workflow Automation Engine"
+        D --> G[Workflow Event Triggered]
+        G --> H[Check Workflow Rules]
+        H --> I[Execute Matching Actions]
+        I --> J[Update Order Status]
+        I --> K[Assign Stakeholders]
+        I --> L[Send Notifications]
+        I --> M[Schedule Follow-ups]
+    end
+    
+    subgraph "Stakeholder Assignment System"
+        K --> N[Auto-Assign Shopper]
+        K --> O[Auto-Assign Driver]
+        K --> P[Auto-Assign Concierge]
+        N --> Q[15-min Acceptance Window]
+        Q --> R{Accepted?}
+        R -->|No| S[Auto-Reassign]
+        R -->|Yes| T[Assignment Confirmed]
+        S --> N
+    end
+    
+    subgraph "Shopping Phase Workflow"
+        T --> U[Shopper Starts Shopping]
+        U --> V[Real-time Item Scanning]
+        V --> W[Substitution Requests]
+        W --> X[Customer Approval]
+        X --> Y[Continue Shopping]
+        Y --> Z[Quality Check Complete]
+    end
+    
+    subgraph "Delivery & Handoff Workflow"
+        Z --> AA[Driver Pickup]
+        AA --> BB[GPS Tracking Active]
+        BB --> CC[Route Optimization]
+        CC --> DD[Arrival at Property]
+        DD --> EE[Concierge Handoff]
+    end
+    
+    subgraph "Final Stocking Workflow"
+        EE --> FF[Kitchen Stocking]
+        FF --> GG[Photo Documentation]
+        GG --> HH[Completion Confirmation]
+        HH --> II[Multi-Stakeholder Notification]
+        II --> JJ[Customer Satisfaction Survey]
+    end
+    
+    subgraph "Real-time Communication System"
+        L --> KK[SMS Notifications]
+        L --> LL[Email Updates]
+        L --> MM[Push Notifications]
+        L --> NN[In-App Alerts]
+    end
+    
+    subgraph "Monitoring & Analytics"
+        J --> OO[Real-time Status Tracker]
+        J --> PP[Workflow Analytics]
+        J --> QQ[Performance Metrics]
+        J --> RR[Activity Logs]
+    end
+    
+    classDef customer fill:#e1f5fe
+    classDef automation fill:#f3e5f5
+    classDef stakeholder fill:#e8f5e8
+    classDef workflow fill:#fff3e0
+    classDef communication fill:#fce4ec
+    classDef monitoring fill:#f1f8e9
+    
+    class A,E,F,X,JJ customer
+    class G,H,I,J,K,L,M automation
+    class N,O,P,Q,R,S,T stakeholder
+    class U,V,W,Y,Z,AA,BB,CC,DD,EE,FF,GG,HH,II workflow
+    class KK,LL,MM,NN communication
+    class OO,PP,QQ,RR monitoring`}
+                      </pre>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-semibold mb-4">Automation Engine Features</h3>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm">Event-driven workflow triggers</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm">Intelligent stakeholder assignment</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm">Automated status transitions</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm">Multi-channel notifications</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm">Escalation management</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold mb-4">Real-time Capabilities</h3>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">Live order status updates</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">GPS tracking & ETA calculation</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">Instant stakeholder notifications</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">Live activity monitoring</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">Performance analytics</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Detailed Order Processing Flow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-muted/50 p-6 rounded-lg mb-4">
                       <pre className="text-sm overflow-x-auto">
 {`graph LR
     A[📝 Pending] --> B[✅ Confirmed]
@@ -282,31 +433,28 @@ export default function SystemArchitecture() {
     G --> H[🍽️ Stocking]
     H --> I[🎉 Completed]
     
-    subgraph "Customer Interaction"
-        A
-        B
-        I
-    end
-    
-    subgraph "Fulfillment Team"
-        C
-        D
-        E
-        F
-        G
-        H
-    end
-    
-    subgraph "Automated Workflows"
+    subgraph "Automation Triggers"
         J[Payment Verification] --> B
         K[Team Assignment] --> C
-        L[Completion Notifications] --> I
+        L[Shopping Complete] --> E
+        M[Quality Check] --> F
+        N[GPS Arrival] --> G
+        O[Handoff Complete] --> H
+        P[Stocking Done] --> I
+    end
+    
+    subgraph "Stakeholder Actions"
+        Q[Customer: Order & Pay]
+        R[Shopper: Accept & Shop]
+        S[Driver: Pick & Deliver]
+        T[Concierge: Stock Kitchen]
+        U[Admin: Monitor & Manage]
     end`}
                       </pre>
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold mb-4">Lifecycle Stages Breakdown</h3>
+                      <h3 className="text-lg font-semibold mb-4">Workflow Stage Breakdown</h3>
                       <div className="grid gap-4">
                         {orderLifecycleStages.map((stage, index) => (
                           <div key={stage.id} className="flex items-center gap-4 p-4 border rounded-lg">
@@ -323,6 +471,81 @@ export default function SystemArchitecture() {
                             )}
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Stakeholder Assignment & Communication Flow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-muted/50 p-6 rounded-lg mb-4">
+                      <pre className="text-sm overflow-x-auto">
+{`sequenceDiagram
+    participant C as Customer
+    participant WE as Workflow Engine
+    participant S as Shopper
+    participant D as Driver
+    participant Con as Concierge
+    participant NS as Notification System
+    
+    C->>WE: Place Order
+    WE->>WE: Validate Payment
+    WE->>NS: Send Confirmation
+    NS->>C: Order Confirmed (SMS/Email)
+    
+    WE->>S: Auto-Assign Order
+    S->>WE: Accept Assignment (15min window)
+    WE->>NS: Assignment Confirmed
+    NS->>C: Shopper Assigned
+    
+    S->>WE: Start Shopping
+    WE->>NS: Shopping Started
+    S->>C: Substitution Request (if needed)
+    C->>S: Approval/Rejection
+    
+    S->>WE: Shopping Complete
+    WE->>D: Auto-Assign Delivery
+    D->>WE: Accept & Pickup
+    WE->>NS: Out for Delivery
+    NS->>C: Delivery Started + GPS Link
+    
+    D->>WE: Arrived at Property
+    WE->>Con: Handoff to Concierge
+    Con->>WE: Kitchen Stocking Started
+    
+    Con->>WE: Stocking Complete + Photos
+    WE->>NS: Multi-Stakeholder Notification
+    NS->>C: Order Complete
+    NS->>S: Order Complete
+    NS->>D: Order Complete
+    NS->>Con: Order Complete
+    
+    WE->>C: Satisfaction Survey (2hrs later)`}
+                      </pre>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-semibold mb-3">Automatic Assignment Rules</h4>
+                        <ul className="text-sm space-y-1 text-muted-foreground">
+                          <li>• Order confirmed → Assign available shopper</li>
+                          <li>• Shopping complete → Assign driver for pickup</li>
+                          <li>• Delivery arrival → Notify concierge for handoff</li>
+                          <li>• Assignment declined → Auto-reassign to next available</li>
+                          <li>• 15-minute acceptance window for all assignments</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-3">Communication Channels</h4>
+                        <ul className="text-sm space-y-1 text-muted-foreground">
+                          <li>• <Badge variant="secondary" className="mr-1">SMS</Badge> Critical updates & confirmations</li>
+                          <li>• <Badge variant="secondary" className="mr-1">Email</Badge> Detailed order information</li>
+                          <li>• <Badge variant="secondary" className="mr-1">Push</Badge> Real-time app notifications</li>
+                          <li>• <Badge variant="secondary" className="mr-1">In-App</Badge> Live status updates</li>
+                        </ul>
                       </div>
                     </div>
                   </CardContent>
