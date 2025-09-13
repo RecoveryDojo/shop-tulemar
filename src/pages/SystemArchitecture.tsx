@@ -40,10 +40,11 @@ export default function SystemArchitecture() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="technical">Technical Stack</TabsTrigger>
             <TabsTrigger value="lifecycle">Order Lifecycle</TabsTrigger>
+            <TabsTrigger value="flowchart">Simple Flowchart</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -606,6 +607,100 @@ export default function SystemArchitecture() {
                 </Card>
               </CollapsibleContent>
             </Collapsible>
+          </TabsContent>
+
+          <TabsContent value="flowchart" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Simple Order Workflow</CardTitle>
+                <CardDescription>
+                  Simplified visual representation of the order processing flow
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted/50 p-6 rounded-lg">
+                  <pre className="text-sm overflow-x-auto">
+{`flowchart TD
+    A[🛒 Customer Places Order] --> B[💳 Payment Processing]
+    B --> C{✅ Payment Successful?}
+    C -->|Yes| D[📋 Order Confirmed]
+    C -->|No| E[❌ Payment Failed]
+    
+    D --> F[👥 Assign Team Members]
+    F --> G[🛍️ Shopper Collects Items]
+    G --> H[📦 Items Packed]
+    H --> I[🚚 Driver Picks Up]
+    I --> J[🏠 Delivery to Property]
+    J --> K[🍽️ Concierge Stocks Kitchen]
+    K --> L[🎉 Order Complete]
+    
+    E --> M[📧 Notify Customer]
+    M --> N[🔄 Retry Payment Option]
+    
+    style A fill:#e3f2fd
+    style D fill:#e8f5e8
+    style L fill:#f3e5f5
+    style E fill:#ffebee
+    style F fill:#fff3e0
+    style G fill:#f1f8e9
+    style H fill:#e0f2f1
+    style I fill:#fce4ec
+    style J fill:#e8eaf6
+    style K fill:#f9fbe7`}
+                  </pre>
+                </div>
+                
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">🛒</div>
+                    <div>
+                      <div className="font-medium">Order Placement</div>
+                      <div className="text-sm text-muted-foreground">Customer selects items</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">👥</div>
+                    <div>
+                      <div className="font-medium">Team Assignment</div>
+                      <div className="text-sm text-muted-foreground">Auto-assign shopper, driver, concierge</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">🛍️</div>
+                    <div>
+                      <div className="font-medium">Shopping</div>
+                      <div className="text-sm text-muted-foreground">Items collected from store</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">🚚</div>
+                    <div>
+                      <div className="font-medium">Delivery</div>
+                      <div className="text-sm text-muted-foreground">Transport to property</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">🍽️</div>
+                    <div>
+                      <div className="font-medium">Stocking</div>
+                      <div className="text-sm text-muted-foreground">Concierge organizes kitchen</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                    <div className="text-2xl">🎉</div>
+                    <div>
+                      <div className="font-medium">Completion</div>
+                      <div className="text-sm text-muted-foreground">Order fulfilled successfully</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="integrations" className="space-y-6">
