@@ -228,14 +228,23 @@ const Admin = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
-              onClick={handleCreateJessicaAccount}
-              disabled={isCreatingJessica}
-              className="mb-4"
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              {isCreatingJessica ? 'Creating...' : 'Create Jessica\'s Account'}
-            </Button>
+            <div className="flex gap-2 mb-4">
+              <Button 
+                onClick={handleCreateJessicaAccount}
+                disabled={isCreatingJessica}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {isCreatingJessica ? 'Creating...' : 'Create Jessica\'s Account'}
+              </Button>
+              <Button 
+                onClick={fetchUsers}
+                variant="outline"
+                disabled={loading}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                {loading ? 'Refreshing...' : 'Refresh Users'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
