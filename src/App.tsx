@@ -32,6 +32,7 @@ import DriverDashboard from "@/pages/DriverDashboard";
 import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
 import Profile from "@/pages/Profile";
 import BotTesting from "@/pages/BotTesting";
+import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ function AppContent() {
                 <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/product/:productId" element={<ProductEdit />} />
                 

@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChefHat, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -43,6 +45,34 @@ const Auth = () => {
     const { error } = await signUp(email, password, displayName);
     
     setLoading(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Enter your email",
+        description: "Please enter your email to reset your password.",
+      });
+      return;
+    }
+    setLoading(true);
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    setLoading(false);
+    if (error) {
+      toast({
+        title: "Reset Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Check your email",
+        description: "We sent you a password reset link.",
+      });
+    }
   };
 
   return (
@@ -105,6 +135,16 @@ const Auth = () => {
                     />
                   </div>
                   
+                  <div className="flex justify-end -mt-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="px-0 text-primary"
+                      onClick={handleResetPassword}
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transition-all duration-200"
