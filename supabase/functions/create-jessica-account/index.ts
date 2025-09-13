@@ -59,36 +59,76 @@ serve(async (req) => {
 
     console.log("User created:", newUser.user?.id);
 
-    // Create profile (triggers will handle email preferences)
-    const { error: profileError } = await supabaseClient
+    // Check if profile was automatically created by triggers
+    const { data: existingProfile } = await supabaseClient
       .from("profiles")
-      .insert({
-        id: newUser.user!.id,
-        display_name: 'Jessica Wallsinger',
-        email: 'babeslovesdaisies@gmail.com',
-        phone: '2146749070',
-        preferences: { 
-          created_via: 'admin_recovery',
-          original_order_id: '93eb1bcd-3f0f-46c8-bd1d-25ffcd5eeca7'
-        }
-      });
+      .select("*")
+      .eq("id", newUser.user!.id)
+      .single();
 
-    if (profileError) {
-      console.error("Failed to create profile:", profileError);
-      throw new Error(`Failed to create profile: ${profileError.message}`);
+    if (!existingProfile) {
+      // Create profile only if it doesn't exist
+      const { error: profileError } = await supabaseClient
+        .from("profiles")
+        .insert({
+          id: newUser.user!.id,
+          display_name: 'Jessica Wallsinger',
+          email: 'babeslovesdaisies@gmail.com',
+          phone: '2146749070',
+          preferences: { 
+            created_via: 'admin_recovery',
+            original_order_id: '93eb1bcd-3f0f-46c8-bd1d-25ffcd5eeca7'
+          }
+        });
+
+      if (profileError) {
+        console.error("Failed to create profile:", profileError);
+        throw new Error(`Failed to create profile: ${profileError.message}`);
+      }
+    } else {
+      console.log("Profile already exists (created by trigger)");
+      
+      // Update the existing profile with Jessica's details
+      const { error: updateError } = await supabaseClient
+        .from("profiles")
+        .update({
+          display_name: 'Jessica Wallsinger',
+          phone: '2146749070',
+          preferences: { 
+            ...existingProfile.preferences,
+            created_via: 'admin_recovery',
+            original_order_id: '93eb1bcd-3f0f-46c8-bd1d-25ffcd5eeca7'
+          }
+        })
+        .eq("id", newUser.user!.id);
+
+      if (updateError) {
+        console.error("Failed to update profile:", updateError);
+        // Don't throw error, this is not critical
+      }
     }
 
-    // Assign client role
-    const { error: roleError } = await supabaseClient
+    // Check if role was automatically assigned by triggers
+    const { data: existingRoles } = await supabaseClient
       .from("user_roles")
-      .insert({
-        user_id: newUser.user!.id,
-        role: 'client'
-      });
+      .select("role")
+      .eq("user_id", newUser.user!.id);
 
-    if (roleError) {
-      console.error("Failed to assign role:", roleError);
-      throw new Error(`Failed to assign role: ${roleError.message}`);
+    if (!existingRoles || existingRoles.length === 0) {
+      // Assign client role only if no roles exist
+      const { error: roleError } = await supabaseClient
+        .from("user_roles")
+        .insert({
+          user_id: newUser.user!.id,
+          role: 'client'
+        });
+
+      if (roleError) {
+        console.error("Failed to assign role:", roleError);
+        throw new Error(`Failed to assign role: ${roleError.message}`);
+      }
+    } else {
+      console.log("Role already assigned (created by trigger)");
     }
 
     console.log("Jessica's account created successfully!");
