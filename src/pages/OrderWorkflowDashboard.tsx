@@ -28,6 +28,7 @@ import { RoleBasedDashboard } from "@/components/workflow/RoleBasedDashboard";
 import { WorkflowAnalytics } from "@/components/workflow/WorkflowAnalytics";
 import { RealTimeStatusTracker } from "@/components/workflow/RealTimeStatusTracker";
 import { DebuggingSwimlaneChart } from "@/components/workflow/DebuggingSwimlaneChart";
+import { NotificationTester } from "@/components/workflow/NotificationTester";
 import { WorkflowAutomationPanel } from "@/components/workflow/WorkflowAutomationPanel";
 
 interface Order {
@@ -370,6 +371,7 @@ function OrderWorkflowDashboardContent() {
               orders={orders}
               title="🐛 Jessica's Order Debug - Live Workflow State"
             />
+            <NotificationTester />
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
