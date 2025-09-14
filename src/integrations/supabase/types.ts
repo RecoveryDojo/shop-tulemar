@@ -877,30 +877,48 @@ export type Database = {
       order_items: {
         Row: {
           created_at: string | null
+          found_quantity: number | null
           id: string
           order_id: string
+          photo_url: string | null
           product_id: string
           quantity: number
+          shopper_notes: string | null
+          shopping_status: string | null
+          substitution_data: Json | null
           total_price: number
           unit_price: number
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          found_quantity?: number | null
           id?: string
           order_id: string
+          photo_url?: string | null
           product_id: string
           quantity: number
+          shopper_notes?: string | null
+          shopping_status?: string | null
+          substitution_data?: Json | null
           total_price: number
           unit_price: number
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          found_quantity?: number | null
           id?: string
           order_id?: string
+          photo_url?: string | null
           product_id?: string
           quantity?: number
+          shopper_notes?: string | null
+          shopping_status?: string | null
+          substitution_data?: Json | null
           total_price?: number
           unit_price?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1032,11 +1050,14 @@ export type Database = {
         Row: {
           access_token: string | null
           arrival_date: string | null
+          assigned_shopper_id: string | null
           created_at: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          delivery_completed_at: string | null
           delivery_fee: number
+          delivery_started_at: string | null
           departure_date: string | null
           dietary_restrictions: Json | null
           guest_count: number | null
@@ -1044,6 +1065,8 @@ export type Database = {
           payment_intent_id: string | null
           payment_status: string | null
           property_address: string | null
+          shopping_completed_at: string | null
+          shopping_started_at: string | null
           special_instructions: string | null
           status: string | null
           subtotal: number
@@ -1054,11 +1077,14 @@ export type Database = {
         Insert: {
           access_token?: string | null
           arrival_date?: string | null
+          assigned_shopper_id?: string | null
           created_at?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          delivery_completed_at?: string | null
           delivery_fee: number
+          delivery_started_at?: string | null
           departure_date?: string | null
           dietary_restrictions?: Json | null
           guest_count?: number | null
@@ -1066,6 +1092,8 @@ export type Database = {
           payment_intent_id?: string | null
           payment_status?: string | null
           property_address?: string | null
+          shopping_completed_at?: string | null
+          shopping_started_at?: string | null
           special_instructions?: string | null
           status?: string | null
           subtotal: number
@@ -1076,11 +1104,14 @@ export type Database = {
         Update: {
           access_token?: string | null
           arrival_date?: string | null
+          assigned_shopper_id?: string | null
           created_at?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          delivery_completed_at?: string | null
           delivery_fee?: number
+          delivery_started_at?: string | null
           departure_date?: string | null
           dietary_restrictions?: Json | null
           guest_count?: number | null
@@ -1088,6 +1119,8 @@ export type Database = {
           payment_intent_id?: string | null
           payment_status?: string | null
           property_address?: string | null
+          shopping_completed_at?: string | null
+          shopping_started_at?: string | null
           special_instructions?: string | null
           status?: string | null
           subtotal?: number

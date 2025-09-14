@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import { 
   ShoppingCart, 
   MapPin, 
@@ -38,9 +39,11 @@ import {
   ChevronRight,
   CheckCircle,
   PlayCircle,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  Plus,
+  Minus
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/currency';
 import { ShopperGuideDialog } from './ShopperGuideDialog';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
@@ -48,39 +51,9 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useNotifications } from '@/hooks/useNotifications';
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  category: string;
-  aisle_location?: string;
-  customer_notes?: string;
-  found_status: 'pending' | 'found' | 'substitution_needed' | 'unavailable';
-  substitution_reason?: string;
-  photo_url?: string;
-  estimated_find_time?: number;
-}
-
-interface ShoppingOrder {
-  id: string;
-  customer_name: string;
-  customer_avatar?: string;
-  customer_phone?: string;
-  store_name: string;
-  total_items: number;
-  estimated_time: number;
-  priority: 'standard' | 'priority' | 'express';
-  special_instructions?: string;
-  items: OrderItem[];
-  customer_rating?: number;
-  tip_amount?: number;
-  delivery_address: string;
-  delivery_instructions?: string;
-  batch_number?: number;
-  workflow_phase: 'shopping' | 'ready_for_delivery' | 'in_transit' | 'delivered';
-}
+import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
+import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ShopperStats {
   daily_earnings: number;
@@ -92,17 +65,35 @@ interface ShopperStats {
 }
 
 export function EnhancedShopperDashboard() {
+  const { user } = useAuth();
+  const { 
+    availableOrders, 
+    activeOrders, 
+    deliveryQueue, 
+    loading: ordersLoading, 
+    refetchOrders 
+  } = useShopperOrders();
+  
+  const {
+    loading: workflowLoading,
+    acceptOrder,
+    startShopping,
+    markItemFound,
+    requestSubstitution,
+    completeShopping,
+    startDelivery,
+    completeDelivery
+  } = useOrderWorkflow();
+
   const [activeOrder, setActiveOrder] = useState<ShoppingOrder | null>(null);
-  const [availableOrders, setAvailableOrders] = useState<ShoppingOrder[]>([]);
-  const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [shopperStats, setShopperStats] = useState<ShopperStats>({
-    daily_earnings: 0,
-    weekly_earnings: 0,
-    orders_completed: 0,
-    customer_rating: 0,
-    efficiency_score: 0,
-    find_rate: 0
+    daily_earnings: 156.75,
+    weekly_earnings: 892.40,
+    orders_completed: 23,
+    customer_rating: 4.94,
+    efficiency_score: 96,
+    find_rate: 98.5
   });
   const [activeTab, setActiveTab] = useState('shopping');
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,6 +104,8 @@ export function EnhancedShopperDashboard() {
   const [showGuideDialog, setShowGuideDialog] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
 
   // Mock stakeholders for the communication system
   const mockStakeholders = [
@@ -122,148 +115,91 @@ export function EnhancedShopperDashboard() {
     { id: 'customer-1', name: activeOrder?.customer_name || 'Customer', role: 'customer', status: 'offline' as const }
   ];
 
-  // Mock data for demo
+  // Set the first active order when they load
   useEffect(() => {
-    const mockShoppingOrders: ShoppingOrder[] = [
-      {
-        id: 'SHOP-001',
-        customer_name: 'Sarah Johnson',
-        customer_avatar: '/placeholder-avatar.jpg',
-        customer_phone: '+1-555-0123',
-        store_name: 'Whole Foods Market',
-        total_items: 12,
-        estimated_time: 45,
-        priority: 'express',
-        tip_amount: 15.50,
-        delivery_address: '123 Oak Street, Apt 4B',
-        delivery_instructions: 'Ring doorbell, leave at door if no answer',
-        batch_number: 1,
-        workflow_phase: 'shopping',
-        items: [
-          {
-            id: '1',
-            product_name: 'Organic Bananas',
-            quantity: 2,
-            unit_price: 3.99,
-            category: 'Produce',
-            aisle_location: 'Produce Section - Front',
-            found_status: 'found',
-            estimated_find_time: 2
-          },
-          {
-            id: '2',
-            product_name: 'Almond Milk (Unsweetened)',
-            quantity: 1,
-            unit_price: 4.99,
-            category: 'Dairy',
-            aisle_location: 'Aisle 7 - Refrigerated',
-            customer_notes: 'Prefer organic if available',
-            found_status: 'pending'
-          }
-        ]
-      }
-    ];
+    if (activeOrders.length > 0 && !activeOrder) {
+      setActiveOrder(activeOrders[0]);
+    }
+  }, [activeOrders, activeOrder]);
 
-    const mockDeliveryOrders: ShoppingOrder[] = [
-      {
-        id: 'DEL-001',
-        customer_name: 'Mike Chen',
-        customer_avatar: '/placeholder-avatar.jpg',
-        customer_phone: '+1-555-0456',
-        store_name: 'Whole Foods Market',
-        total_items: 8,
-        estimated_time: 25,
-        priority: 'standard',
-        tip_amount: 8.00,
-        delivery_address: '456 Pine Street, Unit 12',
-        delivery_instructions: 'Buzz apartment, leave with doorman if not home',
-        workflow_phase: 'ready_for_delivery',
-        items: [
-          {
-            id: '3',
-            product_name: 'Greek Yogurt',
-            quantity: 3,
-            unit_price: 4.99,
-            category: 'Dairy',
-            found_status: 'found'
-          },
-          {
-            id: '4',
-            product_name: 'Chicken Breast',
-            quantity: 2,
-            unit_price: 12.99,
-            category: 'Meat',
-            found_status: 'found'
-          }
-        ]
-      }
-    ];
-    
-    setAvailableOrders(mockShoppingOrders);
-    setActiveOrder(mockShoppingOrders[0]);
-    setDeliveryQueue(mockDeliveryOrders);
-    
-    setShopperStats({
-      daily_earnings: 156.75,
-      weekly_earnings: 892.40,
-      orders_completed: 23,
-      customer_rating: 4.94,
-      efficiency_score: 96,
-      find_rate: 98.5
-    });
-  }, []);
+  // Initialize item quantities when active order changes
+  useEffect(() => {
+    if (activeOrder) {
+      const quantities: Record<string, number> = {};
+      activeOrder.items.forEach(item => {
+        quantities[item.id] = item.found_quantity || item.quantity;
+      });
+      setItemQuantities(quantities);
+    }
+  }, [activeOrder]);
 
-  const markItemFound = (itemId: string) => {
+  const handleAcceptOrder = async (orderId: string) => {
+    try {
+      await acceptOrder(orderId);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to accept order:', error);
+    }
+  };
+
+  const handleStartShopping = async (orderId: string) => {
+    try {
+      await startShopping(orderId);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to start shopping:', error);
+    }
+  };
+
+  const handleMarkItemFound = async (itemId: string) => {
+    try {
+      const quantity = itemQuantities[itemId] || 0;
+      const notes = itemNotes[itemId] || '';
+      await markItemFound(itemId, quantity, notes);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to mark item as found:', error);
+    }
+  };
+
+  const handleRequestSubstitution = async (itemId: string, reason: string) => {
+    try {
+      const notes = itemNotes[itemId] || '';
+      await requestSubstitution(itemId, reason, '', notes);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to request substitution:', error);
+    }
+  };
+
+  const handleCompleteShopping = async () => {
     if (!activeOrder) return;
-    
-    setActiveOrder({
-      ...activeOrder,
-      items: activeOrder.items.map(item =>
-        item.id === itemId ? { ...item, found_status: 'found' } : item
-      )
-    });
+    try {
+      await completeShopping(activeOrder.id);
+      setActiveOrder(null);
+      setActiveTab('delivery');
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to complete shopping:', error);
+    }
   };
 
-  const requestSubstitution = (itemId: string, reason: string) => {
-    if (!activeOrder) return;
-    
-    setActiveOrder({
-      ...activeOrder,
-      items: activeOrder.items.map(item =>
-        item.id === itemId 
-          ? { ...item, found_status: 'substitution_needed', substitution_reason: reason }
-          : item
-      )
-    });
+  const handleStartDelivery = async (orderId: string) => {
+    try {
+      await startDelivery(orderId);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to start delivery:', error);
+    }
   };
 
-  const completeShoppingAndStartDelivery = () => {
-    if (!activeOrder) return;
-    
-    const completedOrder = {
-      ...activeOrder,
-      workflow_phase: 'ready_for_delivery' as const
-    };
-    
-    setDeliveryQueue(prev => [...prev, completedOrder]);
-    setActiveOrder(null);
-    setActiveTab('delivery');
-  };
-
-  const startDelivery = (orderId: string) => {
-    setDeliveryQueue(prev => prev.map(order =>
-      order.id === orderId 
-        ? { ...order, workflow_phase: 'in_transit' as const }
-        : order
-    ));
-  };
-
-  const completeDelivery = (orderId: string) => {
-    setDeliveryQueue(prev => prev.map(order =>
-      order.id === orderId 
-        ? { ...order, workflow_phase: 'delivered' as const }
-        : order
-    ));
+  const handleCompleteDelivery = async (orderId: string) => {
+    try {
+      await completeDelivery(orderId);
+      refetchOrders();
+    } catch (error) {
+      console.error('Failed to complete delivery:', error);
+    }
   };
 
   const captureDeliveryProof = () => {
@@ -277,10 +213,10 @@ export function EnhancedShopperDashboard() {
     setCustomerMessage('');
   };
 
-  const completedItems = activeOrder?.items.filter(item => item.found_status === 'found').length || 0;
+  const completedItems = activeOrder?.items.filter(item => item.shopping_status === 'found').length || 0;
   const totalItems = activeOrder?.items.length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-  const allItemsFound = activeOrder && activeOrder.items.every(item => item.found_status === 'found');
+  const allItemsFound = activeOrder && activeOrder.items.every(item => item.shopping_status === 'found');
 
   const categories = ['all', 'Produce', 'Dairy', 'Meat', 'Bakery', 'Frozen', 'Pantry'];
 
@@ -297,7 +233,7 @@ export function EnhancedShopperDashboard() {
       id: 2,
       title: "Navigate to Store",
       description: "Use GPS navigation to reach the store efficiently",
-      completed: activeOrder !== null,
+      completed: activeOrder !== null && activeOrder.shopping_started_at !== null,
       action: "Arrive at store"
     },
     {
@@ -349,20 +285,32 @@ export function EnhancedShopperDashboard() {
 
   const getCurrentProtocol = () => {
     if (!activeOrder) return "Select an available order to begin";
-    if (activeOrder.workflow_phase === 'shopping') {
+    if (activeOrder.status === 'assigned') return "Start shopping for this order";
+    if (activeOrder.status === 'shopping') {
       if (!allItemsFound) return "Continue finding items on your shopping list";
-      return "All items found! Ready to start delivery";
+      return "All items found! Ready to complete shopping";
     }
-    if (activeOrder.workflow_phase === 'ready_for_delivery') return "Load vehicle and start delivery";
-    if (activeOrder.workflow_phase === 'in_transit') return "Navigate to customer and complete delivery";
+    if (activeOrder.status === 'packed') return "Order is packed and ready for delivery";
+    if (activeOrder.status === 'in_transit') return "Navigate to customer and complete delivery";
     return "Order completed successfully";
   };
   
   const filteredItems = activeOrder?.items.filter(item => {
-    const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesSearch = item.product?.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all'; // For now, show all since we don't have category data
     return matchesSearch && matchesCategory;
   }) || [];
+
+  if (ordersLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-lg">Loading shopper dashboard...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -522,33 +470,34 @@ export function EnhancedShopperDashboard() {
                   <div className="flex justify-between items-start">
                     <div className="flex items-center space-x-4">
                       <Avatar>
-                        <AvatarImage src={activeOrder.customer_avatar} />
                         <AvatarFallback>{activeOrder.customer_name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div>
                         <CardTitle className="flex items-center space-x-2">
                           <span>{activeOrder.customer_name}</span>
-                          {activeOrder.priority === 'express' && (
-                            <Badge variant="destructive">Express</Badge>
-                          )}
-                          {activeOrder.batch_number && (
-                            <Badge variant="secondary">Batch #{activeOrder.batch_number}</Badge>
-                          )}
+                          <Badge variant="secondary">Order #{activeOrder.id.slice(-6)}</Badge>
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          {activeOrder.store_name} • {activeOrder.total_items} items • Est. {activeOrder.estimated_time}min
+                          {activeOrder.items.length} items • ${activeOrder.total_amount}
                         </p>
                         <p className="text-sm text-muted-foreground flex items-center">
                           <MapPin className="h-3 w-3 mr-1" />
-                          {activeOrder.delivery_address}
+                          {activeOrder.property_address}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">
-                        +{formatCurrency(activeOrder.tip_amount || 0)} tip
-                      </p>
                       <div className="flex items-center space-x-2 mt-2">
+                        {activeOrder.status === 'assigned' && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleStartShopping(activeOrder.id)}
+                            disabled={workflowLoading}
+                          >
+                            <PlayCircle className="h-4 w-4 mr-1" />
+                            Start Shopping
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline">
                           <Navigation className="h-4 w-4 mr-1" />
                           Navigate
@@ -578,16 +527,20 @@ export function EnhancedShopperDashboard() {
                       </div>
                     )}
 
-                    {allItemsFound && (
+                    {allItemsFound && activeOrder.status === 'shopping' && (
                       <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-green-800">Shopping Complete!</p>
-                            <p className="text-sm text-green-700">Ready to start delivery</p>
+                            <p className="text-sm text-green-700">Ready to pack and prepare for delivery</p>
                           </div>
-                          <Button onClick={completeShoppingAndStartDelivery} className="bg-green-600 hover:bg-green-700">
-                            <Truck className="h-4 w-4 mr-2" />
-                            Start Delivery
+                          <Button 
+                            onClick={handleCompleteShopping} 
+                            className="bg-green-600 hover:bg-green-700"
+                            disabled={workflowLoading}
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            Complete Shopping
                           </Button>
                         </div>
                       </div>
@@ -607,39 +560,16 @@ export function EnhancedShopperDashboard() {
                 <CardContent>
                   <div className="flex space-x-4 mb-4">
                     <div className="flex-1">
-                      <input
+                      <Input
                         type="text"
                         placeholder="Search items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md"
                       />
                     </div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="px-3 py-2 border rounded-md"
-                    >
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>
-                          {cat === 'all' ? 'All Categories' : cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Optimize Route
-                    </Button>
-                    <Button variant="outline" size="sm" className="justify-start">
+                    <Button variant="outline" size="sm">
                       <Camera className="h-4 w-4 mr-2" />
                       Batch Photos
-                    </Button>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <Mic className="h-4 w-4 mr-2" />
-                      Voice Notes
                     </Button>
                   </div>
                 </CardContent>
@@ -656,9 +586,9 @@ export function EnhancedShopperDashboard() {
                       <div
                         key={item.id}
                         className={`p-4 border rounded-lg transition-all ${
-                          item.found_status === 'found' 
+                          item.shopping_status === 'found' 
                             ? 'bg-green-50 border-green-200' 
-                            : item.found_status === 'substitution_needed'
+                            : item.shopping_status === 'substitution_needed'
                             ? 'bg-yellow-50 border-yellow-200'
                             : 'bg-white border-gray-200'
                         }`}
@@ -666,73 +596,107 @@ export function EnhancedShopperDashboard() {
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
-                              <h4 className="font-medium">{item.product_name}</h4>
+                              <h4 className="font-medium">{item.product?.name || 'Unknown Product'}</h4>
                               <Badge variant="outline" className="text-xs">
-                                {item.category}
+                                ${item.unit_price}
                               </Badge>
-                              {item.estimated_find_time && (
-                                <Badge variant="secondary" className="text-xs">
-                                  ~{item.estimated_find_time}min
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} • {formatCurrency(item.unit_price)}
+                              Qty: {item.quantity} • {item.product?.unit || 'each'}
                             </p>
-                            {item.aisle_location && (
-                              <p className="text-sm text-blue-600 flex items-center mt-1">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                {item.aisle_location}
+                            {item.shopper_notes && (
+                              <p className="text-sm text-blue-600 mt-1">
+                                Note: {item.shopper_notes}
                               </p>
                             )}
-                            {item.customer_notes && (
-                              <p className="text-sm text-orange-600 mt-1">
-                                Note: {item.customer_notes}
-                              </p>
-                            )}
-                            {item.substitution_reason && (
+                            {item.substitution_data && Object.keys(item.substitution_data).length > 0 && (
                               <p className="text-sm text-yellow-700 mt-1">
-                                Substitution: {item.substitution_reason}
+                                Substitution: {item.substitution_data.reason}
                               </p>
                             )}
                           </div>
                           
                           <div className="flex flex-col space-y-2 ml-4">
-                            {item.found_status === 'pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  onClick={() => markItemFound(item.id)}
-                                  className="flex items-center"
-                                >
-                                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                                  Found
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => requestSubstitution(item.id, 'Customer approval needed')}
-                                >
-                                  <AlertTriangle className="h-4 w-4 mr-1" />
-                                  Issue
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Camera className="h-4 w-4" />
-                                </Button>
-                              </>
+                            {item.shopping_status === 'pending' && (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setItemQuantities(prev => ({
+                                      ...prev,
+                                      [item.id]: Math.max(0, (prev[item.id] || item.quantity) - 1)
+                                    }))}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    value={itemQuantities[item.id] || item.quantity}
+                                    onChange={(e) => setItemQuantities(prev => ({
+                                      ...prev,
+                                      [item.id]: parseInt(e.target.value) || 0
+                                    }))}
+                                    className="w-16 text-center text-sm"
+                                    min="0"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setItemQuantities(prev => ({
+                                      ...prev,
+                                      [item.id]: (prev[item.id] || item.quantity) + 1
+                                    }))}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <Input
+                                  placeholder="Notes..."
+                                  value={itemNotes[item.id] || ''}
+                                  onChange={(e) => setItemNotes(prev => ({
+                                    ...prev,
+                                    [item.id]: e.target.value
+                                  }))}
+                                  className="text-sm"
+                                />
+                                <div className="flex space-x-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleMarkItemFound(item.id)}
+                                    disabled={workflowLoading}
+                                    className="flex-1"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Found
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRequestSubstitution(item.id, 'Customer approval needed')}
+                                    disabled={workflowLoading}
+                                  >
+                                    <AlertTriangle className="h-4 w-4 mr-1" />
+                                    Issue
+                                  </Button>
+                                  <Button size="sm" variant="outline">
+                                    <Camera className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
                             )}
                             
-                            {item.found_status === 'found' && (
+                            {item.shopping_status === 'found' && (
                               <div className="flex items-center text-green-600">
                                 <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Found
+                                Found ({item.found_quantity})
                               </div>
                             )}
 
-                            {item.found_status === 'substitution_needed' && (
+                            {item.shopping_status === 'substitution_needed' && (
                               <div className="flex items-center text-yellow-600">
                                 <AlertTriangle className="h-4 w-4 mr-1" />
-                                Pending
+                                Pending Approval
                               </div>
                             )}
                           </div>
@@ -758,48 +722,10 @@ export function EnhancedShopperDashboard() {
 
         {/* Delivery Tab */}
         <TabsContent value="delivery" className="space-y-6">
-          {/* Delivery Process Steps */}
-          <Card className="border-orange-200">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Truck className="h-5 w-5 text-orange-600" />
-                <span>Delivery Protocol</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {getDeliverySteps().map((step, index) => (
-                  <div key={step.id} className="flex items-center space-x-4">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-                      step.completed 
-                        ? 'bg-green-500 border-green-500 text-white' 
-                        : 'border-orange-300 bg-orange-50 text-orange-600'
-                    }`}>
-                      {step.completed ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        step.id
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${step.completed ? 'text-green-600' : 'text-gray-900'}`}>
-                        {step.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
-                    </div>
-                    <Badge variant={step.completed ? "default" : "outline"} className="animate-fade-in">
-                      {step.action}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Delivery Queue</h3>
             <Badge variant="outline">
-              {deliveryQueue.filter(o => o.workflow_phase !== 'delivered').length} ready
+              {deliveryQueue.filter(o => o.status !== 'delivered').length} ready
             </Badge>
           </div>
 
@@ -811,7 +737,6 @@ export function EnhancedShopperDashboard() {
                     <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-4">
                         <Avatar>
-                          <AvatarImage src={order.customer_avatar} />
                           <AvatarFallback>{order.customer_name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -820,38 +745,35 @@ export function EnhancedShopperDashboard() {
                             <span>{order.customer_name}</span>
                           </CardTitle>
                           <p className="text-sm text-muted-foreground">
-                            Order #{order.id} • {order.total_items} items
+                            Order #{order.id.slice(-6)} • {order.items.length} items
                           </p>
                           <p className="text-sm text-muted-foreground flex items-center">
                             <MapPin className="h-3 w-3 mr-1" />
-                            {order.delivery_address}
+                            {order.property_address}
                           </p>
                         </div>
                       </div>
-                      <Badge variant={order.workflow_phase === 'in_transit' ? 'default' : 'secondary'}>
-                        {order.workflow_phase === 'ready_for_delivery' ? 'Ready' : 
-                         order.workflow_phase === 'in_transit' ? 'In Transit' : 'Delivered'}
+                      <Badge variant={order.status === 'in_transit' ? 'default' : 'secondary'}>
+                        {order.status === 'packed' ? 'Ready' : 
+                         order.status === 'in_transit' ? 'In Transit' : 'Delivered'}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Tip:</span>
-                        <span className="font-bold text-green-600">+{formatCurrency(order.tip_amount || 0)}</span>
+                        <span className="text-muted-foreground">Total:</span>
+                        <span className="font-bold">{formatCurrency(order.total_amount)}</span>
                       </div>
 
-                      {order.delivery_instructions && (
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                          <p className="text-sm font-medium text-blue-900">Delivery Instructions:</p>
-                          <p className="text-sm text-blue-800">{order.delivery_instructions}</p>
-                        </div>
-                      )}
-
                       <div className="flex gap-2">
-                        {order.workflow_phase === 'ready_for_delivery' && (
+                        {order.status === 'packed' && (
                           <>
-                            <Button onClick={() => startDelivery(order.id)} className="flex-1">
+                            <Button 
+                              onClick={() => handleStartDelivery(order.id)} 
+                              className="flex-1"
+                              disabled={workflowLoading}
+                            >
                               <Navigation className="h-4 w-4 mr-2" />
                               Start Delivery
                             </Button>
@@ -861,32 +783,22 @@ export function EnhancedShopperDashboard() {
                           </>
                         )}
 
-                        {order.workflow_phase === 'in_transit' && (
+                        {order.status === 'in_transit' && (
                           <>
                             <Button onClick={captureDeliveryProof} variant="outline" className="flex-1">
                               <Camera className="h-4 w-4 mr-2" />
                               Photo Proof
                             </Button>
-                            <Button onClick={() => completeDelivery(order.id)} className="flex-1">
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                            <Button 
+                              onClick={() => handleCompleteDelivery(order.id)}
+                              disabled={workflowLoading}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
                               Complete
                             </Button>
                           </>
                         )}
-
-                        {order.workflow_phase === 'delivered' && (
-                          <div className="flex items-center text-green-600 font-medium">
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Delivered Successfully
-                          </div>
-                        )}
                       </div>
-
-                      {deliveryProof && order.workflow_phase === 'in_transit' && (
-                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                          <p className="text-sm font-medium text-green-800">✓ Delivery proof captured</p>
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -896,9 +808,9 @@ export function EnhancedShopperDashboard() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Deliveries Ready</h3>
+                <h3 className="text-lg font-semibold mb-2">No Delivery Orders</h3>
                 <p className="text-muted-foreground text-center">
-                  Complete shopping orders to add them to the delivery queue
+                  Complete shopping orders to see them here for delivery
                 </p>
               </CardContent>
             </Card>
@@ -906,82 +818,76 @@ export function EnhancedShopperDashboard() {
         </TabsContent>
 
         {/* Available Orders Tab */}
-        <TabsContent value="available" className="space-y-4">
-          {availableOrders.map(order => (
-            <Card key={order.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold">Order #{order.id}</h3>
-                    <p className="text-sm text-muted-foreground">{order.customer_name}</p>
-                  </div>
-                  <Badge variant={order.priority === 'express' ? 'destructive' : 'secondary'}>
-                    {order.priority.toUpperCase()}
-                  </Badge>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Items:</span>
-                    <p className="font-semibold">{order.total_items}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Time:</span>
-                    <p className="font-semibold">{order.estimated_time}min</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Store:</span>
-                    <p className="font-semibold">{order.store_name}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Tip:</span>
-                    <p className="font-semibold text-green-600">+{formatCurrency(order.tip_amount || 0)}</p>
-                  </div>
-                </div>
+        <TabsContent value="available" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Available Orders</h3>
+            <Badge variant="outline">
+              {availableOrders.length} available
+            </Badge>
+          </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Delivery: </span>
-                    <span className="font-medium">{order.delivery_address}</span>
-                  </div>
-                  <Button 
-                    size="sm"
-                    onClick={() => setActiveOrder(order)}
-                  >
-                    Accept Order
-                  </Button>
-                </div>
+          {availableOrders.length > 0 ? (
+            <div className="space-y-4">
+              {availableOrders.map(order => (
+                <Card key={order.id} className="border-green-200">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarFallback>{order.customer_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle>{order.customer_name}</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            {order.items.length} items • {formatCurrency(order.total_amount)}
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {order.property_address}
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => handleAcceptOrder(order.id)}
+                        disabled={workflowLoading}
+                      >
+                        Accept Order
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Available Orders</h3>
+                <p className="text-muted-foreground text-center">
+                  Check back later for new shopping opportunities
+                </p>
               </CardContent>
             </Card>
-          ))}
+          )}
         </TabsContent>
 
         {/* Communication Tab */}
         <TabsContent value="communication" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MessageSquare className="h-5 w-5" />
-                <span>Customer Communication</span>
-              </CardTitle>
+              <CardTitle>Customer Communication</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg min-h-48">
-                  <p className="text-sm text-muted-foreground">Messages will appear here...</p>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Textarea
-                    placeholder="Type your message..."
-                    value={customerMessage}
-                    onChange={(e) => setCustomerMessage(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={sendCustomerMessage}>
-                    Send
-                  </Button>
-                </div>
+                <Textarea
+                  placeholder="Type your message to the customer..."
+                  value={customerMessage}
+                  onChange={(e) => setCustomerMessage(e.target.value)}
+                />
+                <Button onClick={sendCustomerMessage} disabled={!customerMessage.trim()}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send Message
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -1001,12 +907,15 @@ export function EnhancedShopperDashboard() {
                     <span className="font-bold">{shopperStats.orders_completed}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Total Earnings</span>
+                    <span>Weekly Earnings</span>
                     <span className="font-bold">{formatCurrency(shopperStats.weekly_earnings)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Average Rating</span>
-                    <span className="font-bold">{shopperStats.customer_rating}/5.0</span>
+                    <span className="font-bold flex items-center">
+                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                      {shopperStats.customer_rating}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1020,15 +929,15 @@ export function EnhancedShopperDashboard() {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Award className="h-5 w-5 text-yellow-500" />
-                    <span className="text-sm">Super Shopper Badge</span>
+                    <span>Super Shopper</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Target className="h-5 w-5 text-green-500" />
-                    <span className="text-sm">95%+ Find Rate</span>
+                    <span>Perfect Find Rate</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Zap className="h-5 w-5 text-blue-500" />
-                    <span className="text-sm">Speed Demon</span>
+                    <span>Speed Demon</span>
                   </div>
                 </div>
               </CardContent>
@@ -1037,42 +946,26 @@ export function EnhancedShopperDashboard() {
         </TabsContent>
       </Tabs>
 
-      <ShopperGuideDialog 
-        isOpen={showGuideDialog}
-        onClose={() => setShowGuideDialog(false)}
-        currentProtocol={activeTab}
-        currentStep={0}
-      />
-      
-      {/* Notification Center Modal */}
-      {showNotificationCenter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl mx-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Notification Center</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowNotificationCenter(false)}
-                >
-                  Close
-                </Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                <NotificationCenter userRole="shopper" />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Dialogs and Floating Widgets */}
+      {showGuideDialog && (
+        <ShopperGuideDialog 
+          isOpen={showGuideDialog} 
+          onClose={() => setShowGuideDialog(false)}
+          currentProtocol={getCurrentProtocol()}
+        />
       )}
 
-      {/* Floating Communication Widget */}
+      {showNotificationCenter && (
+        <NotificationCenter
+          userRole="shopper"
+          className={showNotificationCenter ? "fixed inset-0 z-50 bg-background" : "hidden"}
+        />
+      )}
+
       <FloatingCommunicationWidget
-        orderId={activeOrder?.id}
-        orderPhase={activeOrder?.workflow_phase}
         stakeholders={mockStakeholders}
-        unreadCount={2}
+        orderId={activeOrder?.id}
+        orderPhase={activeOrder?.status || 'pending'}
       />
     </div>
   );

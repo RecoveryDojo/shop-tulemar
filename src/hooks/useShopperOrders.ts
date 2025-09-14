@@ -1,0 +1,177 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+export interface OrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  shopping_status: 'pending' | 'found' | 'substitution_needed' | 'skipped';
+  found_quantity: number;
+  shopper_notes?: string;
+  substitution_data?: any;
+  photo_url?: string;
+  product?: {
+    name: string;
+    description?: string;
+    image_url?: string;
+    unit: string;
+    price: number;
+  };
+}
+
+export interface ShoppingOrder {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone?: string;
+  property_address?: string;
+  special_instructions?: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  shopping_started_at?: string;
+  shopping_completed_at?: string;
+  delivery_started_at?: string;
+  delivery_completed_at?: string;
+  items: OrderItem[];
+}
+
+export const useShopperOrders = () => {
+  const [availableOrders, setAvailableOrders] = useState<ShoppingOrder[]>([]);
+  const [activeOrders, setActiveOrders] = useState<ShoppingOrder[]>([]);
+  const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const fetchOrders = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch available orders (pending, not assigned)
+      const { data: available, error: availableError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (name, description, image_url, unit, price)
+          )
+        `)
+        .eq('status', 'pending')
+        .is('assigned_shopper_id', null);
+
+      if (availableError) throw availableError;
+
+      // Fetch shopper's active orders (assigned to them)
+      const { data: active, error: activeError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (name, description, image_url, unit, price)
+          )
+        `)
+        .eq('assigned_shopper_id', user.id)
+        .in('status', ['assigned', 'shopping']);
+
+      if (activeError) throw activeError;
+
+      // Fetch delivery queue (packed orders assigned to shopper)
+      const { data: delivery, error: deliveryError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (name, description, image_url, unit, price)
+          )
+        `)
+        .eq('assigned_shopper_id', user.id)
+        .in('status', ['packed', 'in_transit']);
+
+      if (deliveryError) throw deliveryError;
+
+      // Transform the data
+      const transformOrders = (orders: any[]): ShoppingOrder[] => {
+        return orders.map(order => ({
+          ...order,
+          items: order.order_items.map((item: any) => ({
+            ...item,
+            product: item.products
+          }))
+        }));
+      };
+
+      setAvailableOrders(transformOrders(available || []));
+      setActiveOrders(transformOrders(active || []));
+      setDeliveryQueue(transformOrders(delivery || []));
+
+    } catch (error: any) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load orders",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refetchOrders = () => {
+    fetchOrders();
+  };
+
+  useEffect(() => {
+    fetchOrders();
+
+    // Set up real-time subscriptions
+    const ordersChannel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          console.log('Orders changed, refetching...');
+          fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        () => {
+          console.log('Order items changed, refetching...');
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+    };
+  }, [user]);
+
+  return {
+    availableOrders,
+    activeOrders,
+    deliveryQueue,
+    loading,
+    refetchOrders
+  };
+};
