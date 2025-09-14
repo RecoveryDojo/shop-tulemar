@@ -1773,6 +1773,10 @@ export type Database = {
           usage_count: number
         }[]
       }
+      get_current_user_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_order_by_token: {
         Args: { order_token: string }
         Returns: Json
