@@ -334,7 +334,10 @@ function OrderWorkflowDashboardContent() {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="debug" className="gap-2">
+              🐛 Debug
+            </TabsTrigger>
             <TabsTrigger value="overview" className="gap-2">
               <Workflow className="h-4 w-4" />
               Overview
@@ -360,6 +363,13 @@ function OrderWorkflowDashboardContent() {
               Analytics
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="debug" className="space-y-6">
+            <DebuggingSwimlaneChart 
+              orders={orders}
+              title="🐛 Jessica's Order Debug - Live Workflow State"
+            />
+          </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
             {/* Workflow Progress Overview */}
