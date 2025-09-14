@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommunicationWidget";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import ShopIndex from "@/pages/shop/ShopIndex";
 import ShopCategories from "@/pages/shop/ShopCategories";
@@ -84,6 +85,19 @@ function AppContent() {
         <Route path="/bot-testing" element={<BotTesting />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      
+      {/* Global Communication Hub - Available on all pages when user is authenticated */}
+      {user && (
+        <FloatingCommunicationWidget
+          stakeholders={[
+            { id: "1", name: "John S.", role: "shopper", status: "online" },
+            { id: "2", name: "Maria C.", role: "customer", status: "away" },
+            { id: "3", name: "David R.", role: "driver", status: "online" },
+            { id: "4", name: "Lisa M.", role: "store_manager", status: "offline", lastSeen: "2 min ago" }
+          ]}
+          unreadCount={3}
+        />
+      )}
     </BrowserRouter>
   );
 }
