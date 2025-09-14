@@ -28,6 +28,7 @@ import {
   FileText
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 
 interface StoreOrder {
   id: string;
@@ -121,6 +122,14 @@ export function StoreManagerDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
+
+  // Mock stakeholders for communication
+  const mockStakeholders = [
+    { id: 'shopper-1', name: 'Active Shopper', role: 'shopper', status: 'online' as const },
+    { id: 'shopper-2', name: 'Assigned Shopper', role: 'shopper', status: 'away' as const },
+    { id: 'driver-1', name: 'Delivery Driver', role: 'driver', status: 'online' as const },
+    { id: 'concierge-1', name: 'Concierge', role: 'concierge', status: 'online' as const }
+  ];
 
   useEffect(() => {
     fetchDashboardData();
@@ -716,6 +725,14 @@ export function StoreManagerDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Floating Communication Widget */}
+      <FloatingCommunicationWidget
+        orderId={orders[0]?.id}
+        orderPhase="store_management"
+        stakeholders={mockStakeholders}
+        unreadCount={3}
+      />
     </div>
   );
 }

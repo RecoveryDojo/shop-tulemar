@@ -47,6 +47,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useNotifications } from '@/hooks/useNotifications';
+import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 
 interface OrderItem {
   id: string;
@@ -112,6 +113,14 @@ export function EnhancedShopperDashboard() {
   const [showGuideDialog, setShowGuideDialog] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+
+  // Mock stakeholders for the communication system
+  const mockStakeholders = [
+    { id: 'store-mgr-1', name: 'Store Manager', role: 'store_manager', status: 'online' as const },
+    { id: 'driver-1', name: 'Delivery Driver', role: 'driver', status: 'away' as const },
+    { id: 'concierge-1', name: 'Concierge', role: 'concierge', status: 'online' as const },
+    { id: 'customer-1', name: activeOrder?.customer_name || 'Customer', role: 'customer', status: 'offline' as const }
+  ];
 
   // Mock data for demo
   useEffect(() => {
@@ -1057,6 +1066,14 @@ export function EnhancedShopperDashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating Communication Widget */}
+      <FloatingCommunicationWidget
+        orderId={activeOrder?.id}
+        orderPhase={activeOrder?.workflow_phase}
+        stakeholders={mockStakeholders}
+        unreadCount={2}
+      />
     </div>
   );
 }

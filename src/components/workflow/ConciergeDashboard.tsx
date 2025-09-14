@@ -20,6 +20,7 @@ import {
   Star
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 
 interface StockingOrder {
   id: string;
@@ -103,6 +104,14 @@ export function ConciergeDashboard() {
   const [qualityChecks, setQualityChecks] = useState<Record<string, boolean>>({});
   const [notificationMessage, setNotificationMessage] = useState("");
   const { toast } = useToast();
+
+  // Mock stakeholders for communication
+  const mockStakeholders = [
+    { id: 'store-mgr-1', name: 'Store Manager', role: 'store_manager', status: 'online' as const },
+    { id: 'driver-1', name: 'Delivery Driver', role: 'driver', status: 'offline' as const },
+    { id: 'shopper-1', name: 'Shopper', role: 'shopper', status: 'offline' as const },
+    { id: 'customer-1', name: activeOrder?.customer_name || 'Customer', role: 'customer', status: 'away' as const }
+  ];
 
   useEffect(() => {
     fetchStockingOrders();
@@ -646,6 +655,14 @@ export function ConciergeDashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating Communication Widget */}
+      <FloatingCommunicationWidget
+        orderId={activeOrder?.id}
+        orderPhase="stocking"
+        stakeholders={mockStakeholders}
+        unreadCount={0}
+      />
     </div>
   );
 }

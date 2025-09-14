@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 
 interface DeliveryOrder {
   id: string;
@@ -40,6 +41,14 @@ export function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [deliveryNotes, setDeliveryNotes] = useState<Record<string, string>>({});
   const { toast } = useToast();
+
+  // Mock stakeholders for communication
+  const mockStakeholders = [
+    { id: 'store-mgr-1', name: 'Store Manager', role: 'store_manager', status: 'online' as const },
+    { id: 'shopper-1', name: 'Shopper', role: 'shopper', status: 'offline' as const },
+    { id: 'concierge-1', name: 'Concierge', role: 'concierge', status: 'online' as const },
+    { id: 'customer-1', name: currentOrder?.customer_name || 'Customer', role: 'customer', status: 'away' as const }
+  ];
 
   useEffect(() => {
     fetchDeliveryOrders();
@@ -460,6 +469,14 @@ export function DriverDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Floating Communication Widget */}
+      <FloatingCommunicationWidget
+        orderId={currentOrder?.id}
+        orderPhase="delivery"
+        stakeholders={mockStakeholders}
+        unreadCount={1}
+      />
     </div>
   );
 }
