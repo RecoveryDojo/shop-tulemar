@@ -37,6 +37,7 @@ import Profile from "@/pages/Profile";
 import SystemArchitecture from "@/pages/SystemArchitecture";
 import BotTesting from "@/pages/BotTesting";
 import WorkflowTesting from "@/pages/WorkflowTesting";
+import WorkflowDocumentation from "@/pages/WorkflowDocumentation";
 import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ function AppContent() {
                 <Route path="/feature-showcase" element={<FeatureShowcase />} />
         <Route path="/bot-testing" element={<BotTesting />} />
         <Route path="/workflow-testing" element={<WorkflowTesting />} />
+        <Route path="/workflow-documentation" element={<WorkflowDocumentation />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       

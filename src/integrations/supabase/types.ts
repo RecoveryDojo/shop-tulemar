@@ -1265,6 +1265,54 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_template: boolean | null
+          metadata: Json | null
+          name: string
+          order_count: number | null
+          phase_distribution: Json | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+          visual_config: Json | null
+          workflow_data: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          metadata?: Json | null
+          name: string
+          order_count?: number | null
+          phase_distribution?: Json | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+          visual_config?: Json | null
+          workflow_data: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          metadata?: Json | null
+          name?: string
+          order_count?: number | null
+          phase_distribution?: Json | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+          visual_config?: Json | null
+          workflow_data?: Json
+        }
+        Relationships: []
+      }
       stakeholder_assignments: {
         Row: {
           accepted_at: string | null

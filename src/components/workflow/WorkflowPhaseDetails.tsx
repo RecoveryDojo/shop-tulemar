@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { WorkflowExportDialog } from './WorkflowExportDialog';
 import { 
   CheckCircle2, 
   Clock, 
@@ -49,6 +50,18 @@ export function WorkflowPhaseDetails({ phases, orders }: WorkflowPhaseDetailsPro
     return totalOrders > 0 ? (phaseOrders.length / totalOrders) * 100 : 0;
   };
 
+  const getPhaseDistribution = () => {
+    return phases.reduce((acc, phase) => {
+      const phaseOrders = getOrdersForPhase(phase);
+      acc[phase.id] = {
+        count: phaseOrders.length,
+        percentage: orders.length > 0 ? (phaseOrders.length / orders.length) * 100 : 0,
+        orders: phaseOrders.map(o => ({ id: o.id, customer: o.customer_name, status: o.status }))
+      };
+      return acc;
+    }, {} as Record<string, any>);
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -61,16 +74,26 @@ export function WorkflowPhaseDetails({ phases, orders }: WorkflowPhaseDetailsPro
       {/* Workflow Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            9-Phase Workflow Timeline
-          </CardTitle>
-          <CardDescription>
-            End-to-end process from order confirmation to guest satisfaction
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                9-Phase Workflow Timeline
+              </CardTitle>
+              <CardDescription>
+                End-to-end process from order confirmation to guest satisfaction
+              </CardDescription>
+            </div>
+            <WorkflowExportDialog 
+              workflowData={phases}
+              phaseDistribution={getPhaseDistribution()}
+              orderCount={orders.length}
+              elementId="workflow-visualization"
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between overflow-x-auto pb-4">
+          <div id="workflow-visualization" className="flex items-center justify-between overflow-x-auto pb-4">
             {phases.map((phase, index) => {
               const Icon = phase.icon;
               const orderCount = getOrdersForPhase(phase).length;
