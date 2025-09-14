@@ -84,22 +84,60 @@ export function useWorkflowAutomation() {
   const processWorkflowEvent = async (event: AutomationEvent) => {
     if (isProcessing) return;
     
+    // Prevent processing the same event multiple times
+    const eventKey = `${event.orderId}-${event.currentStatus}-${Date.now()}`;
+    
     setIsProcessing(true);
     
     try {
+      // Check if we've already processed this exact event recently (prevent duplicates)
+      const { data: recentLogs } = await supabase
+        .from('order_workflow_log')
+        .select('id')
+        .eq('order_id', event.orderId)
+        .eq('action', `automation_processed`)
+        .gte('timestamp', new Date(Date.now() - 60000).toISOString()) // Last minute
+        .limit(1);
+
+      if (recentLogs && recentLogs.length > 0) {
+        console.log(`Skipping duplicate automation for order ${event.orderId}`);
+        return;
+      }
+
       // Find applicable rules
-      const applicableRules = rules.filter(rule => 
-        rule.enabled && 
-        rule.trigger_status === event.currentStatus &&
-        checkConditions(rule.conditions, event)
-      );
+      const applicableRules = [];
+      for (const rule of rules) {
+        if (rule.enabled && 
+            rule.trigger_status === event.currentStatus &&
+            await checkConditions(rule.conditions, event)) {
+          applicableRules.push(rule);
+        }
+      }
+
+      // Log that we processed this event
+      await supabase
+        .from('order_workflow_log')
+        .insert({
+          order_id: event.orderId,
+          phase: 'automation',
+          action: 'automation_processed',
+          notes: `Processed automation for status: ${event.currentStatus}`,
+          metadata: { event_key: eventKey, applicable_rules: applicableRules.length }
+        });
 
       for (const rule of applicableRules) {
         console.log(`Processing rule: ${rule.id} for order ${event.orderId}`);
         
         if (rule.delay_minutes) {
-          // Schedule delayed execution
-          setTimeout(() => executeRule(rule, event), rule.delay_minutes * 60 * 1000);
+          // Schedule delayed execution with safety check
+          setTimeout(async () => {
+            // Re-check conditions before delayed execution
+            if (await checkConditions(rule.conditions, event)) {
+              await executeRule(rule, event);
+            } else {
+              console.log(`Delayed rule ${rule.id} conditions no longer met for order ${event.orderId}`);
+            }
+          }, rule.delay_minutes * 60 * 1000);
         } else {
           // Execute immediately
           await executeRule(rule, event);
@@ -107,29 +145,80 @@ export function useWorkflowAutomation() {
       }
     } catch (error) {
       console.error('Error processing workflow event:', error);
+      
+      // Log the error for debugging
+      await supabase
+        .from('order_workflow_log')
+        .insert({
+          order_id: event.orderId,
+          phase: 'automation',
+          action: 'automation_error',
+          notes: `Error processing automation: ${error.message}`,
+          metadata: { error: error.message, event_key: eventKey }
+        });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const checkConditions = (conditions: Record<string, any>, event: AutomationEvent): boolean => {
-    // Simple condition checking - would be more sophisticated in production
-    for (const [key, value] of Object.entries(conditions)) {
-      switch (key) {
-        case 'payment_status':
-          // Would check actual payment status
-          return true;
-        case 'all_tasks_completed':
-          // Would check stocking task completion
-          return true;
-        case 'duration_minutes':
-          // Would check time elapsed since status change
-          return true;
-        default:
-          return true;
+  const checkConditions = async (conditions: Record<string, any>, event: AutomationEvent): Promise<boolean> => {
+    try {
+      for (const [key, value] of Object.entries(conditions)) {
+        switch (key) {
+          case 'payment_status':
+            const { data: order } = await supabase
+              .from('orders')
+              .select('payment_status')
+              .eq('id', event.orderId)
+              .single();
+            
+            if (!order || order.payment_status !== value) {
+              console.log(`Condition failed: payment_status is ${order?.payment_status}, expected ${value}`);
+              return false;
+            }
+            break;
+            
+          case 'all_tasks_completed':
+            const { data: orderItems } = await supabase
+              .from('order_items')
+              .select('shopping_status')
+              .eq('order_id', event.orderId);
+            
+            const allCompleted = orderItems?.every(item => item.shopping_status === 'found') || false;
+            if (!allCompleted) {
+              console.log(`Condition failed: not all tasks completed for order ${event.orderId}`);
+              return false;
+            }
+            break;
+            
+          case 'duration_minutes':
+            const { data: orderData } = await supabase
+              .from('orders')
+              .select('updated_at, shopping_started_at')
+              .eq('id', event.orderId)
+              .single();
+            
+            if (!orderData) return false;
+            
+            const startTime = orderData.shopping_started_at || orderData.updated_at;
+            const elapsed = (Date.now() - new Date(startTime).getTime()) / (1000 * 60);
+            
+            if (elapsed < value) {
+              console.log(`Condition failed: elapsed time ${elapsed}min < required ${value}min`);
+              return false;
+            }
+            break;
+            
+          default:
+            console.warn(`Unknown condition: ${key}`);
+            return false;
+        }
       }
+      return true;
+    } catch (error) {
+      console.error('Error checking conditions:', error);
+      return false;
     }
-    return true;
   };
 
   const executeRule = async (rule: WorkflowRule, event: AutomationEvent) => {
@@ -207,35 +296,61 @@ export function useWorkflowAutomation() {
 
       if (!order) return;
 
-      // Auto-assign stakeholders based on business logic
-      const stakeholderAssignments = [
-        {
-          order_id: orderId,
-          role: 'shopper',
-          status: 'assigned',
-          notes: 'Auto-assigned by workflow automation'
-        },
-        {
-          order_id: orderId,
-          role: 'driver', 
-          status: 'assigned',
-          notes: 'Auto-assigned by workflow automation'
-        },
-        {
-          order_id: orderId,
-          role: 'concierge',
-          status: 'assigned', 
-          notes: 'Auto-assigned by workflow automation'
-        }
-      ];
-
-      const { error } = await supabase
+      // Check if assignments already exist to prevent duplicates
+      const { data: existingAssignments } = await supabase
         .from('stakeholder_assignments')
-        .insert(stakeholderAssignments);
+        .select('role')
+        .eq('order_id', orderId);
 
-      if (error) throw error;
+      const existingRoles = existingAssignments?.map(a => a.role) || [];
 
-      console.log(`Stakeholders assigned for order ${orderId}`);
+      // Find available users for each role
+      const rolesToAssign = ['shopper', 'driver', 'concierge'].filter(role => !existingRoles.includes(role));
+      
+      for (const role of rolesToAssign) {
+        // Get available users with this role and minimal current workload
+        const { data: availableUsers } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', role as any);
+
+        if (!availableUsers || availableUsers.length === 0) {
+          console.warn(`No available users found for role: ${role}`);
+          continue;
+        }
+
+        // Get profile data for these users
+        const userIds = availableUsers.map(u => u.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name, status')
+          .in('id', userIds);
+
+        // Simple round-robin assignment - pick first available user
+        // In production, this could be more sophisticated (workload-based, availability, etc.)
+        const selectedUser = availableUsers.find(user => {
+          const profile = profiles?.find(p => p.id === user.user_id);
+          return profile && profile.status !== 'busy';
+        }) || availableUsers[0];
+
+        if (selectedUser) {
+          const { error } = await supabase
+            .from('stakeholder_assignments')
+            .insert({
+              order_id: orderId,
+              user_id: selectedUser.user_id,
+              role: role,
+              status: 'assigned',
+              notes: 'Auto-assigned by workflow automation'
+            });
+
+          if (error) {
+            console.error(`Error assigning ${role}:`, error);
+          } else {
+            console.log(`Assigned ${role} (${selectedUser.user_id}) to order ${orderId}`);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error assigning stakeholders:', error);
     }
