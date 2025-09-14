@@ -11,6 +11,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { CommunicationHub } from './CommunicationHub';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FloatingCommunicationWidgetProps {
   orderId?: string;
@@ -36,6 +38,7 @@ export function FloatingCommunicationWidget({
 }: FloatingCommunicationWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const { toast } = useToast();
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -45,6 +48,80 @@ export function FloatingCommunicationWidget({
   const toggleMinimized = () => {
     setIsMinimized(!isMinimized);
     if (isExpanded) setIsExpanded(false);
+  };
+
+  const handleNotifyAll = async () => {
+    if (!orderId) {
+      toast({
+        title: "No Order",
+        description: "No active order to send notifications for",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await supabase.functions.invoke('notification-orchestrator', {
+        body: {
+          orderId,
+          notificationType: 'status_update',
+          phase: orderPhase || 'current_phase',
+          metadata: {
+            message: `Team notification from ${orderPhase || 'current phase'}`,
+            automated: false
+          }
+        }
+      });
+
+      toast({
+        title: "Notifications Sent",
+        description: `All ${stakeholders.length} team members have been notified`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send notifications",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleQuickCall = async () => {
+    if (!stakeholders.length) {
+      toast({
+        title: "No Team Members",
+        description: "No team members available to call",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Find the first online stakeholder or use the first one
+    const onlineStakeholder = stakeholders.find(s => s.status === 'online') || stakeholders[0];
+
+    try {
+      const { data, error } = await supabase.functions.invoke('voice-call-service', {
+        body: {
+          orderId,
+          recipientId: onlineStakeholder.id,
+          callType: 'voice',
+          message: `Quick call regarding order ${orderId?.slice(-8)}`
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Call Initiated",
+        description: data.message || `Calling ${onlineStakeholder.name}...`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Call Failed",
+        description: error.message || "Unable to initiate call",
+        variant: "destructive"
+      });
+    }
   };
 
   const onlineStakeholders = stakeholders.filter(s => s.status === 'online').length;
@@ -142,6 +219,7 @@ export function FloatingCommunicationWidget({
           <Button 
             variant="outline" 
             size="sm"
+            onClick={handleNotifyAll}
             className="text-xs"
           >
             <Bell className="h-3 w-3 mr-1" />
@@ -151,6 +229,7 @@ export function FloatingCommunicationWidget({
           <Button 
             variant="outline" 
             size="sm"
+            onClick={handleQuickCall}
             className="text-xs"
           >
             <Phone className="h-3 w-3 mr-1" />

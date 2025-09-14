@@ -27,6 +27,7 @@ import { useTeamValidation } from '@/hooks/useTeamValidation';
 import { VoiceMessageRecorder } from './VoiceMessageRecorder';
 import { StakeholderNotificationStatus } from './StakeholderNotificationStatus';
 import { MessageTemplates } from './MessageTemplates';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CommunicationHubProps {
   orderId?: string;
@@ -163,33 +164,76 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
     }
   };
 
+  const handleStartCall = async () => {
+    if (!stakeholders.length) {
+      toast({
+        title: "No Team Members",
+        description: "No team members available to call",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Use selected stakeholders or find first online one
+    const targetStakeholders = selectedStakeholders.length > 0 
+      ? stakeholders.filter(s => selectedStakeholders.includes(s.id))
+      : [stakeholders.find(s => s.status === 'online') || stakeholders[0]];
+
+    try {
+      for (const stakeholder of targetStakeholders) {
+        const { data, error } = await supabase.functions.invoke('voice-call-service', {
+          body: {
+            orderId,
+            recipientId: stakeholder.id,
+            callType: 'voice',
+            message: `Team call regarding order ${orderId?.slice(-8)}`
+          }
+        });
+
+        if (error) {
+          console.error(`Failed to call ${stakeholder.name}:`, error);
+          continue;
+        }
+
+        toast({
+          title: "Call Initiated",
+          description: `Calling ${stakeholder.name}...`,
+        });
+
+        // For demo, only call the first stakeholder
+        break;
+      }
+    } catch (error: any) {
+      toast({
+        title: "Call Failed",
+        description: error.message || "Unable to initiate calls",
+        variant: "destructive"
+      });
+    }
+  };
+
   const notifyAllStakeholders = async (message: string) => {
     if (!orderId) return;
 
     try {
-      // Send notification to all stakeholders
-      for (const stakeholder of stakeholders) {
-        await sendMessage(
-          stakeholder.id,
-          `Order ${orderId.slice(-8)} - Step Completed`,
-          message,
-          'high',
-          'completion_notification'
-        );
-      }
-
-      // Update progress tracking
-      const allProgress: Record<string, 'sent'> = {};
-      stakeholders.forEach(s => {
-        allProgress[s.id] = 'sent';
+      await supabase.functions.invoke('notification-orchestrator', {
+        body: {
+          orderId,
+          notificationType: 'status_update',
+          phase: orderPhase || 'current_phase',
+          metadata: {
+            message,
+            automated: false,
+            sender_message: message
+          }
+        }
       });
-      setNotificationProgress(allProgress);
 
       toast({
         title: "All Stakeholders Notified",
-        description: `Completion notification sent to ${stakeholders.length} team members`,
+        description: `Team notification sent to ${stakeholders.length} members`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error notifying stakeholders:', error);
       toast({
         title: "Error",
@@ -249,7 +293,11 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
                 <Mic className="h-4 w-4 mr-2" />
                 Voice Message
               </Button>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleStartCall}
+              >
                 <Phone className="h-4 w-4 mr-2" />
                 Start Call
               </Button>

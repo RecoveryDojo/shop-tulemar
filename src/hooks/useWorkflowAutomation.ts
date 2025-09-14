@@ -52,7 +52,7 @@ export function useWorkflowAutomation() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Subscribe to order status changes
+    // Subscribe to order status changes for real-time automation
     const channel = supabase
       .channel('workflow_automation')
       .on(
@@ -62,16 +62,38 @@ export function useWorkflowAutomation() {
           schema: 'public',
           table: 'orders'
         },
-        (payload) => {
-          console.log('Order updated:', payload);
-          processWorkflowEvent({
-            orderId: payload.new.id,
-            currentStatus: payload.new.status,
-            metadata: {
-              previous_status: payload.old?.status,
-              updated_at: payload.new.updated_at
+        async (payload) => {
+          console.log('Order updated for automation:', payload);
+          
+          const orderId = payload.new.id;
+          const currentStatus = payload.new.status;
+          const previousStatus = payload.old?.status;
+          
+          // Only trigger automation if status actually changed
+          if (currentStatus !== previousStatus) {
+            try {
+              // Call the automation trigger edge function
+              const { data, error } = await supabase.functions.invoke('workflow-automation-trigger', {
+                body: {
+                  orderId,
+                  currentStatus,
+                  previousStatus,
+                  metadata: {
+                    updated_at: payload.new.updated_at,
+                    payment_status: payload.new.payment_status
+                  }
+                }
+              });
+
+              if (error) {
+                console.error('Automation trigger failed:', error);
+              } else {
+                console.log('Automation triggered successfully:', data);
+              }
+            } catch (error) {
+              console.error('Error triggering automation:', error);
             }
-          });
+          }
         }
       )
       .subscribe();
@@ -79,7 +101,7 @@ export function useWorkflowAutomation() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [rules]);
+  }, []);
 
   const processWorkflowEvent = async (event: AutomationEvent) => {
     if (isProcessing) return;

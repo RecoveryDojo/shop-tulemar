@@ -10,6 +10,9 @@ interface NotificationRequest {
   orderId: string;
   notificationType: string;
   phase: string;
+  recipientType?: string;
+  recipientIdentifier?: string;
+  channel?: string;
   metadata?: Record<string, any>;
 }
 
@@ -24,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { orderId, notificationType, phase, metadata }: NotificationRequest = await req.json();
+    const { orderId, notificationType, phase, recipientType, recipientIdentifier, channel, metadata }: NotificationRequest = await req.json();
     
     console.log(`Processing notification for order ${orderId}, type: ${notificationType}, phase: ${phase}`);
 
@@ -83,23 +86,43 @@ const handler = async (req: Request): Promise<Response> => {
       'delay_notification': {
         customer: `We're experiencing a slight delay with your order #${order.id.slice(0, 8)}. New estimated time: ${metadata?.newEta || 'TBD'}`,
         admin: `Delay reported for order #${order.id.slice(0, 8)}. Reason: ${metadata?.reason || 'Unknown'}`
+      },
+      'shopper_message': {
+        customer: metadata?.message || 'Update from your personal shopper'
+      },
+      'status_update': {
+        customer: `Order #${order.id.slice(0, 8)} status updated to: ${order.status}`,
+        admin: `Order status change: #${order.id.slice(0, 8)} -> ${order.status}`
       }
     };
 
     const templates = notificationTemplates[notificationType] || {};
     const notifications = [];
 
-    // Send to customer (always)
-    if (templates.customer) {
+    // Handle specific recipient scenarios
+    if (recipientType && recipientIdentifier) {
       notifications.push({
         order_id: orderId,
         notification_type: notificationType,
-        recipient_type: 'customer',
-        recipient_identifier: order.customer_email,
-        channel: determinePreferredChannel('customer', notificationType),
-        message_content: templates.customer,
-        metadata: { ...metadata, phone: order.customer_phone }
+        recipient_type: recipientType,
+        recipient_identifier: recipientIdentifier,
+        channel: channel || determinePreferredChannel(recipientType, notificationType),
+        message_content: metadata?.message || templates.customer || `Order update for #${orderId.slice(-8)}`,
+        metadata: { ...metadata, specific_recipient: true }
       });
+    } else {
+      // Send to customer (always) if no specific recipient
+      if (templates.customer) {
+        notifications.push({
+          order_id: orderId,
+          notification_type: notificationType,
+          recipient_type: 'customer',
+          recipient_identifier: order.customer_email,
+          channel: determinePreferredChannel('customer', notificationType),
+          message_content: templates.customer,
+          metadata: { ...metadata, phone: order.customer_phone }
+        });
+      }
     }
 
     // Send to assigned stakeholders
