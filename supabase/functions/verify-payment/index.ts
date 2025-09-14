@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (session.payment_status === "paid") {
       orderStatus = "confirmed";
-      paymentStatus = "completed";
+      paymentStatus = "paid";
       console.log("Payment successful for order:", orderId);
     } else if (session.payment_status === "unpaid") {
       orderStatus = "cancelled";
@@ -89,6 +89,23 @@ serve(async (req) => {
       });
 
     console.log("Order updated successfully:", updatedOrder.id);
+
+    // Send notifications on successful payment
+    if (session.payment_status === "paid") {
+      try {
+        await supabaseClient.functions.invoke('notification-orchestrator', {
+          body: {
+            orderId: orderId,
+            notificationType: 'order_confirmed',
+            phase: 'payment'
+          }
+        });
+        console.log("Order confirmation notifications sent");
+      } catch (notificationError) {
+        console.error("Failed to send notifications:", notificationError);
+        // Don't fail the payment verification due to notification issues
+      }
+    }
 
     return new Response(
       JSON.stringify({ 

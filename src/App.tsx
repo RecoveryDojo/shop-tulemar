@@ -15,6 +15,7 @@ import CategoryPage from "@/pages/shop/CategoryPage";
 import ShopCart from "@/pages/shop/ShopCart";
 import ShopCheckout from "@/pages/shop/ShopCheckout";
 import OrderSuccess from "@/pages/shop/OrderSuccess";
+import OrderTrack from "@/pages/shop/OrderTrack";
 import ShopOrder from "@/pages/shop/ShopOrder";
 import ShopSearch from "@/pages/shop/ShopSearch";
 import ShopHowItWorks from "@/pages/shop/ShopHowItWorks";
@@ -65,7 +66,8 @@ function AppContent() {
                 <Route path="/category/:categoryId" element={<CategoryPage />} />
                 <Route path="/cart" element={<ShopCart />} />
                 <Route path="/checkout" element={<ShopCheckout />} />
-                <Route path="/order-success/:orderId" element={<OrderSuccess />} />
+                <Route path="/order-success" element={<OrderSuccess />} />
+                <Route path="/order-track" element={<OrderTrack />} />
                 <Route path="/order" element={<ShopOrder />} />
                 <Route path="/search" element={<ShopSearch />} />
                 <Route path="/how-it-works" element={<ShopHowItWorks />} />
