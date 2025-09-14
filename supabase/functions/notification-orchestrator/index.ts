@@ -101,10 +101,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Handle specific recipient scenarios
     if (recipientType && recipientIdentifier) {
+      // Map to valid recipient types
+      const validRecipientType = mapToValidRecipientType(recipientType);
       notifications.push({
         order_id: orderId,
         notification_type: notificationType,
-        recipient_type: recipientType,
+        recipient_type: validRecipientType,
         recipient_identifier: recipientIdentifier,
         channel: channel || determinePreferredChannel(recipientType, notificationType),
         message_content: metadata?.message || templates.customer || `Order update for #${orderId.slice(-8)}`,
@@ -116,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
         notifications.push({
           order_id: orderId,
           notification_type: notificationType,
-          recipient_type: 'customer',
+          recipient_type: 'client',
           recipient_identifier: order.customer_email,
           channel: determinePreferredChannel('customer', notificationType),
           message_content: templates.customer,
@@ -133,7 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
           notifications.push({
             order_id: orderId,
             notification_type: notificationType,
-            recipient_type: 'stakeholder',
+            recipient_type: assignment.role, // Use the actual role as recipient_type
             recipient_identifier: assignment.user_id,
             channel: determinePreferredChannel(assignment.role, notificationType),
             message_content: roleTemplate,
@@ -149,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
       notifications.push({
         order_id: orderId,
         notification_type: notificationType,
-        recipient_type: 'system',
+        recipient_type: 'admin',
         recipient_identifier: 'admin@system',
         channel: 'email',
         message_content: templates.admin,
@@ -286,6 +288,21 @@ async function processNotification(notification: any): Promise<void> {
 
 function simulateDelay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function mapToValidRecipientType(inputType: string): string {
+  const typeMapping = {
+    'customer': 'client',
+    'stakeholder': 'shopper',
+    'system': 'admin',
+    'client': 'client',
+    'shopper': 'shopper',
+    'driver': 'driver',
+    'concierge': 'concierge',
+    'admin': 'admin'
+  };
+  
+  return typeMapping[inputType] || 'client';
 }
 
 serve(handler);

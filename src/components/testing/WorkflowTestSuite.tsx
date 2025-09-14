@@ -142,8 +142,7 @@ export function WorkflowTestSuite() {
             tax_amount: 10,
             delivery_fee: 5,
             total_amount: 150,
-            status: 'pending',
-            payment_status: 'succeeded'
+            status: 'pending'
           })
           .select()
           .single();
@@ -220,13 +219,23 @@ export function WorkflowTestSuite() {
 
         if (orderError) throw new Error(`Failed to create order: ${orderError.message}`);
 
-        // Add test order items
+        // Get actual product IDs from database
+        const { data: products } = await supabase
+          .from('products')
+          .select('id')
+          .limit(2);
+
+        if (!products || products.length < 2) {
+          throw new Error('Not enough products available for testing');
+        }
+
+        // Add test order items with real product IDs
         const { error: itemsError } = await supabase
           .from('order_items')
           .insert([
             {
               order_id: order.id,
-              product_id: '550e8400-e29b-41d4-a716-446655440000', // Test product ID
+              product_id: products[0].id,
               quantity: 2,
               unit_price: 50,
               total_price: 100,
@@ -234,7 +243,7 @@ export function WorkflowTestSuite() {
             },
             {
               order_id: order.id,
-              product_id: '550e8400-e29b-41d4-a716-446655440001', // Test product ID
+              product_id: products[1].id,
               quantity: 1,
               unit_price: 100,
               total_price: 100,
@@ -242,7 +251,7 @@ export function WorkflowTestSuite() {
             }
           ]);
 
-        if (itemsError) throw new Error(`Failed to create order items: ${itemsError.message}`);
+        if (itemsError) throw new Error(`Failed to create order items: ${itemsError.message}`)
 
         // Simulate workflow steps using order-workflow edge function
         const workflowSteps = [
