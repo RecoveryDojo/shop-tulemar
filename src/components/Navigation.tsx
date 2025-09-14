@@ -19,6 +19,13 @@ export const Navigation = () => {
     { path: "/system-architecture", label: "System Architecture", icon: BarChart3, description: "Technical diagrams and order lifecycle" },
   ];
 
+  const roleBasedRoutes = [
+    { path: "/shopper", label: "Shopper Dashboard", icon: ShoppingCart, description: "Shopping tasks and orders", roles: ['shopper'] },
+    { path: "/driver", label: "Driver Dashboard", icon: Users, description: "Delivery routes and status", roles: ['driver'] },
+    { path: "/concierge", label: "Concierge Dashboard", icon: Users, description: "Guest services and coordination", roles: ['concierge'] },
+    { path: "/customer", label: "Customer Dashboard", icon: Users, description: "Order tracking and account", roles: ['client'] },
+  ];
+
   const adminRoutes = [
     { path: "/admin", label: "Admin Panel", icon: Shield, description: "User and role management" },
     { path: "/dashboard", label: "Main Dashboard", icon: BarChart3, description: "Business analytics and overview" },
@@ -142,7 +149,63 @@ export const Navigation = () => {
                             <span className="font-medium">{route.label}</span>
                           </div>
                           <p className="text-sm text-muted-foreground">{route.description}</p>
+        </CardContent>
+      </Card>
+
+      {/* Role-Based Dashboard Routes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Role-Based Dashboards
+            <Badge variant="secondary">Role Required</Badge>
+          </CardTitle>
+          <CardDescription>Access your role-specific dashboard</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {roleBasedRoutes.map((route) => {
+              const Icon = route.icon;
+              const canAccess = user && route.roles.some(role => hasRole(role as any));
+              
+              return (
+                <div key={route.path} className={`relative ${!canAccess ? 'opacity-60' : ''}`}>
+                  {canAccess ? (
+                    <Link to={route.path}>
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Icon className="h-4 w-4" />
+                            <span className="font-medium">{route.label}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{route.description}</p>
                         </CardContent>
+                      </Card>
+                    </Link>
+                  ) : (
+                    <Card className="cursor-not-allowed">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lock className="h-4 w-4" />
+                          <span className="font-medium">{route.label}</span>
+                          <Badge variant="destructive" className="text-xs">Role Required</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{route.description}</p>
+                        {user ? (
+                          <p className="text-xs text-muted-foreground mt-2">Contact admin for role access</p>
+                        ) : (
+                          <Button size="sm" variant="outline" className="mt-2" asChild>
+                            <Link to="/auth">Sign In</Link>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
                       </Card>
                     </Link>
                   ) : (
@@ -184,8 +247,10 @@ export const Navigation = () => {
                 <strong>Roles:</strong>
                 {hasRole('admin') && <Badge variant="destructive">Admin</Badge>}
                 {hasRole('sysadmin') && <Badge variant="destructive">Sysadmin</Badge>}
+                {hasRole('shopper') && <Badge variant="secondary">Shopper</Badge>}
                 {hasRole('driver') && <Badge variant="secondary">Driver</Badge>}
                 {hasRole('concierge') && <Badge variant="secondary">Concierge</Badge>}
+                {hasRole('store_manager') && <Badge variant="secondary">Store Manager</Badge>}
                 {hasRole('client') && <Badge variant="outline">Client</Badge>}
               </div>
             </div>

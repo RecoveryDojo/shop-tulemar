@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard, Star, Zap } from "lucide-react";
+import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard, Star, Zap, Truck, Users } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import UserMenu from "@/components/auth/UserMenu";
+import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,29 @@ export function ShopNavigation() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { itemCount } = useCart();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+
+  // Add role-specific navigation items
+  const getRoleSpecificItems = () => {
+    const roleItems = [];
+    
+    if (hasRole('shopper')) {
+      roleItems.push({ title: "Shopper Dashboard", url: "/shopper", icon: ShoppingCart });
+    }
+    if (hasRole('driver')) {
+      roleItems.push({ title: "Driver Dashboard", url: "/driver", icon: Truck });
+    }
+    if (hasRole('concierge')) {
+      roleItems.push({ title: "Concierge Dashboard", url: "/concierge", icon: Users });
+    }
+    if (hasRole('admin') || hasRole('sysadmin')) {
+      roleItems.push({ title: "Order Workflow", url: "/order-workflow", icon: LayoutDashboard });
+    }
+    
+    return roleItems;
+  };
+
+  const allNavigationItems = [...navigationItems, ...getRoleSpecificItems()];
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -71,9 +94,11 @@ export function ShopNavigation() {
               </NavLink>
             </Button>
           </div>
-        ) : (
-          <UserMenu />
-        )}
+          ) : (
+            <div className="flex items-center gap-2">
+              <UserProfileMenu />
+            </div>
+          )}
         
         {/* Dropdown Navigation */}
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -97,7 +122,7 @@ export function ShopNavigation() {
             className="w-56 bg-background border border-border shadow-lg z-[9999]"
             sideOffset={5}
           >
-            {navigationItems.map((item, index) => (
+            {allNavigationItems.map((item, index) => (
               <div key={item.title}>
                 <DropdownMenuItem asChild>
                   <NavLink
@@ -119,7 +144,7 @@ export function ShopNavigation() {
                     )}
                   </NavLink>
                 </DropdownMenuItem>
-                {index < navigationItems.length - 1 && (index === 2 || index === 5) && (
+                {index < allNavigationItems.length - 1 && (index === 2 || index === 5 || index === 8) && (
                   <DropdownMenuSeparator />
                 )}
               </div>
