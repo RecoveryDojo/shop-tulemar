@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommunicationWidget";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import ShopIndex from "@/pages/shop/ShopIndex";
 import ShopCategories from "@/pages/shop/ShopCategories";
@@ -40,6 +41,7 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const { user, loading, hasCompletedOnboarding } = useAuth();
+  const { teamMembers } = useTeamMembers();
 
   if (loading) {
     return (
@@ -87,15 +89,10 @@ function AppContent() {
       </Routes>
       
       {/* Global Communication Hub - Available on all pages when user is authenticated */}
-      {user && (
+      {user && teamMembers.length > 0 && (
         <FloatingCommunicationWidget
-          stakeholders={[
-            { id: "1", name: "John S.", role: "shopper", status: "online" },
-            { id: "2", name: "Maria C.", role: "customer", status: "away" },
-            { id: "3", name: "David R.", role: "driver", status: "online" },
-            { id: "4", name: "Lisa M.", role: "store_manager", status: "offline", lastSeen: "2 min ago" }
-          ]}
-          unreadCount={3}
+          stakeholders={teamMembers}
+          unreadCount={0}
         />
       )}
     </BrowserRouter>

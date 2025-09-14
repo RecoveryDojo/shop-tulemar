@@ -23,6 +23,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamValidation } from '@/hooks/useTeamValidation';
 import { VoiceMessageRecorder } from './VoiceMessageRecorder';
 import { StakeholderNotificationStatus } from './StakeholderNotificationStatus';
 import { MessageTemplates } from './MessageTemplates';
@@ -62,6 +63,7 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
     userId: user?.id,
     includeArchived: false
   });
+  const { validateTeamMember } = useTeamValidation();
 
   const sendQuickMessage = async (template: typeof QUICK_TEMPLATES[0]) => {
     if (!orderId) return;
@@ -70,13 +72,26 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
       // Send to selected stakeholders or all if none selected
       const recipients = selectedStakeholders.length > 0 ? selectedStakeholders : stakeholders.map(s => s.id);
       
+      // Validate each recipient is a team member
+      for (const recipientId of recipients) {
+        const isTeamMember = await validateTeamMember(recipientId);
+        if (!isTeamMember) {
+          toast({
+            title: "Access Denied",
+            description: `Cannot send message - recipient is not on your team`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       for (const recipientId of recipients) {
         await sendMessage(
           recipientId,
-          `Order ${orderId.slice(-8)} - ${template.category}`,
           template.text,
-          'normal',
-          'order_update'
+          `Order ${orderId.slice(-8)} - ${template.category}`,
+          'direct',
+          'normal'
         );
       }
 
@@ -89,7 +104,7 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
 
       toast({
         title: "Message Sent",
-        description: `Notification sent to ${recipients.length} stakeholder(s)`,
+        description: `Notification sent to ${recipients.length} team member(s)`,
       });
 
       setMessageText('');
@@ -97,7 +112,7 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       });
     }
@@ -109,19 +124,32 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
     try {
       const recipients = selectedStakeholders.length > 0 ? selectedStakeholders : stakeholders.map(s => s.id);
       
+      // Validate each recipient is a team member
+      for (const recipientId of recipients) {
+        const isTeamMember = await validateTeamMember(recipientId);
+        if (!isTeamMember) {
+          toast({
+            title: "Access Denied",
+            description: `Cannot send message - recipient is not on your team`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       for (const recipientId of recipients) {
         await sendMessage(
           recipientId,
-          `Order ${orderId.slice(-8)} - Message`,
           messageText,
-          'normal',
-          'general'
+          `Order ${orderId.slice(-8)} - Message`,
+          'direct',
+          'normal'
         );
       }
 
       toast({
         title: "Message Sent",
-        description: `Custom message sent to ${recipients.length} stakeholder(s)`,
+        description: `Custom message sent to ${recipients.length} team member(s)`,
       });
 
       setMessageText('');
@@ -129,7 +157,7 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
       console.error('Error sending custom message:', error);
       toast({
         title: "Error", 
-        description: "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       });
     }

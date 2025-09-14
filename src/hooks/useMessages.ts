@@ -130,6 +130,28 @@ export function useMessages({ userId, threadId, includeArchived = false }: UseMe
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Validate that recipient is a team member
+      const { data: teamValidation, error: validationError } = await supabase
+        .from('stakeholder_assignments')
+        .select('order_id')
+        .eq('user_id', user.id);
+
+      if (validationError) {
+        throw new Error('Failed to validate team membership');
+      }
+
+      const userOrderIds = teamValidation.map(assignment => assignment.order_id);
+
+      const { data: recipientValidation, error: recipientError } = await supabase
+        .from('stakeholder_assignments')
+        .select('order_id')
+        .eq('user_id', recipientId)
+        .in('order_id', userOrderIds);
+
+      if (recipientError || !recipientValidation || recipientValidation.length === 0) {
+        throw new Error('You can only send messages to team members');
+      }
+
       let finalThreadId = threadId;
 
       // Create thread if none exists
