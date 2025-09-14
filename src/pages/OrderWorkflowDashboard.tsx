@@ -27,6 +27,7 @@ import { StakeholderCommunications } from "@/components/workflow/StakeholderComm
 import { RoleBasedDashboard } from "@/components/workflow/RoleBasedDashboard";
 import { WorkflowAnalytics } from "@/components/workflow/WorkflowAnalytics";
 import { RealTimeStatusTracker } from "@/components/workflow/RealTimeStatusTracker";
+import { DebuggingSwimlaneChart } from "@/components/workflow/DebuggingSwimlaneChart";
 import { WorkflowAutomationPanel } from "@/components/workflow/WorkflowAutomationPanel";
 
 interface Order {
