@@ -55,43 +55,73 @@ export function useMessages({ userId, threadId, includeArchived = false }: UseMe
   const { toast } = useToast();
 
   const fetchMessages = async () => {
+    if (!userId) return;
+    
+    setLoading(true);
     try {
       let query = supabase
         .from('user_messages')
-        .select(`
-          *,
-          sender_profile:profiles!user_messages_sender_id_fkey(display_name, avatar_url),
-          recipient_profile:profiles!user_messages_recipient_id_fkey(display_name, avatar_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (threadId) {
         query = query.eq('thread_id', threadId);
-      } else if (userId) {
+      } else {
         query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
       }
 
-      const { data, error } = await query;
+      const { data: messages, error } = await query;
 
-      if (error) throw error;
-
-      setMessages((data || []) as any);
-
-      // Calculate unread count for current user
-      if (userId) {
-        const unread = (data || []).filter(msg => 
-          msg.recipient_id === userId && !msg.is_read
-        ).length;
-        setUnreadCount(unread);
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return;
       }
 
-    } catch (error: any) {
-      console.error('Error fetching messages:', error);
+      // Fetch profile data separately for all unique user IDs
+      const userIds = new Set<string>();
+      messages?.forEach(message => {
+        userIds.add(message.sender_id);
+        userIds.add(message.recipient_id);
+      });
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', Array.from(userIds));
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      // Create a profiles map for easy lookup
+      const profilesMap = new Map();
+      profiles?.forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
+      // Enhance messages with profile data
+      const enhancedMessages = messages?.map(message => ({
+        ...message,
+        sender_profile: profilesMap.get(message.sender_id) || { display_name: 'Unknown User', avatar_url: null },
+        recipient_profile: profilesMap.get(message.recipient_id) || { display_name: 'Unknown User', avatar_url: null }
+      })) || [];
+
+      setMessages(enhancedMessages);
+
+      // Calculate unread count for current user
+      const unreadCount = enhancedMessages.filter(
+        msg => msg.recipient_id === userId && !msg.is_read
+      ).length;
+      setUnreadCount(unreadCount);
+    } catch (error) {
+      console.error('Error in fetchMessages:', error);
       toast({
         title: "Error",
         description: "Failed to load messages",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -282,9 +312,15 @@ export function useMessages({ userId, threadId, includeArchived = false }: UseMe
   };
 
   useEffect(() => {
-    fetchMessages();
-    fetchThreads();
-    setLoading(false);
+    const loadData = async () => {
+      if (userId) {
+        setLoading(true);
+        await Promise.all([fetchMessages(), fetchThreads()]);
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [userId, threadId, includeArchived]);
 
   // Set up real-time subscriptions
