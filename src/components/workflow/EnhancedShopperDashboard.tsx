@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +54,9 @@ import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
 import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ShopperStats {
   daily_earnings: number;
@@ -85,6 +88,9 @@ export function EnhancedShopperDashboard() {
     completeDelivery
   } = useOrderWorkflow();
 
+  const { teamMembers } = useTeamMembers();
+  const { toast } = useToast();
+
   const [activeOrder, setActiveOrder] = useState<ShoppingOrder | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [shopperStats, setShopperStats] = useState<ShopperStats>({
@@ -106,14 +112,20 @@ export function EnhancedShopperDashboard() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
-
-  // Mock stakeholders for the communication system
-  const mockStakeholders = [
-    { id: 'store-mgr-1', name: 'Store Manager', role: 'store_manager', status: 'online' as const },
-    { id: 'driver-1', name: 'Delivery Driver', role: 'driver', status: 'away' as const },
-    { id: 'concierge-1', name: 'Concierge', role: 'concierge', status: 'online' as const },
-    { id: 'customer-1', name: activeOrder?.customer_name || 'Customer', role: 'customer', status: 'offline' as const }
-  ];
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleDeliveryProofChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeOrder) return;
+    const path = `delivery-proof/${activeOrder.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from('message-attachments').upload(path, file);
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } else {
+      setDeliveryProof(path);
+      toast({ title: "Delivery proof uploaded", description: "Photo saved successfully." });
+    }
+    e.currentTarget.value = "";
+  };
 
   // Set the first active order when they load
   useEffect(() => {
@@ -203,14 +215,27 @@ export function EnhancedShopperDashboard() {
   };
 
   const captureDeliveryProof = () => {
-    setDeliveryProof('delivery-proof-captured.jpg');
+    fileInputRef.current?.click();
   };
 
   const sendCustomerMessage = async () => {
-    if (!customerMessage.trim()) return;
-    
-    console.log('Sending message to customer:', customerMessage);
-    setCustomerMessage('');
+    if (!customerMessage.trim() || !activeOrder) return;
+    try {
+      await supabase.functions.invoke('create-notification', {
+        body: {
+          orderId: activeOrder.id,
+          notificationType: 'shopper_message',
+          recipientType: 'client',
+          recipientIdentifier: activeOrder.customer_email,
+          channel: 'in_app',
+          message: customerMessage.trim()
+        }
+      });
+      toast({ title: 'Message sent', description: 'Customer has been notified.' });
+      setCustomerMessage('');
+    } catch (error: any) {
+      toast({ title: 'Failed to send', description: error.message || 'Unable to send message', variant: 'destructive' });
+    }
   };
 
   const completedItems = activeOrder?.items.filter(item => item.shopping_status === 'found').length || 0;
@@ -961,9 +986,17 @@ export function EnhancedShopperDashboard() {
           className={showNotificationCenter ? "fixed inset-0 z-50 bg-background" : "hidden"}
         />
       )}
+      {/* Hidden input for delivery proof uploads */}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleDeliveryProofChange}
+      />
 
       <FloatingCommunicationWidget
-        stakeholders={mockStakeholders}
+        stakeholders={teamMembers}
         orderId={activeOrder?.id}
         orderPhase={activeOrder?.status || 'pending'}
       />
