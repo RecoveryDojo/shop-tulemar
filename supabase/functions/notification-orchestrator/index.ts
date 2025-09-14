@@ -52,46 +52,46 @@ const handler = async (req: Request): Promise<Response> => {
     // Define notification templates and recipients based on phase
     const notificationTemplates = {
       'order_confirmed': {
-        customer: `Hi ${order.customer_name}, your order #${order.id.slice(0, 8)} has been confirmed and assigned to our team. Expected delivery: ${order.arrival_date}`,
+        client: `Hi ${order.customer_name}, your order #${order.id.slice(0, 8)} has been confirmed and assigned to our team. Expected delivery: ${order.arrival_date}`,
         admin: `New order #${order.id.slice(0, 8)} confirmed for ${order.customer_name}. Total: $${order.total_amount}`,
         shopper: `New shopping assignment: Order #${order.id.slice(0, 8)} for ${order.guest_count} guests. Ready to start shopping?`
       },
       'shopping_started': {
-        customer: `Great news! Our shopper has started collecting your groceries for order #${order.id.slice(0, 8)}. We'll keep you updated on any substitutions.`,
+        client: `Great news! Our shopper has started collecting your groceries for order #${order.id.slice(0, 8)}. We'll keep you updated on any substitutions.`,
         admin: `Shopping started for order #${order.id.slice(0, 8)}`,
         driver: `Order #${order.id.slice(0, 8)} will be ready for pickup soon. Delivery address: ${order.property_address}`
       },
       'items_packed': {
-        customer: `Your groceries are packed and ready for delivery! Order #${order.id.slice(0, 8)} is on its way to ${order.property_address}`,
+        client: `Your groceries are packed and ready for delivery! Order #${order.id.slice(0, 8)} is on its way to ${order.property_address}`,
         driver: `Order #${order.id.slice(0, 8)} is ready for pickup and delivery`,
         concierge: `Incoming delivery for ${order.property_address}. Order #${order.id.slice(0, 8)} arriving soon.`
       },
       'out_for_delivery': {
-        customer: `Your groceries are out for delivery! Expected arrival at ${order.property_address} within the next hour.`,
+        client: `Your groceries are out for delivery! Expected arrival at ${order.property_address} within the next hour.`,
         concierge: `Order #${order.id.slice(0, 8)} is out for delivery to ${order.property_address}. Please prepare for arrival.`
       },
       'delivered': {
-        customer: `Your groceries have been delivered to ${order.property_address}. Our concierge will stock your kitchen shortly.`,
+        client: `Your groceries have been delivered to ${order.property_address}. Our concierge will stock your kitchen shortly.`,
         concierge: `Order #${order.id.slice(0, 8)} delivered to ${order.property_address}. Please begin kitchen stocking protocol.`
       },
       'stocking_complete': {
-        customer: `Perfect! Your kitchen at ${order.property_address} is now fully stocked and ready for your arrival. Welcome!`,
+        client: `Perfect! Your kitchen at ${order.property_address} is now fully stocked and ready for your arrival. Welcome!`,
         admin: `Order #${order.id.slice(0, 8)} completed successfully. Kitchen stocked at ${order.property_address}`,
-        manager: `Guest kitchen ready: ${order.property_address} - Order #${order.id.slice(0, 8)} stocking complete`
+        concierge: `Guest kitchen ready: ${order.property_address} - Order #${order.id.slice(0, 8)} stocking complete`
       },
       'substitution_needed': {
-        customer: `We need your approval for a substitution in order #${order.id.slice(0, 8)}. Please check your app to approve or decline.`,
+        client: `We need your approval for a substitution in order #${order.id.slice(0, 8)}. Please check your app to approve or decline.`,
         admin: `Substitution pending approval for order #${order.id.slice(0, 8)}`
       },
       'delay_notification': {
-        customer: `We're experiencing a slight delay with your order #${order.id.slice(0, 8)}. New estimated time: ${metadata?.newEta || 'TBD'}`,
+        client: `We're experiencing a slight delay with your order #${order.id.slice(0, 8)}. New estimated time: ${metadata?.newEta || 'TBD'}`,
         admin: `Delay reported for order #${order.id.slice(0, 8)}. Reason: ${metadata?.reason || 'Unknown'}`
       },
       'shopper_message': {
-        customer: metadata?.message || 'Update from your personal shopper'
+        client: metadata?.message || 'Update from your personal shopper'
       },
       'status_update': {
-        customer: `Order #${order.id.slice(0, 8)} status updated to: ${order.status}`,
+        client: `Order #${order.id.slice(0, 8)} status updated to: ${order.status}`,
         admin: `Order status change: #${order.id.slice(0, 8)} -> ${order.status}`
       }
     };
@@ -109,19 +109,19 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_type: validRecipientType,
         recipient_identifier: recipientIdentifier,
         channel: channel || determinePreferredChannel(recipientType, notificationType),
-        message_content: metadata?.message || templates.customer || `Order update for #${orderId.slice(-8)}`,
+        message_content: metadata?.message || templates.client || templates[validRecipientType] || `Order update for #${orderId.slice(-8)}`,
         metadata: { ...metadata, specific_recipient: true }
       });
     } else {
       // Send to customer (always) if no specific recipient
-      if (templates.customer) {
+      if (templates.client) {
         notifications.push({
           order_id: orderId,
           notification_type: notificationType,
           recipient_type: 'client',
           recipient_identifier: order.customer_email,
-          channel: determinePreferredChannel('customer', notificationType),
-          message_content: templates.customer,
+          channel: determinePreferredChannel('client', notificationType),
+          message_content: templates.client,
           metadata: { ...metadata, phone: order.customer_phone }
         });
       }
@@ -215,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
 function determinePreferredChannel(role: string, notificationType: string): string {
   // High priority notifications go via SMS
   const urgentNotifications = ['substitution_needed', 'delay_notification', 'out_for_delivery'];
-  const smsRoles = ['customer', 'driver', 'concierge'];
+  const smsRoles = ['client', 'driver', 'concierge'];
   
   if (urgentNotifications.includes(notificationType) && smsRoles.includes(role)) {
     return 'sms';
@@ -223,12 +223,12 @@ function determinePreferredChannel(role: string, notificationType: string): stri
   
   // Role-based preferences
   const roleChannelPrefs = {
-    'customer': 'push',
+    'client': 'push',
+    'customer': 'push', // Legacy mapping
     'shopper': 'push',
     'driver': 'sms',
     'concierge': 'sms',
-    'admin': 'email',
-    'manager': 'email'
+    'admin': 'email'
   };
   
   return roleChannelPrefs[role] || 'email';
@@ -295,6 +295,7 @@ function mapToValidRecipientType(inputType: string): string {
     'customer': 'client',
     'stakeholder': 'shopper',
     'system': 'admin',
+    'manager': 'admin',
     'client': 'client',
     'shopper': 'shopper',
     'driver': 'driver',
