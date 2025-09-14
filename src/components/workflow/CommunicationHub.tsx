@@ -165,51 +165,11 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
   };
 
   const handleStartCall = async () => {
-    if (!stakeholders.length) {
-      toast({
-        title: "No Team Members",
-        description: "No team members available to call",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Use selected stakeholders or find first online one
-    const targetStakeholders = selectedStakeholders.length > 0 
-      ? stakeholders.filter(s => selectedStakeholders.includes(s.id))
-      : [stakeholders.find(s => s.status === 'online') || stakeholders[0]];
-
-    try {
-      for (const stakeholder of targetStakeholders) {
-        const { data, error } = await supabase.functions.invoke('voice-call-service', {
-          body: {
-            orderId,
-            recipientId: stakeholder.id,
-            callType: 'voice',
-            message: `Team call regarding order ${orderId?.slice(-8)}`
-          }
-        });
-
-        if (error) {
-          console.error(`Failed to call ${stakeholder.name}:`, error);
-          continue;
-        }
-
-        toast({
-          title: "Call Initiated",
-          description: `Calling ${stakeholder.name}...`,
-        });
-
-        // For demo, only call the first stakeholder
-        break;
-      }
-    } catch (error: any) {
-      toast({
-        title: "Call Failed",
-        description: error.message || "Unable to initiate calls",
-        variant: "destructive"
-      });
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Voice calling feature has been removed from the app",
+      variant: "destructive"
+    });
   };
 
   const notifyAllStakeholders = async (message: string) => {

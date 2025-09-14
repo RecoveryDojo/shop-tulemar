@@ -119,46 +119,6 @@ export function WorkflowTestSuite() {
       }
     },
     {
-      id: 'voice_call_service',
-      name: 'Voice Call Service',
-      description: 'Test voice call functionality',
-      category: 'communication',
-      steps: [
-        'Invoke voice call service',
-        'Verify call log is created',
-        'Verify notification is sent to recipient',
-        'Check call outcome simulation'
-      ],
-      testFunction: async () => {
-        if (!user) throw new Error('User not authenticated');
-
-        const { data, error } = await supabase.functions.invoke('voice-call-service', {
-          body: {
-            recipientId: user.id, // Call self for testing
-            callType: 'voice',
-            message: 'Test call from test suite'
-          }
-        });
-
-        if (error) throw new Error(`Voice call service failed: ${error.message}`);
-
-        if (!data.call_id) throw new Error('No call ID returned');
-
-        // Verify call log was created
-        const { data: callLog } = await supabase
-          .from('order_workflow_log')
-          .select('*')
-          .eq('id', data.call_id)
-          .single();
-
-        if (!callLog) throw new Error('Call log not found');
-
-        if (callLog.action !== 'voice_call_initiated') {
-          throw new Error('Call log has incorrect action');
-        }
-      }
-    },
-    {
       id: 'workflow_automation_trigger',
       name: 'Workflow Automation Trigger',
       description: 'Test real-time workflow automation on order status changes',

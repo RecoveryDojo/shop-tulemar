@@ -87,41 +87,11 @@ export function FloatingCommunicationWidget({
   };
 
   const handleQuickCall = async () => {
-    if (!stakeholders.length) {
-      toast({
-        title: "No Team Members",
-        description: "No team members available to call",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Find the first online stakeholder or use the first one
-    const onlineStakeholder = stakeholders.find(s => s.status === 'online') || stakeholders[0];
-
-    try {
-      const { data, error } = await supabase.functions.invoke('voice-call-service', {
-        body: {
-          orderId,
-          recipientId: onlineStakeholder.id,
-          callType: 'voice',
-          message: `Quick call regarding order ${orderId?.slice(-8)}`
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Call Initiated",
-        description: data.message || `Calling ${onlineStakeholder.name}...`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Call Failed",
-        description: error.message || "Unable to initiate call",
-        variant: "destructive"
-      });
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Voice calling feature has been removed from the app",
+      variant: "destructive"
+    });
   };
 
   const onlineStakeholders = stakeholders.filter(s => s.status === 'online').length;

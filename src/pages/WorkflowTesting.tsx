@@ -18,7 +18,7 @@ export default function WorkflowTesting() {
           <div className="bg-card p-4 rounded-lg border">
             <h3 className="font-semibold mb-2">Communication Tests</h3>
             <p className="text-sm text-muted-foreground">
-              Validate FloatingCommunicationWidget buttons, voice calls, and message sending functionality.
+              Validate FloatingCommunicationWidget buttons and message sending functionality.
             </p>
           </div>
           
