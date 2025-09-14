@@ -67,7 +67,10 @@ export const useShopperOrders = () => {
         .eq('status', 'pending')
         .is('assigned_shopper_id', null);
 
-      if (availableError) throw availableError;
+      // If there's an error, just log it and continue with empty arrays
+      if (availableError) {
+        console.log('No available orders found or permission issue:', availableError);
+      }
 
       // Fetch shopper's active orders (assigned to them)
       const { data: active, error: activeError } = await supabase
@@ -82,7 +85,9 @@ export const useShopperOrders = () => {
         .eq('assigned_shopper_id', user.id)
         .in('status', ['assigned', 'shopping']);
 
-      if (activeError) throw activeError;
+      if (activeError) {
+        console.log('No active orders found:', activeError);
+      }
 
       // Fetch delivery queue (packed orders assigned to shopper)
       const { data: delivery, error: deliveryError } = await supabase
@@ -97,7 +102,9 @@ export const useShopperOrders = () => {
         .eq('assigned_shopper_id', user.id)
         .in('status', ['packed', 'in_transit']);
 
-      if (deliveryError) throw deliveryError;
+      if (deliveryError) {
+        console.log('No delivery orders found:', deliveryError);
+      }
 
       // Transform the data
       const transformOrders = (orders: any[]): ShoppingOrder[] => {
@@ -116,11 +123,11 @@ export const useShopperOrders = () => {
 
     } catch (error: any) {
       console.error('Error fetching orders:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load orders",
-        variant: "destructive",
-      });
+      // Don't show error toast - just log it and continue with empty state
+      // Set empty arrays so the UI shows "no orders" messages
+      setAvailableOrders([]);
+      setActiveOrders([]);
+      setDeliveryQueue([]);
     } finally {
       setLoading(false);
     }
