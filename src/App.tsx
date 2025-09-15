@@ -11,6 +11,7 @@ import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommu
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
+import Homepage from "@/pages/Homepage";
 import ShopIndex from "@/pages/shop/ShopIndex";
 import ShopCategories from "@/pages/shop/ShopCategories";
 import CategoryPage from "@/pages/shop/CategoryPage";
@@ -67,6 +68,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<ShopIndex />} />
+      <Route path="/app" element={<Homepage />} />
       <Route path="/categories" element={<ShopCategories />} />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
       <Route path="/cart" element={<ShopCart />} />
