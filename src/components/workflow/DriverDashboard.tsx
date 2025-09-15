@@ -277,14 +277,12 @@ export function DriverDashboard() {
       </div>
       
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-          {activeRoute.length > 1 && (
-            <Button variant="outline" size="sm" onClick={optimizeRoute}>
-              <Navigation className="h-4 w-4 mr-2" />
-              Optimize Route
-            </Button>
-          )}
-        </div>
-      </div>
+        {activeRoute.length > 1 && (
+          <Button variant="outline" size="sm" onClick={optimizeRoute}>
+            <Navigation className="h-4 w-4 mr-2" />
+            Optimize Route
+          </Button>
+        )}
 
       {/* Current Delivery */}
       {currentOrder && (
