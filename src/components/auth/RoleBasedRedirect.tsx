@@ -9,13 +9,13 @@ export function RoleBasedRedirect() {
   useEffect(() => {
     // Redirect to appropriate dashboard based on primary role
     if (hasRole('shopper')) {
-      navigate('/shopper-dashboard');
+      navigate('/shopper');
     } else if (hasRole('driver')) {
-      navigate('/driver-dashboard');
+      navigate('/driver');
     } else if (hasRole('concierge')) {
-      navigate('/concierge-dashboard');
+      navigate('/concierge');
     } else if (hasRole('store_manager')) {
-      navigate('/store-manager-dashboard');
+      navigate('/store-manager');
     } else if (hasRole('admin') || hasRole('sysadmin')) {
       navigate('/admin');
     } else {
