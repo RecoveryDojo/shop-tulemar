@@ -19,9 +19,9 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect authenticated users to home
+    // Redirect authenticated users to their dashboard
     if (user) {
-      navigate('/');
+      navigate('/me');
     }
   }, [user, navigate]);
 
@@ -32,7 +32,7 @@ const Auth = () => {
     const { error } = await signIn(email, password);
     
     if (!error) {
-      navigate('/');
+      navigate('/me');
     }
     
     setLoading(false);
