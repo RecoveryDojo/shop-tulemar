@@ -44,9 +44,9 @@ import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
-function AppContent() {
-  const { user, loading, hasCompletedOnboarding, hasRole } = useAuth();
-  const { teamMembers } = useTeamMembers();
+// Component that uses router hooks - must be inside BrowserRouter
+function AppRouter() {
+  const { user, hasCompletedOnboarding, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -69,6 +69,46 @@ function AppContent() {
     }
   }, [user, hasCompletedOnboarding, hasRole, location.pathname, navigate]);
 
+  return (
+    <Routes>
+      <Route path="/" element={<ShopIndex />} />
+      <Route path="/categories" element={<ShopCategories />} />
+      <Route path="/category/:categoryId" element={<CategoryPage />} />
+      <Route path="/cart" element={<ShopCart />} />
+      <Route path="/checkout" element={<ShopCheckout />} />
+      <Route path="/order-success" element={<OrderSuccess />} />
+      <Route path="/order-track" element={<OrderTrack />} />
+      <Route path="/order" element={<ShopOrder />} />
+      <Route path="/search" element={<ShopSearch />} />
+      <Route path="/how-it-works" element={<ShopHowItWorks />} />
+      <Route path="/me" element={<RoleBasedRedirect />} />
+      <Route path="/work-tracker" element={<WorkTracker />} />
+      <Route path="/dashboard" element={<MainDashboard />} />
+      <Route path="/shopper" element={<ShopperDashboard />} />
+      <Route path="/customer" element={<CustomerDashboard />} />
+      <Route path="/concierge" element={<ConciergeDashboard />} />
+      <Route path="/driver" element={<DriverDashboard />} />
+      <Route path="/store-manager" element={<StoreManagerDashboard />} />
+      <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/system-architecture" element={<SystemArchitecture />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin/product/:productId" element={<ProductEdit />} />
+      <Route path="/feature-showcase" element={<FeatureShowcase />} />
+      <Route path="/bot-testing" element={<BotTesting />} />
+      <Route path="/workflow-testing" element={<WorkflowTesting />} />
+      <Route path="/workflow-documentation" element={<WorkflowDocumentation />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function AppContent() {
+  const { user, loading, hasCompletedOnboarding } = useAuth();
+  const { teamMembers } = useTeamMembers();
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -84,38 +124,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<ShopIndex />} />
-        <Route path="/categories" element={<ShopCategories />} />
-        <Route path="/category/:categoryId" element={<CategoryPage />} />
-        <Route path="/cart" element={<ShopCart />} />
-        <Route path="/checkout" element={<ShopCheckout />} />
-        <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/order-track" element={<OrderTrack />} />
-        <Route path="/order" element={<ShopOrder />} />
-        <Route path="/search" element={<ShopSearch />} />
-        <Route path="/how-it-works" element={<ShopHowItWorks />} />
-        <Route path="/me" element={<RoleBasedRedirect />} />
-        <Route path="/work-tracker" element={<WorkTracker />} />
-        <Route path="/dashboard" element={<MainDashboard />} />
-        <Route path="/shopper" element={<ShopperDashboard />} />
-        <Route path="/customer" element={<CustomerDashboard />} />
-        <Route path="/concierge" element={<ConciergeDashboard />} />
-        <Route path="/driver" element={<DriverDashboard />} />
-        <Route path="/store-manager" element={<StoreManagerDashboard />} />
-        <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/system-architecture" element={<SystemArchitecture />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/admin/product/:productId" element={<ProductEdit />} />
-        <Route path="/feature-showcase" element={<FeatureShowcase />} />
-        <Route path="/bot-testing" element={<BotTesting />} />
-        <Route path="/workflow-testing" element={<WorkflowTesting />} />
-        <Route path="/workflow-documentation" element={<WorkflowDocumentation />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AppRouter />
       
       {/* Global Communication Hub - Available on all pages when user is authenticated */}
       {user && teamMembers.length > 0 && (
