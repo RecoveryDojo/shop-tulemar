@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommunicationWidget";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
+import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
 import ShopIndex from "@/pages/shop/ShopIndex";
 import ShopCategories from "@/pages/shop/ShopCategories";
 import CategoryPage from "@/pages/shop/CategoryPage";
@@ -43,8 +45,29 @@ import ResetPassword from "@/pages/ResetPassword";
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { user, loading, hasCompletedOnboarding } = useAuth();
+  const { user, loading, hasCompletedOnboarding, hasRole } = useAuth();
   const { teamMembers } = useTeamMembers();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Role-based default route redirect
+  useEffect(() => {
+    if (user && hasCompletedOnboarding() && location.pathname === '/') {
+      // Redirect staff to their appropriate dashboards
+      if (hasRole('shopper')) {
+        navigate('/shopper');
+      } else if (hasRole('driver')) {
+        navigate('/driver');
+      } else if (hasRole('concierge')) {
+        navigate('/concierge');
+      } else if (hasRole('store_manager')) {
+        navigate('/store-manager');
+      } else if (hasRole('admin') || hasRole('sysadmin')) {
+        navigate('/admin');
+      }
+      // Clients stay on homepage for shopping
+    }
+  }, [user, hasCompletedOnboarding, hasRole, location.pathname, navigate]);
 
   if (loading) {
     return (
@@ -62,32 +85,32 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
-                <Route path="/" element={<ShopIndex />} />
-                <Route path="/categories" element={<ShopCategories />} />
-                <Route path="/category/:categoryId" element={<CategoryPage />} />
-                <Route path="/cart" element={<ShopCart />} />
-                <Route path="/checkout" element={<ShopCheckout />} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/order-track" element={<OrderTrack />} />
-                <Route path="/order" element={<ShopOrder />} />
-                <Route path="/search" element={<ShopSearch />} />
-                <Route path="/how-it-works" element={<ShopHowItWorks />} />
-                <Route path="/work-tracker" element={<WorkTracker />} />
-                <Route path="/dashboard" element={<MainDashboard />} />
-                <Route path="/shopper" element={<ShopperDashboard />} />
-                <Route path="/customer" element={<CustomerDashboard />} />
-                <Route path="/concierge" element={<ConciergeDashboard />} />
-                <Route path="/driver" element={<DriverDashboard />} />
-                <Route path="/store-manager" element={<StoreManagerDashboard />} />
-                <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/system-architecture" element={<SystemArchitecture />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/product/:productId" element={<ProductEdit />} />
-                
-                <Route path="/feature-showcase" element={<FeatureShowcase />} />
+        <Route path="/" element={<ShopIndex />} />
+        <Route path="/categories" element={<ShopCategories />} />
+        <Route path="/category/:categoryId" element={<CategoryPage />} />
+        <Route path="/cart" element={<ShopCart />} />
+        <Route path="/checkout" element={<ShopCheckout />} />
+        <Route path="/order-success" element={<OrderSuccess />} />
+        <Route path="/order-track" element={<OrderTrack />} />
+        <Route path="/order" element={<ShopOrder />} />
+        <Route path="/search" element={<ShopSearch />} />
+        <Route path="/how-it-works" element={<ShopHowItWorks />} />
+        <Route path="/me" element={<RoleBasedRedirect />} />
+        <Route path="/work-tracker" element={<WorkTracker />} />
+        <Route path="/dashboard" element={<MainDashboard />} />
+        <Route path="/shopper" element={<ShopperDashboard />} />
+        <Route path="/customer" element={<CustomerDashboard />} />
+        <Route path="/concierge" element={<ConciergeDashboard />} />
+        <Route path="/driver" element={<DriverDashboard />} />
+        <Route path="/store-manager" element={<StoreManagerDashboard />} />
+        <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/system-architecture" element={<SystemArchitecture />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/product/:productId" element={<ProductEdit />} />
+        <Route path="/feature-showcase" element={<FeatureShowcase />} />
         <Route path="/bot-testing" element={<BotTesting />} />
         <Route path="/workflow-testing" element={<WorkflowTesting />} />
         <Route path="/workflow-documentation" element={<WorkflowDocumentation />} />

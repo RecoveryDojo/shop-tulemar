@@ -96,6 +96,11 @@ export function ShopNavigation() {
           </div>
           ) : (
             <div className="flex items-center gap-2">
+              {(hasRole('shopper') || hasRole('driver') || hasRole('concierge') || hasRole('store_manager') || hasRole('admin') || hasRole('sysadmin')) && (
+                <Button variant="outline" size="sm" asChild>
+                  <NavLink to="/me">My Dashboard</NavLink>
+                </Button>
+              )}
               <UserProfileMenu />
             </div>
           )}
