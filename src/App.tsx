@@ -46,28 +46,23 @@ const queryClient = new QueryClient();
 
 // Component that uses router hooks - must be inside BrowserRouter
 function AppRouter() {
-  const { user, hasCompletedOnboarding, hasRole } = useAuth();
+  const { user, hasRole, roles } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   // Role-based default route redirect
   useEffect(() => {
-    if (user && hasCompletedOnboarding() && location.pathname === '/') {
-      // Redirect staff to their appropriate dashboards
-      if (hasRole('shopper')) {
-        navigate('/shopper');
-      } else if (hasRole('driver')) {
-        navigate('/driver');
-      } else if (hasRole('concierge')) {
-        navigate('/concierge');
-      } else if (hasRole('store_manager')) {
-        navigate('/store-manager');
-      } else if (hasRole('admin') || hasRole('sysadmin')) {
-        navigate('/admin');
-      }
-      // Clients stay on homepage for shopping
-    }
-  }, [user, hasCompletedOnboarding, hasRole, location.pathname, navigate]);
+    if (!user || location.pathname !== '/') return;
+
+    // Redirect staff to their appropriate dashboards immediately (regardless of onboarding)
+    if (hasRole('shopper')) { navigate('/shopper'); return; }
+    if (hasRole('driver')) { navigate('/driver'); return; }
+    if (hasRole('concierge')) { navigate('/concierge'); return; }
+    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
+    if (hasRole('admin') || hasRole('sysadmin')) { navigate('/admin'); return; }
+
+    // Clients stay on homepage for shopping
+  }, [user, roles, hasRole, location.pathname, navigate]);
 
   return (
     <Routes>
