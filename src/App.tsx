@@ -56,11 +56,11 @@ function AppRouter() {
     if (!user || location.pathname !== '/') return;
 
     // Redirect staff to their appropriate dashboards immediately (regardless of onboarding)
-    if (hasRole('shopper')) { navigate('/shopper'); return; }
-    if (hasRole('driver')) { navigate('/driver'); return; }
-    if (hasRole('concierge')) { navigate('/concierge'); return; }
-    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
     if (hasRole('admin') || hasRole('sysadmin')) { navigate('/admin'); return; }
+    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
+    if (hasRole('concierge')) { navigate('/concierge'); return; }
+    if (hasRole('driver')) { navigate('/driver'); return; }
+    if (hasRole('shopper')) { navigate('/shopper'); return; }
 
     // Clients stay on homepage for shopping
   }, [user, roles, hasRole, location.pathname, navigate]);

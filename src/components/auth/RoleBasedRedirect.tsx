@@ -10,11 +10,11 @@ export function RoleBasedRedirect() {
     // Wait for roles to load to avoid redirecting to home prematurely
     if (loading) return;
 
-    if (hasRole('shopper')) { navigate('/shopper'); return; }
-    if (hasRole('driver')) { navigate('/driver'); return; }
-    if (hasRole('concierge')) { navigate('/concierge'); return; }
-    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
     if (hasRole('admin') || hasRole('sysadmin')) { navigate('/admin'); return; }
+    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
+    if (hasRole('concierge')) { navigate('/concierge'); return; }
+    if (hasRole('driver')) { navigate('/driver'); return; }
+    if (hasRole('shopper')) { navigate('/shopper'); return; }
 
     // Default for clients/customers
     navigate('/');
