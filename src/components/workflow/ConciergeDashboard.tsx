@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { 
   Home, 
   Package, 
@@ -17,7 +19,10 @@ import {
   Users,
   FileText,
   AlertTriangle,
-  Star
+  Star,
+  ShoppingCart,
+  Info,
+  ChefHat
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
@@ -411,14 +416,75 @@ export function ConciergeDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Concierge Dashboard</h1>
-        <Badge variant="secondary" className="flex items-center gap-2">
-          <Home className="h-4 w-4" />
-          {orders.length} Properties
-        </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-blue-500/5">
+      {/* Branded Dashboard Header */}
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 text-white">
+        {/* Top Brand Bar */}
+        <div className="border-b border-white/20 bg-black/10">
+          <div className="max-w-6xl mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
+              {/* Brand Logo */}
+              <div className="flex items-center gap-3">
+                <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                  <ShoppingCart className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg text-white">Tulemar Shop</h1>
+                  <p className="text-xs text-white/80">Premium Grocery Delivery</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <NotificationDropdown 
+                  userRole="concierge" 
+                  onViewAll={() => {}}
+                />
+                <UserProfileMenu />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  Guide
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard Title Section */}
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-3 rounded-lg backdrop-blur-sm">
+                  <Users className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white">Concierge Dashboard</h1>
+                  <p className="text-white/80 text-lg">Manage property stocking and guest services</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Properties Badge */}
+            <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
+              <div className="flex items-center gap-2 text-white">
+                <Home className="h-5 w-5" />
+                <span className="font-bold text-lg">{orders.length}</span>
+                <span className="text-sm text-white/80">Properties</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom gradient fade */}
+        <div className="h-4 bg-gradient-to-b from-transparent to-background/20"></div>
       </div>
+
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
 
       {/* Order Queue */}
       <Card>
@@ -663,6 +729,7 @@ export function ConciergeDashboard() {
         stakeholders={mockStakeholders}
         unreadCount={0}
       />
+      </div>
     </div>
   );
 }

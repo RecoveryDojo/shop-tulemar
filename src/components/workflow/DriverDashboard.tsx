@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { 
   Truck, 
   MapPin, 
@@ -14,7 +16,10 @@ import {
   MessageSquare,
   Camera,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart,
+  Info,
+  ChefHat
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
@@ -241,24 +246,37 @@ export function DriverDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-32 bg-muted rounded"></div>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-green-500/5 flex items-center justify-center">
+        <div className="animate-pulse space-y-4 text-center">
+          <div className="h-8 bg-muted rounded w-64 mx-auto"></div>
+          <div className="h-32 bg-muted rounded w-96 mx-auto"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Driver Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="flex items-center gap-2">
-            <Truck className="h-4 w-4" />
-            {activeRoute.length} Active Deliveries
-          </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-green-500/5">
+      {/* Branded Header */}
+      <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg">
+              <Truck className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Driver Dashboard</h1>
+              <p className="text-white/80">Manage delivery routes</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationDropdown userRole="driver" onViewAll={() => {}} />
+            <UserProfileMenu />
+          </div>
+        </div>
+      </div>
+      
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
           {activeRoute.length > 1 && (
             <Button variant="outline" size="sm" onClick={optimizeRoute}>
               <Navigation className="h-4 w-4 mr-2" />
@@ -477,6 +495,7 @@ export function DriverDashboard() {
         stakeholders={mockStakeholders}
         unreadCount={1}
       />
+      </div>
     </div>
   );
 }

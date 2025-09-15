@@ -338,76 +338,133 @@ export function EnhancedShopperDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      {/* Header with Notifications */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Shopper Dashboard</h1>
-          <p className="text-muted-foreground">Manage your shopping orders and deliveries</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+      {/* Branded Dashboard Header */}
+      <div className="bg-gradient-to-r from-primary via-primary to-blue-600 text-white">
+        {/* Top Brand Bar */}
+        <div className="border-b border-white/20 bg-black/10">
+          <div className="max-w-6xl mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
+              {/* Brand Logo */}
+              <div className="flex items-center gap-3">
+                <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                  <ShoppingCart className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg text-white">Tulemar Shop</h1>
+                  <p className="text-xs text-white/80">Premium Grocery Delivery</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <NotificationDropdown 
+                  userRole="shopper" 
+                  onViewAll={() => setShowNotificationCenter(true)}
+                />
+                <UserProfileMenu />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowGuideDialog(true)}
+                  className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  Guide
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <NotificationDropdown 
-            userRole="shopper" 
-            onViewAll={() => setShowNotificationCenter(true)}
-          />
-          <UserProfileMenu />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowGuideDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <Info className="h-4 w-4" />
-            Guide
-          </Button>
+
+        {/* Dashboard Title Section */}
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-3 rounded-lg backdrop-blur-sm">
+                  <ShoppingCart className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white">Shopper Dashboard</h1>
+                  <p className="text-white/80 text-lg">Manage your shopping orders and deliveries</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Preview */}
+            <div className="hidden md:grid grid-cols-2 gap-4 text-center">
+              <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{formatCurrency(shopperStats.daily_earnings)}</div>
+                <div className="text-xs text-white/80">Today's Earnings</div>
+              </div>
+              <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
+                <div className="text-2xl font-bold text-white">{shopperStats.customer_rating}</div>
+                <div className="text-xs text-white/80">Customer Rating</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Bottom gradient fade */}
+        <div className="h-4 bg-gradient-to-b from-transparent to-background/20"></div>
       </div>
+
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
 
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <DollarSign className="h-5 w-5 text-primary" />
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Today</p>
-                <p className="text-xl font-bold">{formatCurrency(shopperStats.daily_earnings)}</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(shopperStats.daily_earnings)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-yellow-200 bg-gradient-to-br from-white to-yellow-50 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Star className="h-5 w-5 text-yellow-500" />
+              <div className="bg-yellow-100 p-2 rounded-lg">
+                <Star className="h-5 w-5 text-yellow-600" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Rating</p>
-                <p className="text-xl font-bold">{shopperStats.customer_rating}</p>
+                <p className="text-xl font-bold text-yellow-600">{shopperStats.customer_rating}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-green-200 bg-gradient-to-br from-white to-green-50 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-green-500" />
+              <div className="bg-green-100 p-2 rounded-lg">
+                <Target className="h-5 w-5 text-green-600" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Find Rate</p>
-                <p className="text-xl font-bold">{shopperStats.find_rate}%</p>
+                <p className="text-xl font-bold text-green-600">{shopperStats.find_rate}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Zap className="h-5 w-5 text-blue-500" />
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Zap className="h-5 w-5 text-blue-600" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Efficiency</p>
-                <p className="text-xl font-bold">{shopperStats.efficiency_score}%</p>
+                <p className="text-xl font-bold text-blue-600">{shopperStats.efficiency_score}%</p>
               </div>
             </div>
           </CardContent>
@@ -1000,6 +1057,7 @@ export function EnhancedShopperDashboard() {
         orderId={activeOrder?.id}
         orderPhase={activeOrder?.status || 'pending'}
       />
+      </div>
     </div>
   );
 }

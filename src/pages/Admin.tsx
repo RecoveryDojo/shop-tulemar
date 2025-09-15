@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, Package, ShoppingCart, UserPlus, UserMinus } from 'lucide-react';
+import { Shield, Users, Package, ShoppingCart, UserPlus, UserMinus, Info, ChefHat } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
@@ -323,6 +325,8 @@ const Admin = () => {
             <AdminActivityLog />
           </TabsContent>
         </Tabs>
+        </div>
+      </div>
       </div>
     </ProtectedRoute>
   );
