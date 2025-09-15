@@ -105,6 +105,14 @@ export function UserProfileMenu() {
   };
 
   const roleItems = getRoleSpecificItems();
+  const dashboards = [
+    ...(roles.includes('shopper') ? [{ icon: ShoppingCart, label: 'Shopper Dashboard', href: '/shopper' }] : []),
+    ...(roles.includes('driver') ? [{ icon: Truck, label: 'Driver Dashboard', href: '/driver' }] : []),
+    ...(roles.includes('concierge') ? [{ icon: Users, label: 'Concierge Dashboard', href: '/concierge' }] : []),
+    ...(roles.includes('store_manager') ? [{ icon: Package, label: 'Store Manager Dashboard', href: '/store-manager' }] : []),
+    ...((roles.includes('admin') || roles.includes('sysadmin')) ? [{ icon: Shield, label: 'Admin Dashboard', href: '/admin' }] : []),
+    ...(roles.includes('client') ? [{ icon: ShoppingCart, label: 'Customer Dashboard', href: '/customer' }] : []),
+  ];
 
   return (
     <DropdownMenu>
@@ -121,7 +129,7 @@ export function UserProfileMenu() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="z-50 w-80">
         <DropdownMenuLabel className="flex flex-col space-y-1">
           <div className="flex items-center space-x-2">
             <Avatar className="h-8 w-8">
@@ -157,10 +165,26 @@ export function UserProfileMenu() {
 
         <DropdownMenuSeparator />
         
+        {dashboards.length > 0 && (
+          <>
+            <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
+              Your Dashboards
+            </DropdownMenuLabel>
+            {dashboards.map((item) => (
+              <DropdownMenuItem key={item.href} asChild>
+                <Link to={item.href} className="flex items-center cursor-pointer">
+                  <item.icon className="mr-2 h-4 w-4" />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
+
         <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide">
           Quick Access
         </DropdownMenuLabel>
-        
         {roleItems.slice(0, 6).map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link to={item.href} className="flex items-center cursor-pointer">
