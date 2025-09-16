@@ -14,9 +14,10 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProducts, Product } from '@/hooks/useProducts';
 import BulkInventoryManager from './BulkInventoryManager';
+import TestProductManager from './TestProductManager';
 
 const ProductManager = () => {
-  const { products, categories, loading, refetch } = useProducts();
+  const { products, categories, loading, refetch } = useProducts({ includeTest: true });
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const [newProduct, setNewProduct] = useState({
@@ -239,6 +240,7 @@ const ProductManager = () => {
           <TabsTrigger value="bulk">Bulk Import</TabsTrigger>
           <TabsTrigger value="individual">Individual Products</TabsTrigger>
           <TabsTrigger value="manage">Manage Existing</TabsTrigger>
+          <TabsTrigger value="test-manager">Test vs Live</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bulk">
@@ -357,6 +359,9 @@ const ProductManager = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="test-manager">
+          <TestProductManager />
         </TabsContent>
       </Tabs>
     </div>

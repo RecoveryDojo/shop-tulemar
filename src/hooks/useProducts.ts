@@ -26,7 +26,7 @@ export interface Category {
   created_at?: string;
 }
 
-export const useProducts = () => {
+export const useProducts = (options?: { includeTest?: boolean }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,8 +64,11 @@ export const useProducts = () => {
       let query = supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
-        .eq('is_test_product', false);
+        .eq('is_active', true);
+
+      if (!options?.includeTest) {
+        query = query.eq('is_test_product', false);
+      }
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
@@ -117,13 +120,17 @@ export const useProducts = () => {
   const searchProducts = async (query: string) => {
     setSearchLoading(true);
     try {
-      const { data, error } = await supabase
+      let queryBuilder = supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
-        .eq('is_test_product', false)
-        .ilike('name', `%${query}%`)
-        .order('price', { ascending: true });
+        .ilike('name', `%${query}%`);
+
+      if (!options?.includeTest) {
+        queryBuilder = queryBuilder.eq('is_test_product', false);
+      }
+
+      const { data, error } = await queryBuilder.order('price', { ascending: true });
 
       if (error) throw error;
       setProducts(data || []);
