@@ -12,7 +12,7 @@ import { useCart } from '@/contexts/CartContext';
 export default function CategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const { products, categories, loading, categoryLoading, fetchProductsByCategory } = useProducts();
+  const { products, categories, loading, categoryLoading, fetchProductsByCategory } = useProducts({ includeTest: false });
   const { itemCount } = useCart();
 
   const category = categories.find(cat => cat.id === categoryId);
