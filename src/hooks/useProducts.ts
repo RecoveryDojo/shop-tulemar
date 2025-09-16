@@ -64,7 +64,8 @@ export const useProducts = () => {
       let query = supabase
         .from('products')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_test_product', false);
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
@@ -120,6 +121,7 @@ export const useProducts = () => {
         .from('products')
         .select('*')
         .eq('is_active', true)
+        .eq('is_test_product', false)
         .ilike('name', `%${query}%`)
         .order('price', { ascending: true });
 
