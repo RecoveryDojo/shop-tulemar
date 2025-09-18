@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { AsyncBoundary } from "@/components/ui/async-boundary";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -11,36 +13,42 @@ import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommu
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
-import Homepage from "@/pages/Homepage";
+import { addResourceHints } from "@/utils/performance";
+// Lazy load non-critical pages for better performance
+import { 
+  LazyHomepage,
+  LazyShopCategories,
+  LazyShopCart,
+  LazyShopCheckout,
+  LazyOrderSuccess,
+  LazyOrderTrack,
+  LazyShopOrder,
+  LazyShopSearch,
+  LazyShopHowItWorks,
+  LazyWorkTracker,
+  LazyOrderWorkflowDashboard,
+  LazyMainDashboard,
+  LazyAdmin,
+  LazyFeatureShowcase,
+  LazyShopperDashboard,
+  LazyCustomerDashboard,
+  LazyConciergeDashboard,
+  LazyDriverDashboard,
+  LazyStoreManagerDashboard,
+  LazyProfile,
+  LazySystemArchitecture,
+  LazyBotTesting,
+  LazyWorkflowTesting,
+  LazyWorkflowDocumentation,
+  LazySitemap,
+  LazyNotFound
+} from './App.lazy';
+
+// Keep critical components as direct imports for immediate loading
 import ShopIndex from "@/pages/shop/ShopIndex";
-import ShopCategories from "@/pages/shop/ShopCategories";
 import CategoryPage from "@/pages/shop/CategoryPage";
-import ShopCart from "@/pages/shop/ShopCart";
-import ShopCheckout from "@/pages/shop/ShopCheckout";
-import OrderSuccess from "@/pages/shop/OrderSuccess";
-import OrderTrack from "@/pages/shop/OrderTrack";
-import ShopOrder from "@/pages/shop/ShopOrder";
-import ShopSearch from "@/pages/shop/ShopSearch";
-import ShopHowItWorks from "@/pages/shop/ShopHowItWorks";
-import WorkTracker from "@/pages/WorkTracker";
-import OrderWorkflowDashboard from "@/pages/OrderWorkflowDashboard";
-import MainDashboard from "@/pages/MainDashboard";
 import Auth from "@/pages/Auth";
-import Admin from "@/pages/Admin";
 import ProductEdit from "@/pages/ProductEdit";
-import NotFound from "@/pages/NotFound";
-import Sitemap from "@/pages/Sitemap";
-import FeatureShowcase from "@/pages/FeatureShowcase";
-import ShopperDashboard from "@/pages/ShopperDashboard";
-import CustomerDashboard from "@/pages/CustomerDashboard";
-import ConciergeDashboard from "@/pages/ConciergeDashboard";
-import DriverDashboard from "@/pages/DriverDashboard";
-import StoreManagerDashboard from "@/pages/StoreManagerDashboard";
-import Profile from "@/pages/Profile";
-import SystemArchitecture from "@/pages/SystemArchitecture";
-import BotTesting from "@/pages/BotTesting";
-import WorkflowTesting from "@/pages/WorkflowTesting";
-import WorkflowDocumentation from "@/pages/WorkflowDocumentation";
 import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient({
@@ -59,7 +67,6 @@ const queryClient = new QueryClient({
 });
 
 // Add resource hints for better performance
-import { addResourceHints } from '@/utils/performance';
 addResourceHints();
 
 // Component that uses router hooks - must be inside BrowserRouter
@@ -85,36 +92,136 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<ShopIndex />} />
-      <Route path="/app" element={<Homepage />} />
-      <Route path="/categories" element={<ShopCategories />} />
+      <Route path="/app" element={
+        <AsyncBoundary loadingText="Loading homepage...">
+          <LazyHomepage />
+        </AsyncBoundary>
+      } />
+      <Route path="/categories" element={
+        <AsyncBoundary loadingText="Loading categories...">
+          <LazyShopCategories />
+        </AsyncBoundary>
+      } />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
-      <Route path="/cart" element={<ShopCart />} />
-      <Route path="/checkout" element={<ShopCheckout />} />
-      <Route path="/order-success" element={<OrderSuccess />} />
-      <Route path="/order-track" element={<OrderTrack />} />
-      <Route path="/order" element={<ShopOrder />} />
-      <Route path="/search" element={<ShopSearch />} />
-      <Route path="/how-it-works" element={<ShopHowItWorks />} />
+      <Route path="/cart" element={
+        <AsyncBoundary loadingText="Loading cart...">
+          <LazyShopCart />
+        </AsyncBoundary>
+      } />
+      <Route path="/checkout" element={
+        <AsyncBoundary loadingText="Loading checkout...">
+          <LazyShopCheckout />
+        </AsyncBoundary>
+      } />
+      <Route path="/order-success" element={
+        <AsyncBoundary loadingText="Loading order confirmation...">
+          <LazyOrderSuccess />
+        </AsyncBoundary>
+      } />
+      <Route path="/order-track" element={
+        <AsyncBoundary loadingText="Loading order tracking...">
+          <LazyOrderTrack />
+        </AsyncBoundary>
+      } />
+      <Route path="/order" element={
+        <AsyncBoundary loadingText="Loading order form...">
+          <LazyShopOrder />
+        </AsyncBoundary>
+      } />
+      <Route path="/search" element={
+        <AsyncBoundary loadingText="Loading search...">
+          <LazyShopSearch />
+        </AsyncBoundary>
+      } />
+      <Route path="/how-it-works" element={
+        <AsyncBoundary loadingText="Loading information...">
+          <LazyShopHowItWorks />
+        </AsyncBoundary>
+      } />
       <Route path="/me" element={<RoleBasedRedirect />} />
-      <Route path="/work-tracker" element={<WorkTracker />} />
-      <Route path="/dashboard" element={<MainDashboard />} />
-      <Route path="/shopper" element={<ShopperDashboard />} />
-      <Route path="/customer" element={<CustomerDashboard />} />
-      <Route path="/concierge" element={<ConciergeDashboard />} />
-      <Route path="/driver" element={<DriverDashboard />} />
-      <Route path="/store-manager" element={<StoreManagerDashboard />} />
-      <Route path="/order-workflow" element={<OrderWorkflowDashboard />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/system-architecture" element={<SystemArchitecture />} />
+      <Route path="/work-tracker" element={
+        <AsyncBoundary loadingText="Loading work tracker...">
+          <LazyWorkTracker />
+        </AsyncBoundary>
+      } />
+      <Route path="/dashboard" element={
+        <AsyncBoundary loadingText="Loading dashboard...">
+          <LazyMainDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/shopper" element={
+        <AsyncBoundary loadingText="Loading shopper dashboard...">
+          <LazyShopperDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/customer" element={
+        <AsyncBoundary loadingText="Loading customer dashboard...">
+          <LazyCustomerDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/concierge" element={
+        <AsyncBoundary loadingText="Loading concierge dashboard...">
+          <LazyConciergeDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/driver" element={
+        <AsyncBoundary loadingText="Loading driver dashboard...">
+          <LazyDriverDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/store-manager" element={
+        <AsyncBoundary loadingText="Loading store manager dashboard...">
+          <LazyStoreManagerDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/order-workflow" element={
+        <AsyncBoundary loadingText="Loading workflow dashboard...">
+          <LazyOrderWorkflowDashboard />
+        </AsyncBoundary>
+      } />
+      <Route path="/profile" element={
+        <AsyncBoundary loadingText="Loading profile...">
+          <LazyProfile />
+        </AsyncBoundary>
+      } />
+      <Route path="/system-architecture" element={
+        <AsyncBoundary loadingText="Loading system architecture...">
+          <LazySystemArchitecture />
+        </AsyncBoundary>
+      } />
       <Route path="/auth" element={<Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin" element={
+        <AsyncBoundary loadingText="Loading admin panel...">
+          <LazyAdmin />
+        </AsyncBoundary>
+      } />
       <Route path="/admin/product/:productId" element={<ProductEdit />} />
-      <Route path="/feature-showcase" element={<FeatureShowcase />} />
-      <Route path="/bot-testing" element={<BotTesting />} />
-      <Route path="/workflow-testing" element={<WorkflowTesting />} />
-      <Route path="/workflow-documentation" element={<WorkflowDocumentation />} />
-      <Route path="*" element={<NotFound />} />
+      <Route path="/feature-showcase" element={
+        <AsyncBoundary loadingText="Loading features...">
+          <LazyFeatureShowcase />
+        </AsyncBoundary>
+      } />
+      <Route path="/bot-testing" element={
+        <AsyncBoundary loadingText="Loading bot testing...">
+          <LazyBotTesting />
+        </AsyncBoundary>
+      } />
+      <Route path="/workflow-testing" element={
+        <AsyncBoundary loadingText="Loading workflow testing...">
+          <LazyWorkflowTesting />
+        </AsyncBoundary>
+      } />
+      <Route path="/workflow-documentation" element={
+        <AsyncBoundary loadingText="Loading documentation...">
+          <LazyWorkflowDocumentation />
+        </AsyncBoundary>
+      } />
+      <Route path="*" element={
+        <AsyncBoundary loadingText="Loading page...">
+          <LazyNotFound />
+        </AsyncBoundary>
+      } />
     </Routes>
   );
 }
@@ -126,7 +233,7 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <LoadingSpinner size="lg" text="Loading application..." />
       </div>
     );
   }
