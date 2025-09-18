@@ -1,6 +1,7 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { LazyImage } from '@/components/ui/lazy-image';
 import { Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
@@ -55,14 +56,11 @@ export function ProductCard({ product }: ProductCardProps) {
     <Card className="group hover:shadow-tropical transition-all duration-300 border-border w-full max-w-full">
       <CardContent className="p-3 sm:p-4">
         <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden h-32 sm:h-40 md:h-48">
-          <img
+          <LazyImage
             src={getProductImage(product)}
             alt={`${product.name} - ${product.description || 'Product image'}`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
-            }}
+            className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+            fallbackSrc="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop"
           />
         </div>
         

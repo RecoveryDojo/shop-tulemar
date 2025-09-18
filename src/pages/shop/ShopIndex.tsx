@@ -2,6 +2,7 @@ import { ShopHero } from "@/components/shop/ShopHero";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LazyImage } from "@/components/ui/lazy-image";
 import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProducts } from '@/hooks/useProducts';
@@ -174,10 +175,11 @@ export default function ShopIndex() {
               </div>
             </div>
             <div className="order-first md:order-last">
-              <img 
+              <LazyImage 
                 src={deliveryTruck} 
                 alt="Tulemar Shop delivery truck in Costa Rica"
                 className="rounded-2xl shadow-elegant w-full h-auto"
+                loading="lazy"
               />
             </div>
           </div>

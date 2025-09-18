@@ -43,7 +43,24 @@ import WorkflowTesting from "@/pages/WorkflowTesting";
 import WorkflowDocumentation from "@/pages/WorkflowDocumentation";
 import ResetPassword from "@/pages/ResetPassword";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: (failureCount, error) => {
+        // Retry up to 3 times for network errors
+        if (failureCount < 3 && error instanceof Error) {
+          return error.message.includes('fetch') || error.message.includes('network');
+        }
+        return false;
+      },
+    },
+  },
+});
+
+// Add resource hints for better performance
+import { addResourceHints } from '@/utils/performance';
+addResourceHints();
 
 // Component that uses router hooks - must be inside BrowserRouter
 function AppRouter() {
