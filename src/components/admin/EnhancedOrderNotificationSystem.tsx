@@ -55,20 +55,14 @@ export function EnhancedOrderNotificationSystem() {
         onError: (error) => {
           console.error('[EnhancedOrderNotifications] Connection error:', error);
           setConnectionStatus('disconnected');
-          toast({
-            title: "Connection Issue",
-            description: "Real-time updates interrupted. Reconnecting...",
-            variant: "destructive",
-          });
+          // Suppress user-facing toasts during transient reconnects
+          // We rely on the subtle inline status badge instead of a red toast.
         },
         onReconnect: () => {
           console.log('[EnhancedOrderNotifications] Reconnected successfully');
           setConnectionStatus('connected');
           fetchOrderNotifications(); // Refresh on reconnect
-          toast({
-            title: "Connected",
-            description: "Real-time notifications restored",
-          });
+          // No success toast to avoid noisy UX during navigation
         },
         retryAttempts: 5,
         retryDelay: 2000
