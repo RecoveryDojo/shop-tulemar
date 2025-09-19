@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { WorkflowTestSuite } from '@/components/testing/WorkflowTestSuite';
+import { ManualTestingInstructions } from '@/components/testing/ManualTestingInstructions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -374,11 +375,12 @@ export default function WorkflowTesting() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">QA Dashboard</TabsTrigger>
             <TabsTrigger value="test-orders">Test Orders ({testOrders.length})</TabsTrigger>
             <TabsTrigger value="workflow-suite">Workflow Testing</TabsTrigger>
             <TabsTrigger value="manual-checklist">Manual Tests</TabsTrigger>
+            <TabsTrigger value="documentation">Error Documentation</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -661,6 +663,10 @@ export default function WorkflowTesting() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="documentation" className="space-y-6">
+            <ManualTestingInstructions />
           </TabsContent>
         </Tabs>
       </div>
