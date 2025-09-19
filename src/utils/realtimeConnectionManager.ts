@@ -45,19 +45,19 @@ export class RealtimeConnectionManager {
   }
 
   private setupVisibilityListeners() {
-    // Handle tab visibility changes (mobile Safari compatibility)
+    // Only reconnect when tab becomes visible after being hidden for >30 seconds
+    let hiddenTime: number | null = null;
+    
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.isOnline) {
-        console.log('[RealtimeManager] Tab visible - checking connections');
-        this.checkAndReconnectStaleChannels();
-      }
-    });
-
-    // Handle focus events (additional cross-browser support)
-    window.addEventListener('focus', () => {
-      if (this.isOnline) {
-        console.log('[RealtimeManager] Window focused - checking connections');
-        this.checkAndReconnectStaleChannels();
+      if (document.hidden) {
+        hiddenTime = Date.now();
+      } else if (hiddenTime && this.isOnline) {
+        const hiddenDuration = Date.now() - hiddenTime;
+        if (hiddenDuration > 30000) { // Only if hidden for >30 seconds
+          console.log('[RealtimeManager] Tab visible after long absence - checking connections');
+          this.checkAndReconnectStaleChannels();
+        }
+        hiddenTime = null;
       }
     });
   }
@@ -142,8 +142,8 @@ export class RealtimeConnectionManager {
     const config = this.configs.get(channelName);
     if (!config) return;
 
-    const maxRetries = config.retryAttempts ?? 5;
-    const retryDelay = config.retryDelay ?? 2000;
+    const maxRetries = config.retryAttempts ?? 3; // Reduced from 5
+    const retryDelay = config.retryDelay ?? 5000; // Increased from 2000ms
     const currentAttempts = this.reconnectAttempts.get(channelName) ?? 0;
 
     if (currentAttempts >= maxRetries) {
@@ -158,8 +158,8 @@ export class RealtimeConnectionManager {
       clearTimeout(existingTimer);
     }
 
-    // Exponential backoff
-    const delay = retryDelay * Math.pow(2, currentAttempts);
+    // More conservative exponential backoff: 5s, 15s, 45s
+    const delay = retryDelay * Math.pow(3, currentAttempts);
     console.log(`[RealtimeManager] Scheduling reconnect for ${channelName} in ${delay}ms (attempt ${currentAttempts + 1})`);
 
     const timer = setTimeout(async () => {
@@ -272,46 +272,66 @@ export class RealtimeConnectionManager {
 // Singleton instance
 export const realtimeManager = new RealtimeConnectionManager();
 
-// Hook for React components
+// Hook for React components - optimized with lazy connection
 export const useRealtimeConnection = (config: ConnectionConfig) => {
   const [status, setStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting' | 'unknown'>('disconnected');
+  const [isConnected, setIsConnected] = React.useState(false);
 
+  const connect = React.useCallback(async () => {
+    if (isConnected) return;
+    
+    try {
+      await realtimeManager.subscribe({
+        ...config,
+        onReconnect: () => {
+          setStatus('connected');
+          setIsConnected(true);
+          config.onReconnect?.();
+        },
+        onError: (error) => {
+          setStatus('disconnected');
+          setIsConnected(false);
+          config.onError?.(error);
+        }
+      });
+      setStatus('connected');
+      setIsConnected(true);
+    } catch (error) {
+      setStatus('disconnected');
+      setIsConnected(false);
+      config.onError?.(error);
+    }
+  }, [config, isConnected]);
+
+  const disconnect = React.useCallback(async () => {
+    if (!isConnected) return;
+    await realtimeManager.unsubscribe(config.channelName);
+    setIsConnected(false);
+    setStatus('disconnected');
+  }, [config.channelName, isConnected]);
+
+  // Auto-connect on mount, disconnect on unmount
   React.useEffect(() => {
-    const subscribe = async () => {
-      try {
-        await realtimeManager.subscribe({
-          ...config,
-          onReconnect: () => {
-            setStatus('connected');
-            config.onReconnect?.();
-          },
-          onError: (error) => {
-            setStatus('disconnected');
-            config.onError?.(error);
-          }
-        });
-        setStatus('connected');
-      } catch (error) {
-        setStatus('disconnected');
-        config.onError?.(error);
-      }
-    };
-
-    subscribe();
-
-    // Status polling
-    const statusInterval = setInterval(() => {
-      const currentStatus = realtimeManager.getChannelStatus(config.channelName);
-      setStatus(currentStatus);
-    }, 5000);
-
+    connect();
     return () => {
-      clearInterval(statusInterval);
-      realtimeManager.unsubscribe(config.channelName);
+      disconnect();
     };
+  }, []);
+
+  // Check status only when requested, not continuously
+  const checkStatus = React.useCallback(() => {
+    const currentStatus = realtimeManager.getChannelStatus(config.channelName);
+    setStatus(currentStatus);
+    return currentStatus;
   }, [config.channelName]);
 
-  return { status };
+  return { 
+    status, 
+    connect, 
+    disconnect, 
+    checkStatus,
+    isConnected 
+  };
 };
 
 // React import for the hook
