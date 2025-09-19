@@ -46,9 +46,6 @@ export const ShopHero = () => {
           <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
             <Link to="/how-it-works">How It Works</Link>
           </Button>
-          <Button variant="ghost" size="lg" className="text-white hover:bg-white/10" asChild>
-            <Link to="/navigation">Navigation</Link>
-          </Button>
         </div>
         
         <div className="mt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
