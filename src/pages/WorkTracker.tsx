@@ -219,7 +219,7 @@ function WorkTrackerContent() {
               project={selectedProject}
               features={features}
               tasks={tasks}
-              onBackToHome={() => window.location.href = "/"}
+              onBackToHome={() => navigate('/')}
             />
 
             {/* Navigation Tabs */}

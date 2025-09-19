@@ -240,7 +240,10 @@ function AppContent() {
 
   // Show onboarding for authenticated users who haven't completed it
   if (user && !hasCompletedOnboarding()) {
-    return <UserOnboarding onComplete={() => window.location.assign(window.location.pathname)} />;
+    return <UserOnboarding onComplete={() => {
+      // updateProfile() in onboarding should refresh the auth context
+      // No reload needed - the context will update automatically
+    }} />;
   }
 
   return (
