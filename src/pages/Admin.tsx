@@ -18,7 +18,7 @@ import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
-import { OrderNotificationSystem } from '@/components/admin/OrderNotificationSystem';
+import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 
 interface UserWithRoles {
@@ -165,7 +165,7 @@ const Admin = () => {
           </TabsList>
 
           <TabsContent value="orders">
-            <OrderNotificationSystem />
+            <EnhancedOrderNotificationSystem />
           </TabsContent>
 
           <TabsContent value="staff">
