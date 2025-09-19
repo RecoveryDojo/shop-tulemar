@@ -18,6 +18,8 @@ import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
+import { OrderNotificationSystem } from '@/components/admin/OrderNotificationSystem';
+import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 
 interface UserWithRoles {
   id: string;
@@ -151,14 +153,24 @@ const Admin = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="inventory" className="space-y-6">
+        <Tabs defaultValue="orders" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="orders">Order Notifications</TabsTrigger>
+            <TabsTrigger value="staff">Staff Assignment</TabsTrigger>
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="orders">
+            <OrderNotificationSystem />
+          </TabsContent>
+
+          <TabsContent value="staff">
+            <StaffAssignmentTool />
+          </TabsContent>
 
           <TabsContent value="inventory">
             <ProductManager />
