@@ -236,8 +236,8 @@ export function TimeTracker({ projectId, tasks }: TimeTrackerProps) {
         description: "Task hours have been updated successfully.",
       });
 
-      // Reload to reflect changes
-      window.location.reload();
+      // Refresh data to reflect changes
+      loadTimeEntries();
     } catch (error) {
       console.error("Error updating hours:", error);
       toast({

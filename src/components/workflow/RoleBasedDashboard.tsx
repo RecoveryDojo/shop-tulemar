@@ -623,7 +623,7 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
           <div className="border rounded-lg p-3">
             <h4 className="font-semibold mb-2">Quick Actions</h4>
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" onClick={() => window.location.href = '/store-manager'}>
+              <Button size="sm" variant="outline" onClick={() => window.open('/store-manager', '_blank')}>
                 <Eye className="h-4 w-4 mr-1" />
                 Full Dashboard
               </Button>

@@ -284,7 +284,7 @@ function OrderWorkflowDashboardContent() {
             <Button variant="outline" onClick={loadDashboardData}>
               Refresh Data
             </Button>
-            <Button onClick={() => window.location.href = "/work-tracker"}>
+            <Button onClick={() => window.open('/work-tracker', '_blank')}>
               View Documentation
             </Button>
           </div>

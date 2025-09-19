@@ -240,7 +240,7 @@ function AppContent() {
 
   // Show onboarding for authenticated users who haven't completed it
   if (user && !hasCompletedOnboarding()) {
-    return <UserOnboarding onComplete={() => window.location.reload()} />;
+    return <UserOnboarding onComplete={() => window.location.assign(window.location.pathname)} />;
   }
 
   return (
