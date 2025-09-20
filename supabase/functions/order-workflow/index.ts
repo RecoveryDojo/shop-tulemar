@@ -218,6 +218,18 @@ async function completeShopping(supabase: any, orderId: string, userId: string) 
 }
 
 async function startDelivery(supabase: any, orderId: string, userId: string) {
+  // First check current status
+  const { data: currentOrder } = await supabase
+    .from('orders')
+    .select('status')
+    .eq('id', orderId)
+    .single();
+
+  if (!currentOrder || currentOrder.status !== 'packed') {
+    console.error(`Start delivery error: Order ${orderId} is not in packed status. Current status: ${currentOrder?.status}`);
+    throw new Error('Order must be in packed status to start delivery');
+  }
+
   const { error } = await supabase
     .from('orders')
     .update({ 
@@ -225,7 +237,8 @@ async function startDelivery(supabase: any, orderId: string, userId: string) {
       delivery_started_at: new Date().toISOString()
     })
     .eq('id', orderId)
-    .eq('assigned_shopper_id', userId);
+    .eq('assigned_shopper_id', userId)
+    .eq('status', 'packed'); // Only update if still packed
 
   if (error) {
     console.error('Start delivery error:', error);
