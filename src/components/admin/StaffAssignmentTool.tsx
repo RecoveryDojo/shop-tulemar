@@ -21,7 +21,7 @@ interface StaffMember {
     orders_completed: number;
     rating: number;
     response_time: string;
-    availability: 'available' | 'busy' | 'offline';
+    availability: 'available';
   };
 }
 
@@ -88,7 +88,7 @@ export function StaffAssignmentTool() {
             orders_completed: 0, // Real count to be implemented
             rating: 5.0, // Default rating
             response_time: '5m', // Default response time
-            availability: 'available' // Always available - no fake statuses
+            availability: 'available' as const // Always available - no fake statuses
           };
 
           return {
@@ -158,10 +158,7 @@ export function StaffAssignmentTool() {
     }
   };
 
-  const getAvailabilityColor = (availability: string) => {
-    // Only show available status now
-    return 'text-green-600';
-  };
+  const assignStaffToOrder = async (staffId: string, orderId: string, role: string) => {
     try {
       // Check if already assigned
       const { data: existing } = await supabase
