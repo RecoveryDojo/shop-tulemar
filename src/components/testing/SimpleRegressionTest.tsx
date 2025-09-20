@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,31 @@ export function SimpleRegressionTest() {
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetchRealOrderId();
+  }, []);
+
+  const [realOrderId, setRealOrderId] = useState<string>('');
+
+  // Get a real order ID from the database for testing
+  const fetchRealOrderId = async () => {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('status', 'confirmed')
+      .limit(1);
+    
+    if (orders && orders.length > 0) {
+      setRealOrderId(orders[0].id);
+    }
+  };
+
   const testCases = [
-    { action: 'accept_order', orderId: 'test-regression-order', expectedStatus: 'confirmed' },
-    { action: 'start_shopping', orderId: 'test-regression-order', expectedStatus: 'assigned' },
-    { action: 'complete_shopping', orderId: 'test-regression-order', expectedStatus: 'shopping' },
-    { action: 'start_delivery', orderId: 'test-regression-order', expectedStatus: 'packed' },
-    { action: 'complete_delivery', orderId: 'test-regression-order', expectedStatus: 'in_transit' }
+    { action: 'accept_order', orderId: realOrderId, expectedStatus: 'confirmed' },
+    { action: 'start_shopping', orderId: realOrderId, expectedStatus: 'assigned' },
+    { action: 'complete_shopping', orderId: realOrderId, expectedStatus: 'shopping' },
+    { action: 'start_delivery', orderId: realOrderId, expectedStatus: 'packed' },
+    { action: 'complete_delivery', orderId: realOrderId, expectedStatus: 'in_transit' }
   ];
 
   const runSingleTest = async (testCase: typeof testCases[0]): Promise<TestResult> => {
@@ -105,6 +124,19 @@ export function SimpleRegressionTest() {
     setResults([]);
     setProgress(0);
     
+    // Get a real order ID first
+    await fetchRealOrderId();
+    
+    if (!realOrderId) {
+      toast({
+        title: "No Test Orders",
+        description: "No confirmed orders found for testing. Create some orders first.",
+        variant: "destructive"
+      });
+      setIsRunning(false);
+      return;
+    }
+    
     const newResults: TestResult[] = [];
     let regressionCount = 0;
 
@@ -154,24 +186,29 @@ export function SimpleRegressionTest() {
           </CardTitle>
           <div className="space-y-2">
             <div className="text-sm text-muted-foreground">
-              Direct comparison: Old workflow vs New validated workflow
+              Direct comparison: Old workflow vs Enhanced workflow using real orders
             </div>
             <Progress value={progress} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{Math.round(progress)}% Complete</span>
               <span>{results.length} of {testCases.length} tests</span>
             </div>
+            {!realOrderId && (
+              <div className="text-sm text-red-600">
+                No confirmed orders found. Create some orders first for testing.
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-6">
             <Button 
               onClick={runAllTests}
-              disabled={isRunning}
+              disabled={isRunning || !realOrderId}
               className="flex items-center gap-2"
             >
               <Play className="h-4 w-4" />
-              {isRunning ? 'Running Tests...' : 'Run Regression Test'}
+              {isRunning ? 'Running Tests...' : !realOrderId ? 'No Orders Available' : 'Run Regression Test'}
             </Button>
           </div>
 
@@ -232,7 +269,7 @@ export function SimpleRegressionTest() {
                       </div>
                       
                       <div className="space-y-2">
-                        <h5 className="font-medium text-gray-700">New Validated Workflow</h5>
+                        <h5 className="font-medium text-gray-700">Enhanced Workflow</h5>
                         <div className="flex items-center gap-2">
                           {result.newSuccess ? (
                             <CheckCircle className="h-4 w-4 text-green-600" />

@@ -63,49 +63,42 @@ export function ShopperDashboard() {
 
   const fetchAssignedOrders = async () => {
     try {
-      // Get orders assigned to current shopper
-      const { data: assignments } = await supabase
-        .from('stakeholder_assignments')
-        .select('order_id')
-        .eq('role', 'shopper')
-        .eq('status', 'assigned');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (assignments && assignments.length > 0) {
-        const orderIds = assignments.map(a => a.order_id);
-        
-        const { data: ordersData, error } = await supabase
-          .from('orders')
-          .select(`
+      // Get orders assigned to current user as shopper
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items(
             *,
-            order_items(
-              *,
-              products(name, unit, category_id)
-            )
-          `)
-          .in('id', orderIds)
-          .in('status', ['confirmed', 'assigned', 'shopping', 'packed']);
+            products(name, unit, category_id)
+          )
+        `)
+        .eq('assigned_shopper_id', user.id)
+        .in('status', ['confirmed', 'assigned', 'shopping', 'packed']);
 
-        if (error) throw error;
-        
-        const formattedOrders = ordersData?.map(order => ({
-          ...order,
-          items: order.order_items?.map(item => ({
-            id: item.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-            product: item.products
-          })) || []
-        })) || [];
-        
-        setOrders(formattedOrders);
-        
-        // Set first shopping order as active
-        const shoppingOrder = formattedOrders.find(o => o.status === 'shopping');
-        if (shoppingOrder) {
-          setActiveOrder(shoppingOrder);
-        }
+      if (error) throw error;
+      
+      const formattedOrders = ordersData?.map(order => ({
+        ...order,
+        items: order.order_items?.map(item => ({
+          id: item.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          product: item.products
+        })) || []
+      })) || [];
+      
+      setOrders(formattedOrders);
+      
+      // Set first shopping order as active
+      const shoppingOrder = formattedOrders.find(o => o.status === 'shopping');
+      if (shoppingOrder) {
+        setActiveOrder(shoppingOrder);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -119,33 +112,43 @@ export function ShopperDashboard() {
     }
   };
 
-  const startShopping = async (orderId: string) => {
+  const acceptOrder = async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'shopping' })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Send notification
-      await supabase.functions.invoke('notification-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: {
-          orderId,
-          notificationType: 'shopping_started',
-          phase: 'shopping'
+          action: 'accept_order',
+          orderId: orderId
         }
       });
 
-      // Log workflow
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: orderId,
-          phase: 'shopping',
-          action: 'shopping_started',
-          notes: 'Shopper began collecting items'
-        });
+      if (error) throw error;
+
+      toast({
+        title: "Order Accepted",
+        description: "Order has been assigned to you",
+      });
+
+      fetchAssignedOrders();
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startShopping = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
+        body: {
+          action: 'start_shopping',
+          orderId: orderId
+        }
+      });
+
+      if (error) throw error;
 
       toast({
         title: "Shopping Started",
@@ -238,21 +241,14 @@ export function ShopperDashboard() {
     if (!activeOrder) return;
 
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'packed' })
-        .eq('id', activeOrder.id);
-
-      if (error) throw error;
-
-      // Send notification
-      await supabase.functions.invoke('notification-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: {
-          orderId: activeOrder.id,
-          notificationType: 'items_packed',
-          phase: 'packing'
+          action: 'complete_shopping',
+          orderId: activeOrder.id
         }
       });
+
+      if (error) throw error;
 
       toast({
         title: "Order Complete",
@@ -263,6 +259,11 @@ export function ShopperDashboard() {
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error completing order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete order",
+        variant: "destructive",
+      });
     }
   };
 

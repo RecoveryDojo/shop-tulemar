@@ -61,36 +61,28 @@ export function DriverDashboard() {
 
   const fetchDeliveryOrders = async () => {
     try {
-      // Get orders assigned to current driver
-      const { data: assignments } = await supabase
-        .from('stakeholder_assignments')
-        .select('order_id')
-        .eq('role', 'driver')
-        .eq('status', 'assigned');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (assignments && assignments.length > 0) {
-        const orderIds = assignments.map(a => a.order_id);
-        
-        const { data: ordersData, error } = await supabase
-          .from('orders')
-          .select('*')
-          .in('id', orderIds)
-          .in('status', ['packed', 'out_for_delivery', 'delivered']);
+      // Get orders that are ready for delivery or being delivered
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select('*')
+        .in('status', ['packed', 'in_transit', 'delivered']);
 
-        if (error) throw error;
-        setOrders(ordersData || []);
+      if (error) throw error;
+      setOrders(ordersData || []);
 
-        // Group orders into active route
-        const routeOrders = ordersData?.filter(o => 
-          ['packed', 'out_for_delivery'].includes(o.status)
-        ) || [];
-        setActiveRoute(routeOrders);
+      // Group orders into active route (packed or in_transit)
+      const routeOrders = ordersData?.filter(o => 
+        ['packed', 'in_transit'].includes(o.status)
+      ) || [];
+      setActiveRoute(routeOrders);
 
-        // Set current order being delivered
-        const currentDelivery = routeOrders.find(o => o.status === 'out_for_delivery');
-        if (currentDelivery) {
-          setCurrentOrder(currentDelivery);
-        }
+      // Set current order being delivered
+      const currentDelivery = routeOrders.find(o => o.status === 'in_transit');
+      if (currentDelivery) {
+        setCurrentOrder(currentDelivery);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -106,34 +98,14 @@ export function DriverDashboard() {
 
   const startDelivery = async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'out_for_delivery',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Send notification
-      await supabase.functions.invoke('notification-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: {
-          orderId,
-          notificationType: 'out_for_delivery',
-          phase: 'delivery'
+          action: 'start_delivery',
+          orderId: orderId
         }
       });
 
-      // Log workflow
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: orderId,
-          phase: 'delivery',
-          action: 'delivery_started',
-          notes: 'Driver started delivery route'
-        });
+      if (error) throw error;
 
       toast({
         title: "Delivery Started",
@@ -143,43 +115,24 @@ export function DriverDashboard() {
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error starting delivery:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start delivery",
+        variant: "destructive",
+      });
     }
   };
 
   const completeDelivery = async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'delivered',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Send notification
-      await supabase.functions.invoke('notification-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: {
-          orderId,
-          notificationType: 'delivered',
-          phase: 'delivery'
+          action: 'complete_delivery',
+          orderId: orderId
         }
       });
 
-      // Log workflow
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: orderId,
-          phase: 'delivery',
-          action: 'delivery_completed',
-          notes: `Delivered to ${currentOrder?.property_address}. Notes: ${deliveryNotes[orderId] || 'None'}`,
-          metadata: { 
-            delivery_notes: deliveryNotes[orderId],
-            delivery_time: new Date().toISOString()
-          }
-        });
+      if (error) throw error;
 
       toast({
         title: "Delivery Complete",
@@ -196,6 +149,11 @@ export function DriverDashboard() {
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error completing delivery:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete delivery",
+        variant: "destructive",
+      });
     }
   };
 
@@ -469,9 +427,9 @@ export function DriverDashboard() {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <Badge variant={order.status === 'out_for_delivery' ? 'default' : 'secondary'}>
-                      {order.status.replace('_', ' ')}
-                    </Badge>
+                     <Badge variant={order.status === 'in_transit' ? 'default' : 'secondary'}>
+                       {order.status.replace('_', ' ')}
+                     </Badge>
                     
                     {order.status === 'packed' && (
                       <Button 
