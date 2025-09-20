@@ -22,6 +22,7 @@ import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrde
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { AssignmentTester } from '@/components/admin/AssignmentTester';
+import { WorkflowRegressionTest } from '@/components/testing/WorkflowRegressionTest';
 
 interface UserWithRoles {
   id: string;
@@ -163,6 +164,7 @@ const Admin = () => {
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="regression">Regression Testing</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
@@ -341,6 +343,10 @@ const Admin = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="regression">
+            <WorkflowRegressionTest />
           </TabsContent>
 
           <TabsContent value="activity">
