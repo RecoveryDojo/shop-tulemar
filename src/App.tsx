@@ -75,19 +75,8 @@ function AppRouter() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Role-based default route redirect
-  useEffect(() => {
-    if (!user || location.pathname !== '/') return;
-
-    // Redirect staff to their appropriate dashboards immediately (regardless of onboarding)
-    if (hasRole('admin') || hasRole('sysadmin')) { navigate('/admin'); return; }
-    if (hasRole('store_manager')) { navigate('/store-manager'); return; }
-    if (hasRole('concierge')) { navigate('/concierge'); return; }
-    if (hasRole('driver')) { navigate('/driver'); return; }
-    if (hasRole('shopper')) { navigate('/shopper'); return; }
-
-    // Clients stay on homepage for shopping
-  }, [user, roles, hasRole, location.pathname, navigate]);
+  // Note: Removed automatic role-based redirects to allow users to access homepage
+  // Users can use /me route for role-based dashboard access if needed
 
   return (
     <Routes>
