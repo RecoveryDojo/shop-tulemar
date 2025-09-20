@@ -37,7 +37,7 @@ import {
   TrendingUp,
   Award
 } from 'lucide-react';
-import { useShopperOrders } from '@/hooks/useShopperOrders';
+import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
 import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
 import { useShopperStats } from '@/hooks/useShopperStats';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -50,25 +50,7 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { ShopperGuideDialog } from './ShopperGuideDialog';
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 
-interface ShoppingOrder {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  property_address?: string;
-  total_amount: number;
-  status: string;
-  special_instructions?: string;
-  items: Array<{
-    id: string;
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-    found_quantity?: number;
-    shopping_status: string;
-    shopper_notes?: string;
-    photo_url?: string;
-  }>;
-}
+// Using ShoppingOrder and OrderItem interfaces from useShopperOrders hook
 
 export function EnhancedShopperDashboard() {
   const { 
@@ -607,10 +589,10 @@ export function EnhancedShopperDashboard() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-medium">{item.product_name}</h4>
+                              <h4 className="font-medium">{item.product?.name}</h4>
                               <Badge variant={
                                 item.shopping_status === 'found' ? 'default' :
-                                item.shopping_status === 'substituted' ? 'secondary' :
+                                item.shopping_status === 'substitution_needed' ? 'secondary' :
                                 'outline'
                               }>
                                 {item.shopping_status}
