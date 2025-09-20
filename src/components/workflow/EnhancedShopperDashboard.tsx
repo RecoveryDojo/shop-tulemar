@@ -38,7 +38,8 @@ import {
   Award
 } from 'lucide-react';
 import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
-import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
+import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
+import { useRealtimeWorkflowUpdates } from '@/hooks/useRealtimeWorkflowUpdates';
 import { useShopperStats } from '@/hooks/useShopperStats';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useToast } from '@/hooks/use-toast';
@@ -69,8 +70,17 @@ export function EnhancedShopperDashboard() {
     requestSubstitution,
     completeShopping,
     startDelivery,
-    completeDelivery
-  } = useOrderWorkflow();
+    completeDelivery,
+    lastError,
+    clearError
+  } = useEnhancedOrderWorkflow();
+
+  const { 
+    notifications, 
+    statusUpdates, 
+    connectionStatus,
+    markNotificationAsRead 
+  } = useRealtimeWorkflowUpdates();
 
   const { stats: shopperStats, loading: statsLoading } = useShopperStats();
   const { teamMembers } = useTeamMembers();
