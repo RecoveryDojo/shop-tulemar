@@ -341,9 +341,10 @@ export function DriverDashboard() {
                   onClick={() => completeDelivery(currentOrder.id)}
                   className="w-full"
                   size="lg"
+                  disabled={loading}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Mark as Delivered
+                  {loading ? 'Completing...' : 'Mark as Delivered'}
                 </Button>
               </div>
             </div>
@@ -392,8 +393,9 @@ export function DriverDashboard() {
                         });
                       }}
                       className="bg-green-600 hover:bg-green-700"
+                      disabled={loading}
                     >
-                      Accept Delivery
+                      {loading ? 'Processing...' : 'Accept Delivery'}
                     </Button>
                   </div>
                 </div>
@@ -431,15 +433,16 @@ export function DriverDashboard() {
                        {order.status.replace('_', ' ')}
                      </Badge>
                     
-                    {order.status === 'packed' && (
-                      <Button 
-                        size="sm"
-                        onClick={() => startDelivery(order.id)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Start Delivery
-                      </Button>
-                    )}
+                     {order.status === 'packed' && (
+                       <Button 
+                         size="sm"
+                         onClick={() => startDelivery(order.id)}
+                         className="bg-blue-600 hover:bg-blue-700"
+                         disabled={loading}
+                       >
+                         {loading ? 'Starting...' : 'Start Delivery'}
+                       </Button>
+                     )}
                   </div>
                 </div>
               </div>

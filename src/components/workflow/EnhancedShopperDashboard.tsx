@@ -50,6 +50,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ShopperGuideDialog } from './ShopperGuideDialog';
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
+import { ErrorDisplay } from '@/components/ui/error-display';
 
 // Using ShoppingOrder and OrderItem interfaces from useShopperOrders hook
 
@@ -139,6 +140,7 @@ export function EnhancedShopperDashboard() {
       refetchOrders();
     } catch (error) {
       console.error('Failed to accept order:', error);
+      // Error is already handled by the hook with toast
     }
   };
 
@@ -148,6 +150,7 @@ export function EnhancedShopperDashboard() {
       refetchOrders();
     } catch (error) {
       console.error('Failed to start shopping:', error);
+      // Error is already handled by the hook with toast
     }
   };
 
@@ -420,6 +423,13 @@ export function EnhancedShopperDashboard() {
         </Card>
       </div>
 
+      {/* Error Display */}
+      <ErrorDisplay 
+        error={lastError} 
+        onRetry={() => window.location.reload()} 
+        onDismiss={clearError} 
+      />
+
       {/* Live Protocol Guide */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-blue-50">
         <CardContent className="p-4">
@@ -520,24 +530,24 @@ export function EnhancedShopperDashboard() {
                     <div className="text-right">
                       <div className="flex items-center space-x-2 mt-2">
                         {activeOrder.status === 'assigned' && (
-                          <Button 
-                            size="sm"
-                            onClick={() => handleStartShopping(activeOrder.id)}
-                            className="bg-blue-600 hover:bg-blue-700"
-                            disabled={workflowLoading}
-                          >
-                            Start Shopping
-                          </Button>
+                           <Button 
+                             size="sm"
+                             onClick={() => handleStartShopping(activeOrder.id)}
+                             className="bg-blue-600 hover:bg-blue-700"
+                             disabled={workflowLoading}
+                           >
+                             {workflowLoading ? 'Starting...' : 'Start Shopping'}
+                           </Button>
                         )}
                         {activeOrder.status === 'shopping' && getCompletionPercentage() === 100 && (
-                          <Button 
-                            size="sm"
-                            onClick={() => handleCompleteShopping()}
-                            className="bg-green-600 hover:bg-green-700"
-                            disabled={workflowLoading}
-                          >
-                            Complete & Pack
-                          </Button>
+                           <Button 
+                             size="sm"
+                             onClick={() => handleCompleteShopping()}
+                             className="bg-green-600 hover:bg-green-700"
+                             disabled={workflowLoading}
+                           >
+                             {workflowLoading ? 'Packing...' : 'Complete & Pack'}
+                           </Button>
                         )}
                         <Badge 
                           variant={activeOrder.status === 'shopping' ? 'default' : 'secondary'}
@@ -615,23 +625,23 @@ export function EnhancedShopperDashboard() {
                             {item.shopping_status === 'pending' && activeOrder.status === 'shopping' && (
                               <div className="mt-3 space-y-2">
                                 <div className="flex space-x-2">
-                                  <Button 
-                                    size="sm"
-                                    onClick={() => handleMarkItemFound(item.id)}
-                                    disabled={workflowLoading}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Found
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => handleRequestSubstitution(item.id, 'Out of stock')}
-                                    disabled={workflowLoading}
-                                  >
-                                    <AlertCircle className="h-4 w-4 mr-1" />
-                                    Substitute
-                                  </Button>
+                                   <Button 
+                                     size="sm"
+                                     onClick={() => handleMarkItemFound(item.id)}
+                                     disabled={workflowLoading}
+                                   >
+                                     <CheckCircle className="h-4 w-4 mr-1" />
+                                     {workflowLoading ? 'Marking...' : 'Found'}
+                                   </Button>
+                                   <Button 
+                                     size="sm" 
+                                     variant="outline"
+                                     onClick={() => handleRequestSubstitution(item.id, 'Out of stock')}
+                                     disabled={workflowLoading}
+                                   >
+                                     <AlertCircle className="h-4 w-4 mr-1" />
+                                     {workflowLoading ? 'Requesting...' : 'Substitute'}
+                                   </Button>
                                   <Button size="sm" variant="outline">
                                     <Camera className="h-4 w-4 mr-1" />
                                     Photo
@@ -691,14 +701,14 @@ export function EnhancedShopperDashboard() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline">{order.status}</Badge>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleStartDelivery(order.id)}
-                        disabled={workflowLoading}
-                      >
-                        <Truck className="h-4 w-4 mr-1" />
-                        Start Delivery
-                      </Button>
+                       <Button 
+                         size="sm"
+                         onClick={() => handleStartDelivery(order.id)}
+                         disabled={order.status !== 'packed' || workflowLoading}
+                       >
+                         <Truck className="h-4 w-4 mr-1" />
+                         {workflowLoading ? 'Starting...' : 'Start Delivery'}
+                       </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -748,14 +758,14 @@ export function EnhancedShopperDashboard() {
                       >
                         View Details
                       </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleAcceptOrder(order.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                        disabled={workflowLoading}
-                      >
-                        Accept Order
-                      </Button>
+                       <Button 
+                         size="sm"
+                         onClick={() => handleAcceptOrder(order.id)}
+                         className="bg-green-600 hover:bg-green-700"
+                         disabled={workflowLoading}
+                       >
+                         {workflowLoading ? 'Accepting...' : 'Accept Order'}
+                       </Button>
                     </div>
                   </div>
                 </CardContent>
