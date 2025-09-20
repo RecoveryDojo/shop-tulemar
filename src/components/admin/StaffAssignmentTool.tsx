@@ -95,7 +95,14 @@ export function StaffAssignmentTool() {
                name.length > 0;
       }) || [];
 
-      const staff: StaffMember[] = realProfiles.map(profile => {
+      // Filter out clients - only show staff roles
+      const staffProfiles = realProfiles.filter(profile => {
+        const roles = userRoles?.filter(ur => ur.user_id === profile.id)?.map(ur => ur.role) || [];
+        // Only include profiles that have staff roles (exclude client-only users)
+        return roles.some(role => ['shopper', 'driver', 'concierge', 'store_manager', 'admin', 'sysadmin'].includes(role));
+      });
+
+      const staff: StaffMember[] = staffProfiles.map(profile => {
         const roles = userRoles
           ?.filter(ur => ur.user_id === profile.id)
           ?.map(ur => ur.role) || [];

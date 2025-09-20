@@ -90,7 +90,6 @@ export function EnhancedShopperDashboard() {
     completeDelivery
   } = useOrderWorkflow();
 
-  const { availableOrders, activeOrders, deliveryQueue, loading, refetchOrders } = useShopperOrders();
   const { stats: shopperStats, loading: statsLoading } = useShopperStats();
   const { teamMembers } = useTeamMembers();
   const { toast } = useToast();
@@ -402,8 +401,6 @@ export function EnhancedShopperDashboard() {
                 </div>
                 <div className="text-xs text-white/80">Customer Rating</div>
               </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -422,7 +419,7 @@ export function EnhancedShopperDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Today</p>
-                <p className="text-xl font-bold text-primary">{formatCurrency(shopperStats.daily_earnings)}</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(shopperStats.dailyEarnings)}</p>
               </div>
             </div>
           </CardContent>
@@ -436,7 +433,7 @@ export function EnhancedShopperDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Rating</p>
-                <p className="text-xl font-bold text-yellow-600">{shopperStats.customer_rating}</p>
+                <p className="text-xl font-bold text-yellow-600">{shopperStats.customerRating}</p>
               </div>
             </div>
           </CardContent>
@@ -450,7 +447,7 @@ export function EnhancedShopperDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Find Rate</p>
-                <p className="text-xl font-bold text-green-600">{shopperStats.find_rate}%</p>
+                <p className="text-xl font-bold text-green-600">{shopperStats.findRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -464,7 +461,7 @@ export function EnhancedShopperDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Efficiency</p>
-                <p className="text-xl font-bold text-blue-600">{shopperStats.efficiency_score}%</p>
+                <p className="text-xl font-bold text-blue-600">{shopperStats.efficiencyScore}%</p>
               </div>
             </div>
           </CardContent>
@@ -1061,7 +1058,6 @@ export function EnhancedShopperDashboard() {
         orderId={activeOrder?.id}
         orderPhase={activeOrder?.status || 'pending'}
       />
-      </div>
     </div>
   );
 }

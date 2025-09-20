@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { FloatingCommunicationWidget } from "@/components/workflow/FloatingCommunicationWidget";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
 import { addResourceHints } from "@/utils/performance";
@@ -237,6 +238,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <ImpersonationBanner />
       <AppRouter />
       
       {/* Global Communication Hub - Available on all pages when user is authenticated */}

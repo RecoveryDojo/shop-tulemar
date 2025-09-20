@@ -20,6 +20,7 @@ import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
 import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
+import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { AssignmentTester } from '@/components/admin/AssignmentTester';
 
 interface UserWithRoles {
@@ -311,22 +312,27 @@ const Admin = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Select onValueChange={(role) => handleAssignRole(user.id, role as UserRole)}>
-                            <SelectTrigger className="w-32">
-                              <SelectValue placeholder="Add role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {roles
-                                .filter(role => !user.roles.includes(role))
-                                .map((role) => (
-                                  <SelectItem key={role} value={role}>
-                                    {role}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                         <div className="flex gap-2">
+                           <Select onValueChange={(role) => handleAssignRole(user.id, role as UserRole)}>
+                             <SelectTrigger className="w-32">
+                               <SelectValue placeholder="Add role" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {roles
+                                 .filter(role => !user.roles.includes(role))
+                                 .map((role) => (
+                                   <SelectItem key={role} value={role}>
+                                     {role}
+                                   </SelectItem>
+                                 ))}
+                             </SelectContent>
+                           </Select>
+                           <AdminImpersonation 
+                             userId={user.id}
+                             userEmail={user.email}
+                             userName={user.display_name || user.email}
+                           />
+                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
