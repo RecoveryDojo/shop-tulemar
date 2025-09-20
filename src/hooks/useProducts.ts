@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -97,16 +97,16 @@ export const useProducts = (options?: { includeTest?: boolean }) => {
     }
   };
 
-  const fetchAllProducts = async () => {
+  const fetchAllProducts = useCallback(async () => {
     setLoading(true);
     try {
       await fetchProducts();
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchProductsByCategory = async (categoryId: string) => {
+  const fetchProductsByCategory = useCallback(async (categoryId: string) => {
     setCategoryLoading(true);
     try {
       console.log('Fetching products for category:', categoryId);
@@ -115,7 +115,7 @@ export const useProducts = (options?: { includeTest?: boolean }) => {
     } finally {
       setCategoryLoading(false);
     }
-  };
+  }, []);
 
   const searchProducts = async (query: string) => {
     setSearchLoading(true);
