@@ -25,7 +25,8 @@ import {
   Star,
   Eye,
   Camera,
-  FileText
+  FileText,
+  PlayCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
@@ -439,6 +440,27 @@ export function StoreManagerDashboard() {
                           {order.priority}
                         </Badge>
                         <Badge variant="outline">{order.status}</Badge>
+                        {order.status === 'confirmed' && (
+                          <Button
+                            size="sm"
+                            onClick={() => startProtocol('order_assignment')}
+                            className="ml-2"
+                          >
+                            <Users className="h-4 w-4 mr-1" />
+                            Assign
+                          </Button>
+                        )}
+                        {order.status === 'shopping' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startProtocol('shopper_coordination')}
+                            className="ml-2"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Monitor
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -480,6 +502,20 @@ export function StoreManagerDashboard() {
                         {shopper.current_order_id && (
                           <Button size="sm" variant="ghost">
                             <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {shopper.status === 'active' && !shopper.current_order_id && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              toast({
+                                title: "Assignment Ready",
+                                description: `${shopper.name} is available for new orders`,
+                              });
+                            }}
+                          >
+                            <Target className="h-4 w-4 mr-1" />
+                            Assign
                           </Button>
                         )}
                       </div>

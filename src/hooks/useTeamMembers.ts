@@ -47,27 +47,40 @@ export function useTeamMembers() {
           .select(`
             user_id,
             role,
-            order_id,
-            profiles:user_id (
-              display_name,
-              avatar_url,
-              status
-            )
+            order_id
           `)
           .in('order_id', orderIds)
           .eq('status', 'accepted')
           .neq('user_id', user.id); // Exclude current user
 
         if (teamError) {
-          console.error('Error fetching team members:', teamError);
+          console.error('Error fetching team assignments:', teamError);
           return;
         }
+
+        // Get profile data separately for each user
+        const userIds = [...new Set(teamAssignments?.map(a => a.user_id) || [])];
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url, status')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          return;
+        }
+
+        // Create a profile map for easy lookup
+        const profileMap = new Map();
+        profiles?.forEach(profile => {
+          profileMap.set(profile.id, profile);
+        });
 
         // Transform data and remove duplicates
         const uniqueMembers = new Map();
         
         teamAssignments?.forEach((assignment: any) => {
-          const profile = assignment.profiles;
+          const profile = profileMap.get(assignment.user_id);
           if (profile && !uniqueMembers.has(assignment.user_id)) {
             uniqueMembers.set(assignment.user_id, {
               id: assignment.user_id,

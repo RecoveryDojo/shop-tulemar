@@ -106,11 +106,17 @@ export class RealtimeConnectionManager {
       console.log(`[RealtimeManager] Channel ${channelName} synced`);
     });
 
-    // Handle subscription errors
+    // Handle subscription errors with more robust error catching
     channel.on('system', {}, (payload) => {
-      if (payload.type === 'close') {
-        console.warn(`[RealtimeManager] Channel ${channelName} closed:`, payload);
-        this.handleChannelDisconnection(channelName);
+      console.log(`[RealtimeManager] System event on ${channelName}:`, payload);
+      if (payload.type === 'close' || payload.status === 'error') {
+        console.warn(`[RealtimeManager] Channel ${channelName} system error:`, payload);
+        // Don't immediately disconnect on system events - they might be transient
+        setTimeout(() => {
+          if (this.getChannelStatus(channelName) === 'disconnected') {
+            this.handleChannelDisconnection(channelName);
+          }
+        }, 1000);
       }
     });
 

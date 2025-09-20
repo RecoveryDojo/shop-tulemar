@@ -48,6 +48,7 @@ import {
 // Keep critical components as direct imports for immediate loading
 import ShopIndex from "@/pages/shop/ShopIndex";
 import CategoryPage from "@/pages/shop/CategoryPage";
+import WorkflowTest from "@/pages/WorkflowTest";
 import Auth from "@/pages/Auth";
 import ProductEdit from "@/pages/ProductEdit";
 import ResetPassword from "@/pages/ResetPassword";
@@ -200,6 +201,11 @@ function AppRouter() {
       <Route path="/workflow-testing" element={
         <AsyncBoundary loadingText="Loading workflow testing...">
           <LazyWorkflowTesting />
+        </AsyncBoundary>
+      } />
+      <Route path="/workflow-test" element={
+        <AsyncBoundary loadingText="Loading workflow test...">
+          <WorkflowTest />
         </AsyncBoundary>
       } />
       <Route path="/workflow-documentation" element={
