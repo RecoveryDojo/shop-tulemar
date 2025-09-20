@@ -20,6 +20,7 @@ import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
 import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
+import { AssignmentTester } from '@/components/admin/AssignmentTester';
 
 interface UserWithRoles {
   id: string;
@@ -169,7 +170,10 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="staff">
-            <StaffAssignmentTool />
+            <div className="space-y-6">
+              <AssignmentTester />
+              <StaffAssignmentTool />
+            </div>
           </TabsContent>
 
           <TabsContent value="inventory">

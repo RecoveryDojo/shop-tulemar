@@ -72,8 +72,26 @@ export const useShopperOrders = () => {
         console.log('No available orders found or permission issue:', availableError);
       }
 
-      // Fetch shopper's active orders (assigned to them)
-      const { data: active, error: activeError } = await supabase
+      // Fetch shopper's active orders (assigned to them OR via stakeholder assignments)
+      const { data: assignedOrders, error: assignedError } = await supabase
+        .from('stakeholder_assignments')
+        .select(`
+          order_id,
+          status,
+          accepted_at,
+          orders!inner (
+            *,
+            order_items (
+              *,
+              products (name, description, image_url, unit, price)
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('role', 'shopper')
+        .in('orders.status', ['confirmed', 'assigned', 'shopping']);
+
+      const { data: directAssigned, error: directError } = await supabase
         .from('orders')
         .select(`
           *,
@@ -85,8 +103,25 @@ export const useShopperOrders = () => {
         .eq('assigned_shopper_id', user.id)
         .in('status', ['assigned', 'shopping']);
 
-      if (activeError) {
-        console.log('No active orders found:', activeError);
+      // Combine both assignment methods
+      let active: any[] = [];
+      if (assignedOrders) {
+        active = active.concat(assignedOrders.map((assignment: any) => assignment.orders));
+      }
+      if (directAssigned) {
+        active = active.concat(directAssigned);
+      }
+
+      // Remove duplicates
+      active = active.filter((order, index, self) => 
+        index === self.findIndex(o => o.id === order.id)
+      );
+
+      if (assignedError) {
+        console.log('No assigned orders found:', assignedError);
+      }
+      if (directError) {
+        console.log('No direct assigned orders found:', directError);
       }
 
       // Fetch delivery queue (packed orders assigned to shopper)

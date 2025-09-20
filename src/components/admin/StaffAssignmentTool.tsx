@@ -48,7 +48,7 @@ export function StaffAssignmentTool() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
 
   useEffect(() => {
     if (!hasRole('admin') && !hasRole('sysadmin')) return;
@@ -220,60 +220,52 @@ export function StaffAssignmentTool() {
 
   const assignStaffToOrder = async (staffId: string, orderId: string, role: string) => {
     try {
-      // Check if already assigned
-      const { data: existing } = await supabase
-        .from('stakeholder_assignments')
-        .select('id')
-        .eq('order_id', orderId)
-        .eq('role', role)
-        .single();
-
-      if (existing) {
-        // Update existing assignment
-        await supabase
-          .from('stakeholder_assignments')
-          .update({ 
-            user_id: staffId,
-            status: 'assigned',
-            assigned_at: new Date().toISOString()
-          })
-          .eq('id', existing.id);
-      } else {
-        // Create new assignment
-        await supabase
-          .from('stakeholder_assignments')
-          .insert({
-            order_id: orderId,
-            user_id: staffId,
-            role,
-            status: 'assigned'
-          });
+      const selectedStaff = staff.find(s => s.id === staffId);
+      const selectedOrderData = orders.find(o => o.id === orderId);
+      
+      if (!selectedStaff || !selectedOrderData) {
+        throw new Error('Staff member or order not found');
       }
 
-      // Log the assignment
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: orderId,
-          phase: 'assignment',
-          action: 'staff_assigned',
-          actor_role: 'admin',
-          notes: `Assigned ${role} to order`,
-          metadata: { assigned_user_id: staffId, role }
-        });
-
-      toast({
-        title: "Staff Assigned",
-        description: `Successfully assigned ${role} to order`,
+      // Call the comprehensive assignment workflow
+      const { data: result, error } = await supabase.functions.invoke('assignment-workflow', {
+        body: { 
+          orderId,
+          staffId,
+          role,
+          adminId: user?.id
+        }
       });
 
-      // Refresh data
+      if (error) {
+        console.error('Assignment workflow error:', error);
+        throw new Error(error.message || 'Assignment failed');
+      }
+
+      console.log('Assignment result:', result);
+
+      // Show detailed success toast
+      toast({
+        title: "Assignment Successful! ✅",
+        description: `${selectedStaff.display_name} assigned as ${role} for ${selectedOrderData.customer_name}'s order ($${selectedOrderData.total_amount})`,
+      });
+
+      // Show assignment details in a follow-up toast
+      setTimeout(() => {
+        toast({
+          title: "Assignment Details",
+          description: `Order now has ${result.order_details?.items?.length || 0} items. Customer and ${role} have been notified.`,
+        });
+      }, 2000);
+
+      // Refresh data to show updated assignments
       fetchAvailableOrders();
+      
     } catch (error) {
       console.error('Error assigning staff:', error);
       toast({
-        title: "Assignment Failed",
-        description: "Failed to assign staff member",
+        title: "Assignment Failed ❌",
+        description: error.message || "Failed to assign staff member. Please try again.",
         variant: "destructive",
       });
     }
