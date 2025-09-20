@@ -129,8 +129,6 @@ export function StaffAssignmentTool() {
             profiles (display_name)
           )
         `)
-        .eq('payment_status', 'paid')
-        .in('status', ['pending', 'confirmed', 'assigned'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
