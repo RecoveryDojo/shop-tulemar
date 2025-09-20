@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderItem {
   id: string;
@@ -110,6 +111,7 @@ export function EnhancedCustomerDashboard() {
   const [newMessage, setNewMessage] = useState('');
   const [activeTab, setActiveTab] = useState('tracking');
   const [showDeliveryMap, setShowDeliveryMap] = useState(false);
+  const { toast } = useToast();
 
   // Mock data for demo
   useEffect(() => {
@@ -439,48 +441,49 @@ export function EnhancedCustomerDashboard() {
         </CardContent>
       </Card>
 
-        {/* Order Status & Actions */}
-        {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
-          <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <Truck className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-green-800">
-                      {order.status === 'delivered' ? 'Order Delivered!' : 'Out for Delivery'}
-                    </h3>
-                    <p className="text-sm text-green-600">
-                      {order.status === 'delivered' 
-                        ? 'Please confirm you received your order'
-                        : 'Your order is on the way to you'
-                      }
-                    </p>
-                  </div>
+      {/* Order Status & Actions */}
+      {order && (order.status === 'out_for_delivery' || order.status === 'delivered') && (
+        <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-green-100 p-3 rounded-full">
+                  <Truck className="h-6 w-6 text-green-600" />
                 </div>
-                
-                {order.status === 'delivered' && (
-                  <Button 
-                    size="lg"
-                    className="bg-green-600 hover:bg-green-700 text-white px-6"
-                    onClick={() => {
-                      // This would trigger order completion workflow
-                      toast({
-                        title: "Thank you!",
-                        description: "Delivery confirmed. We hope you enjoy your groceries!",
-                      });
-                    }}
-                  >
-                    <CheckCircle2 className="h-5 w-5 mr-2" />
-                    Confirm Delivery Received
-                  </Button>
-                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">
+                    {order.status === 'delivered' ? 'Order Delivered!' : 'Out for Delivery'}
+                  </h3>
+                  <p className="text-sm text-green-600">
+                    {order.status === 'delivered' 
+                      ? 'Please confirm you received your order'
+                      : 'Your order is on the way to you'
+                    }
+                  </p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              
+              {order.status === 'delivered' && (
+                <Button 
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700 text-white px-6"
+                  onClick={() => {
+                    toast({
+                      title: "Thank you!",
+                      description: "Delivery confirmed. We hope you enjoy your groceries!",
+                    });
+                  }}
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Confirm Delivery Received
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tracking">Live Tracking</TabsTrigger>
           <TabsTrigger value="items">Items</TabsTrigger>
@@ -560,33 +563,30 @@ export function EnhancedCustomerDashboard() {
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex items-center space-x-2 mb-2">
                       <h4 className="font-medium">{item.product_name}</h4>
-                      <Badge 
-                        variant={
-                          item.status === 'found' ? 'default' :
-                          item.status === 'substituted' ? 'secondary' :
-                          item.status === 'unavailable' ? 'destructive' : 'outline'
-                        }
-                      >
-                        {item.status === 'found' ? 'Found' :
-                         item.status === 'substituted' ? 'Substituted' :
-                         item.status === 'unavailable' ? 'Unavailable' : 'Looking...'}
+                      <Badge variant={
+                        item.status === 'found' ? 'default' :
+                        item.status === 'substituted' ? 'secondary' :
+                        'outline'
+                      }>
+                        {item.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Qty: {item.quantity} • {formatCurrency(item.unit_price)} each
-                    </p>
                     
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Quantity: {item.quantity} • Unit Price: {formatCurrency(item.unit_price)}
+                    </p>
+
                     {item.status === 'substituted' && item.substitution && (
-                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex justify-between items-start">
+                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p className="text-sm font-medium text-yellow-900 mb-1">Substitution Suggested</p>
+                        <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h5 className="font-medium text-yellow-800">Substitution Suggested</h5>
-                            <p className="text-sm text-yellow-700">
-                              {item.substitution.product_name}
+                            <p className="text-sm text-yellow-800">
+                              <strong>{item.substitution.product_name}</strong>
                             </p>
-                            <p className="text-xs text-yellow-600 mt-1">
+                            <p className="text-xs text-yellow-700">
                               Reason: {item.substitution.reason}
                             </p>
                             <p className="text-xs text-yellow-600">

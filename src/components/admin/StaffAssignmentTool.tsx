@@ -262,10 +262,6 @@ export function StaffAssignmentTool() {
         toast({
           title: "Next Step: Notify Staff",
           description: `Click here to send notification to ${selectedStaff.display_name}`,
-          action: {
-            altText: "Send Notification",
-            onClick: () => sendStaffNotification(selectedStaff.id, selectedOrder, role)
-          },
         });
       }, 1500);
 
