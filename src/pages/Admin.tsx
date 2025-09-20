@@ -17,7 +17,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import ProductManager from '@/components/admin/ProductManager';
 import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
 import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
-import { AdminActivityLog } from '@/components/admin/AdminActivityLog';
+
 import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
@@ -171,7 +171,6 @@ const Admin = () => {
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="regression">Simple Regression Test</TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
@@ -365,10 +364,6 @@ const Admin = () => {
 
           <TabsContent value="regression">
             <SimpleRegressionTest />
-          </TabsContent>
-
-          <TabsContent value="activity">
-            <AdminActivityLog />
           </TabsContent>
         </Tabs>
         </div>
