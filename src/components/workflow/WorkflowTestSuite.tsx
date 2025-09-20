@@ -357,11 +357,10 @@ export const WorkflowTestSuite: React.FC = () => {
 
   const testInvalidTransition = async (data: any) => {
     try {
-      const { error } = await supabase.functions.invoke('validated-workflow', {
+      const { error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: {
           action: 'complete_delivery',
-          orderId: 'fake-order-id',
-          expectedCurrentStatus: 'pending'
+          orderId: 'fake-order-id'
         }
       });
       

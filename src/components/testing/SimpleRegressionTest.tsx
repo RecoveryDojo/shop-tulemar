@@ -60,17 +60,15 @@ export function SimpleRegressionTest() {
       };
     }
 
-    // Test new validated workflow
+    // Test enhanced workflow
     const newStart = Date.now();
     let newResult = { success: false, error: '', time: 0 };
     
     try {
-      const { data, error } = await supabase.functions.invoke('validated-workflow', {
+      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { 
           action: testCase.action, 
-          orderId: testCase.orderId,
-          expectedCurrentStatus: testCase.expectedStatus,
-          skipValidation: true // Skip validation since we don't have actual orders
+          orderId: testCase.orderId
         }
       });
       

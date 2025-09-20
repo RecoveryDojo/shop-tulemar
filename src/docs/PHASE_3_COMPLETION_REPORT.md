@@ -26,8 +26,8 @@
 
 ## 🚀 Key Implementations
 
-### 1. Enhanced Validated Workflow Engine
-**File:** `supabase/functions/validated-workflow/index.ts`
+### 1. Enhanced Order Workflow Engine
+**File:** `supabase/functions/enhanced-order-workflow/index.ts`
 
 #### Advanced Error Handling System
 ```typescript
@@ -61,7 +61,7 @@ interface WorkflowError {
 - **Integrity Enforcement**: Real-time validation of workflow rules
 
 ### 3. Enhanced Client-Side Hook
-**File:** `src/hooks/useValidatedWorkflow.ts`
+**File:** `src/hooks/useEnhancedOrderWorkflow.ts`
 
 #### Advanced Error Management:
 - **Error Classification**: Categorized error types with severity levels
