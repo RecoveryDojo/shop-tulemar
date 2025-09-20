@@ -148,6 +148,8 @@ export function StaffAssignmentTool() {
       });
 
       setStaff(staff);
+      // Refresh orders to ensure display names are attached to assignments
+      fetchAvailableOrders();
       toast({
         title: "Staff loaded",
         description: `Found ${staff.length} staff members`,
@@ -198,14 +200,7 @@ export function StaffAssignmentTool() {
         orders.map(async (order) => {
           const { data: assignments } = await supabase
             .from('stakeholder_assignments')
-            .select(`
-              id,
-              user_id,
-              role,
-              status,
-              accepted_at,
-              profiles!inner (display_name)
-            `)
+            .select('id,user_id,role,status,accepted_at')
             .eq('order_id', order.id);
 
           const { data: items } = await supabase
@@ -223,7 +218,7 @@ export function StaffAssignmentTool() {
             assigned_stakeholders: assignments?.map((sa: any) => ({
               role: sa.role,
               user_id: sa.user_id,
-              user_name: sa.profiles?.display_name || 'Unknown',
+              user_name: (staff.find(s => s.id === sa.user_id)?.display_name) || 'Unknown',
               status: sa.status
             })) || []
           };
