@@ -52,11 +52,13 @@ import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useNotifications } from '@/hooks/useNotifications';
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
+import { useShopperStats } from '@/hooks/useShopperStats';
 import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface ShopperStats {
   daily_earnings: number;
@@ -88,19 +90,13 @@ export function EnhancedShopperDashboard() {
     completeDelivery
   } = useOrderWorkflow();
 
+  const { availableOrders, activeOrders, deliveryQueue, loading, refetchOrders } = useShopperOrders();
+  const { stats: shopperStats, loading: statsLoading } = useShopperStats();
   const { teamMembers } = useTeamMembers();
   const { toast } = useToast();
 
   const [activeOrder, setActiveOrder] = useState<ShoppingOrder | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [shopperStats, setShopperStats] = useState<ShopperStats>({
-    daily_earnings: 156.75,
-    weekly_earnings: 892.40,
-    orders_completed: 23,
-    customer_rating: 4.94,
-    efficiency_score: 96,
-    find_rate: 98.5
-  });
   const [activeTab, setActiveTab] = useState('shopping');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -333,7 +329,7 @@ export function EnhancedShopperDashboard() {
           <RefreshCw className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-2 text-lg">Loading shopper dashboard...</span>
         </div>
-      </div>
+                </div>
     );
   }
 
@@ -395,12 +391,18 @@ export function EnhancedShopperDashboard() {
             {/* Stats Preview */}
             <div className="hidden md:grid grid-cols-2 gap-4 text-center">
               <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-                <div className="text-2xl font-bold text-white">{formatCurrency(shopperStats.daily_earnings)}</div>
+                <div className="text-2xl font-bold text-white">
+                  {statsLoading ? '...' : formatCurrency(shopperStats.dailyEarnings)}
+                </div>
                 <div className="text-xs text-white/80">Today's Earnings</div>
               </div>
               <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-                <div className="text-2xl font-bold text-white">{shopperStats.customer_rating}</div>
+                <div className="text-2xl font-bold text-white">
+                  {statsLoading ? '...' : shopperStats.customerRating > 0 ? shopperStats.customerRating.toFixed(1) : '0'}
+                </div>
                 <div className="text-xs text-white/80">Customer Rating</div>
+              </div>
+                </div>
               </div>
             </div>
           </div>
@@ -409,8 +411,6 @@ export function EnhancedShopperDashboard() {
         {/* Bottom gradient fade */}
         <div className="h-4 bg-gradient-to-b from-transparent to-background/20"></div>
       </div>
-
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
 
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -986,17 +986,21 @@ export function EnhancedShopperDashboard() {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Orders Completed</span>
-                    <span className="font-bold">{shopperStats.orders_completed}</span>
+                    <span className="font-bold">
+                      {statsLoading ? '...' : shopperStats.ordersCompleted}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Weekly Earnings</span>
-                    <span className="font-bold">{formatCurrency(shopperStats.weekly_earnings)}</span>
+                    <span className="font-bold">
+                      {statsLoading ? '...' : formatCurrency(shopperStats.weeklyEarnings)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Average Rating</span>
                     <span className="font-bold flex items-center">
                       <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      {shopperStats.customer_rating}
+                      {statsLoading ? '...' : shopperStats.customerRating > 0 ? shopperStats.customerRating.toFixed(1) : '0'}
                     </span>
                   </div>
                 </div>
