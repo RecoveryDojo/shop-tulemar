@@ -1801,6 +1801,16 @@ export type Database = {
         }
         Returns: Json
       }
+      check_workflow_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          issue_description: string
+          issue_type: string
+          order_id: string
+          severity: string
+          suggested_fix: string
+        }[]
+      }
       cleanup_old_typing_indicators: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1862,6 +1872,20 @@ export type Database = {
         Args: {
           target_role: Database["public"]["Enums"]["app_role"]
           target_user_id: string
+        }
+        Returns: Json
+      }
+      rollback_workflow_status: {
+        Args: { p_order_id: string; p_reason?: string; p_target_status: string }
+        Returns: Json
+      }
+      validate_workflow_transition: {
+        Args: {
+          p_action: string
+          p_current_status: string
+          p_new_status: string
+          p_order_id: string
+          p_user_id: string
         }
         Returns: Json
       }
