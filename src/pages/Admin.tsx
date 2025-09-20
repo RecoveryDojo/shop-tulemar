@@ -23,6 +23,9 @@ import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { AssignmentTester } from '@/components/admin/AssignmentTester';
 import { SimpleRegressionTest } from '@/components/testing/SimpleRegressionTest';
+import { OrderConfirmationPanel } from '@/components/workflow/OrderConfirmationPanel';
+import { SubstitutionApprovalPanel } from '@/components/workflow/SubstitutionApprovalPanel';
+import { WorkflowOverridePanel } from '@/components/workflow/WorkflowOverridePanel';
 
 interface UserWithRoles {
   id: string;
@@ -159,7 +162,10 @@ const Admin = () => {
         <Tabs defaultValue="orders" className="space-y-6">
           <TabsList>
             <TabsTrigger value="orders">Order Notifications</TabsTrigger>
+            <TabsTrigger value="confirmation">Order Confirmation</TabsTrigger>
+            <TabsTrigger value="substitutions">Substitution Approval</TabsTrigger>
             <TabsTrigger value="staff">Staff Assignment</TabsTrigger>
+            <TabsTrigger value="override">Emergency Override</TabsTrigger>
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
@@ -172,11 +178,23 @@ const Admin = () => {
             <EnhancedOrderNotificationSystem />
           </TabsContent>
 
+          <TabsContent value="confirmation">
+            <OrderConfirmationPanel />
+          </TabsContent>
+
+          <TabsContent value="substitutions">
+            <SubstitutionApprovalPanel />
+          </TabsContent>
+
           <TabsContent value="staff">
             <div className="space-y-6">
               <AssignmentTester />
               <StaffAssignmentTool />
             </div>
+          </TabsContent>
+
+          <TabsContent value="override">
+            <WorkflowOverridePanel />
           </TabsContent>
 
           <TabsContent value="inventory">
