@@ -22,7 +22,7 @@ import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrde
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { AssignmentTester } from '@/components/admin/AssignmentTester';
-import { WorkflowRegressionTest } from '@/components/testing/WorkflowRegressionTest';
+import { SimpleRegressionTest } from '@/components/testing/SimpleRegressionTest';
 
 interface UserWithRoles {
   id: string;
@@ -164,7 +164,7 @@ const Admin = () => {
             <TabsTrigger value="ai-learning">AI Learning System</TabsTrigger>
             <TabsTrigger value="documentation">Import Guidelines</TabsTrigger>
             <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="regression">Regression Testing</TabsTrigger>
+            <TabsTrigger value="regression">Simple Regression Test</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
 
@@ -346,7 +346,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="regression">
-            <WorkflowRegressionTest />
+            <SimpleRegressionTest />
           </TabsContent>
 
           <TabsContent value="activity">
