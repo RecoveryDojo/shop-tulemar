@@ -59,13 +59,19 @@ export function StaffAssignmentTool() {
 
   const fetchStaffMembers = async () => {
     try {
-      // Get current user first
-      const { data: { user } } = await supabase.auth.getUser();
-      
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
-        .neq('id', user?.id); // Exclude current admin
+        .select(`
+          id,
+          display_name,
+          email,
+          phone,
+          avatar_url,
+          status,
+          bio,
+          contact_hours
+        `)
+        .not('display_name', 'is', null);
 
       if (profilesError) throw profilesError;
 
@@ -76,81 +82,137 @@ export function StaffAssignmentTool() {
 
       if (rolesError) throw rolesError;
 
-      // Get recent performance stats for each user
-      const staffWithStats = profiles ? await Promise.all(
-        profiles.map(async (profile) => {
-          const roles = userRoles
-            ?.filter(ur => ur.user_id === profile.id)
-            ?.map(ur => ur.role) || [];
-          
-          // Get basic stats (real data only - no fake availability)
-          const stats = {
-            orders_completed: 0, // Real count to be implemented
-            rating: 5.0, // Default rating
-            response_time: '5m', // Default response time
-            availability: 'available' as const // Always available - no fake statuses
-          };
+      console.log('Fetched profiles:', profiles);
+      console.log('Fetched user roles:', userRoles);
 
-          return {
-            id: profile.id,
-            display_name: profile.display_name || 'Staff Member',
-            email: profile.email || '',
-            phone: profile.phone,
-            avatar_url: profile.avatar_url,
-            status: profile.status || 'available',
-            roles,
-            stats
-          };
-        })
-      ) : [];
+      // Filter out fake/bot profiles and transform into staff members
+      const realProfiles = profiles?.filter(profile => {
+        const name = profile.display_name?.toLowerCase() || '';
+        // Filter out obvious bot/fake accounts
+        return !name.includes('bot') && 
+               !name.includes('test') && 
+               !name.includes('fake') &&
+               name.length > 0;
+      }) || [];
 
-      setStaff(staffWithStats);
+      const staff: StaffMember[] = realProfiles.map(profile => {
+        const roles = userRoles
+          ?.filter(ur => ur.user_id === profile.id)
+          ?.map(ur => ur.role) || [];
+        
+        return {
+          id: profile.id,
+          display_name: profile.display_name || 'Unknown',
+          email: profile.email || '',
+          phone: profile.phone,
+          avatar_url: profile.avatar_url,
+          status: profile.status || 'available',
+          roles,
+          stats: {
+            orders_completed: 0,
+            rating: 5.0,
+            response_time: '5m',
+            availability: 'available' as const
+          }
+        };
+      });
+
+      setStaff(staff);
+      toast({
+        title: "Staff loaded",
+        description: `Found ${staff.length} staff members`,
+      });
     } catch (error) {
       console.error('Error fetching staff:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch staff members",
+        title: "Error loading staff",
+        description: error.message || "Failed to load staff members",
         variant: "destructive",
       });
+      setStaff([]);
     }
   };
 
   const fetchAvailableOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // First, fetch orders with basic info only to avoid complex joins
+      const { data: orders, error } = await supabase
         .from('orders')
         .select(`
-          *,
-          order_items (id),
-          stakeholder_assignments (
-            role,
-            user_id,
-            status,
-            profiles (display_name)
-          )
+          id,
+          customer_name,
+          customer_email,
+          status,
+          total_amount,
+          created_at
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformedOrders = data?.map(order => ({
-        id: order.id,
-        customer_name: order.customer_name,
-        total_amount: order.total_amount,
-        status: order.status,
-        created_at: order.created_at,
-        items_count: order.order_items?.length || 0,
-        assigned_stakeholders: order.stakeholder_assignments?.map((sa: any) => ({
-          role: sa.role,
-          user_id: sa.user_id,
-          user_name: sa.profiles?.display_name || 'Unknown',
-          status: sa.status
-        })) || []
-      })) || [];
+      console.log('Fetched orders:', orders);
+      
+      if (!orders || orders.length === 0) {
+        toast({
+          title: "No orders found",
+          description: "There are no orders in the system yet.",
+          variant: "destructive",
+        });
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
 
-      setOrders(transformedOrders);
+      // Then fetch stakeholder assignments separately for each order
+      const ordersWithAssignments = await Promise.all(
+        orders.map(async (order) => {
+          const { data: assignments } = await supabase
+            .from('stakeholder_assignments')
+            .select(`
+              id,
+              user_id,
+              role,
+              status,
+              accepted_at,
+              profiles!inner (display_name)
+            `)
+            .eq('order_id', order.id);
+
+          const { data: items } = await supabase
+            .from('order_items')
+            .select('id')
+            .eq('order_id', order.id);
+
+          return {
+            id: order.id,
+            customer_name: order.customer_name,
+            total_amount: order.total_amount,
+            status: order.status,
+            created_at: order.created_at,
+            items_count: items?.length || 0,
+            assigned_stakeholders: assignments?.map((sa: any) => ({
+              role: sa.role,
+              user_id: sa.user_id,
+              user_name: sa.profiles?.display_name || 'Unknown',
+              status: sa.status
+            })) || []
+          };
+        })
+      );
+
+      setOrders(ordersWithAssignments);
+      toast({
+        title: "Orders loaded",
+        description: `Found ${ordersWithAssignments.length} orders`,
+      });
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast({
+        title: "Error loading orders",
+        description: error.message || "Failed to load orders",
+        variant: "destructive",
+      });
+      setOrders([]);
     } finally {
       setLoading(false);
     }
