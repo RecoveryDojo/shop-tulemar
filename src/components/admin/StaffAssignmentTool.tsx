@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Search, UserPlus, Clock, Star, MapPin, Phone, CheckCircle2, AlertCircle } from "lucide-react";
+import { Users, Search, UserPlus, Clock, Star, MapPin, Phone, CheckCircle2, AlertCircle, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -47,6 +47,8 @@ export function StaffAssignmentTool() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [assigningStaff, setAssigningStaff] = useState<{[key: string]: boolean}>({});
+  const [pendingNotifications, setPendingNotifications] = useState<Array<{staffId: string, orderId: string, role: string, staffName: string}>>([]);
   const { toast } = useToast();
   const { hasRole, user } = useAuth();
 
@@ -55,6 +57,27 @@ export function StaffAssignmentTool() {
     
     fetchStaffMembers();
     fetchAvailableOrders();
+    
+    // Set up real-time subscription for stakeholder assignments
+    const channel = supabase
+      .channel('stakeholder_assignments_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stakeholder_assignments'
+        },
+        () => {
+          console.log('Stakeholder assignment changed, refreshing orders...');
+          fetchAvailableOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchStaffMembers = async () => {
@@ -226,6 +249,9 @@ export function StaffAssignmentTool() {
   };
 
   const assignStaffToOrder = async (staffId: string, orderId: string, role: string) => {
+    const assignmentKey = `${staffId}-${role}`;
+    setAssigningStaff(prev => ({ ...prev, [assignmentKey]: true }));
+    
     try {
       const selectedStaff = staff.find(s => s.id === staffId);
       const selectedOrderData = orders.find(o => o.id === orderId);
@@ -254,19 +280,18 @@ export function StaffAssignmentTool() {
       // Show detailed success toast
       toast({
         title: "Assignment Successful! ✅",
-        description: `${selectedStaff.display_name} assigned as ${role} for ${selectedOrderData.customer_name}'s order ($${selectedOrderData.total_amount})`,
+        description: `${selectedStaff.display_name} assigned as ${role} for ${selectedOrderData.customer_name}'s order`,
       });
 
-      // Show follow-up notification options
-      setTimeout(() => {
-        toast({
-          title: "Next Step: Notify Staff",
-          description: `Click here to send notification to ${selectedStaff.display_name}`,
-        });
-      }, 1500);
+      // Add to pending notifications
+      setPendingNotifications(prev => [...prev, {
+        staffId,
+        orderId,
+        role,
+        staffName: selectedStaff.display_name
+      }]);
 
-      // Refresh data to show updated assignments
-      fetchAvailableOrders();
+      // Auto-refresh will happen via real-time subscription
       
     } catch (error) {
       console.error('Error assigning staff:', error);
@@ -275,10 +300,12 @@ export function StaffAssignmentTool() {
         description: error.message || "Failed to assign staff member. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setAssigningStaff(prev => ({ ...prev, [assignmentKey]: false }));
     }
   };
 
-  const sendStaffNotification = async (staffId: string, orderId: string, role: string) => {
+  const sendStaffNotification = async (staffId: string, orderId: string, role: string, staffName: string) => {
     try {
       // Send targeted notification to specific staff member
       await supabase.functions.invoke('notification-orchestrator', {
@@ -297,8 +324,13 @@ export function StaffAssignmentTool() {
 
       toast({
         title: "Notification Sent! 📱",
-        description: `${role} has been notified and has 15 minutes to accept the assignment`,
+        description: `${staffName} has been notified about their ${role} assignment`,
       });
+
+      // Remove from pending notifications
+      setPendingNotifications(prev => 
+        prev.filter(notif => !(notif.staffId === staffId && notif.orderId === orderId && notif.role === role))
+      );
     } catch (error) {
       console.error('Error sending staff notification:', error);
       toast({
@@ -306,6 +338,17 @@ export function StaffAssignmentTool() {
         description: "Assignment successful but notification failed to send",
         variant: "destructive",
       });
+    }
+  };
+
+  const sendAllPendingNotifications = async () => {
+    for (const notification of pendingNotifications) {
+      await sendStaffNotification(
+        notification.staffId,
+        notification.orderId,
+        notification.role,
+        notification.staffName
+      );
     }
   };
 
@@ -367,7 +410,7 @@ export function StaffAssignmentTool() {
                   {orders.map((order) => (
                     <SelectItem key={order.id} value={order.id}>
                       <div className="flex items-center justify-between w-full">
-                        <span>{order.customer_name} - ${order.total_amount}</span>
+                        <span>{order.customer_name} - ${order.total_amount} ({order.items_count} items)</span>
                         <div className="flex gap-1 ml-2">
                           <Badge variant="outline" className="text-xs">
                             {order.status}
@@ -404,6 +447,44 @@ export function StaffAssignmentTool() {
                     </div>
                   ) : null;
                 })()}
+              </div>
+            )}
+
+            {/* Pending Notifications Section */}
+            {pendingNotifications.length > 0 && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-yellow-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Pending Staff Notifications ({pendingNotifications.length})
+                  </h4>
+                  <Button
+                    size="sm"
+                    onClick={sendAllPendingNotifications}
+                    className="flex items-center gap-1"
+                  >
+                    <Send className="h-3 w-3" />
+                    Send All Notifications
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {pendingNotifications.map((notif, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border">
+                      <span className="text-sm">
+                        {notif.staffName} - {notif.role}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => sendStaffNotification(notif.staffId, notif.orderId, notif.role, notif.staffName)}
+                        className="flex items-center gap-1"
+                      >
+                        <Send className="h-3 w-3" />
+                        Send
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -492,8 +573,13 @@ export function StaffAssignmentTool() {
                               variant="outline"
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'shopper')}
                               className="text-xs"
+                              disabled={assigningStaff[`${member.id}-shopper`]}
                             >
-                              Assign Shopper
+                              {assigningStaff[`${member.id}-shopper`] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                'Assign Shopper'
+                              )}
                             </Button>
                           )}
                           {member.roles.includes('driver') && (
@@ -502,8 +588,13 @@ export function StaffAssignmentTool() {
                               variant="outline"
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'driver')}
                               className="text-xs"
+                              disabled={assigningStaff[`${member.id}-driver`]}
                             >
-                              Assign Driver
+                              {assigningStaff[`${member.id}-driver`] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                'Assign Driver'
+                              )}
                             </Button>
                           )}
                           {member.roles.includes('concierge') && (
@@ -512,8 +603,13 @@ export function StaffAssignmentTool() {
                               variant="outline"
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'concierge')}
                               className="text-xs"
+                              disabled={assigningStaff[`${member.id}-concierge`]}
                             >
-                              Assign Concierge
+                              {assigningStaff[`${member.id}-concierge`] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                'Assign Concierge'
+                              )}
                             </Button>
                           )}
                         </div>
