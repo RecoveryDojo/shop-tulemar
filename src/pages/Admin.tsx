@@ -21,7 +21,6 @@ import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
-import { AssignmentTester } from '@/components/admin/AssignmentTester';
 import { SimpleRegressionTest } from '@/components/testing/SimpleRegressionTest';
 import { OrderConfirmationPanel } from '@/components/workflow/OrderConfirmationPanel';
 import { SubstitutionApprovalPanel } from '@/components/workflow/SubstitutionApprovalPanel';
@@ -186,10 +185,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="staff">
-            <div className="space-y-6">
-              <AssignmentTester />
-              <StaffAssignmentTool />
-            </div>
+            <StaffAssignmentTool />
           </TabsContent>
 
           <TabsContent value="override">
