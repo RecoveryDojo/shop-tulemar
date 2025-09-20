@@ -149,12 +149,15 @@ export function EnhancedShopperDashboard() {
     }
   };
 
-  const handleStartShopping = async (orderId: string) => {
+  const handleCompleteShopping = async () => {
+    if (!activeOrder) return;
+    
     try {
-      await startShopping(orderId);
+      await completeShopping(activeOrder.id);
+      setActiveOrder(null);
       refetchOrders();
     } catch (error) {
-      console.error('Failed to start shopping:', error);
+      console.error('Failed to complete shopping:', error);
     }
   };
 
@@ -565,9 +568,36 @@ export function EnhancedShopperDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2 mt-2">
-                        {activeOrder.status === 'assigned' && (
+                     <div className="text-right">
+                       <div className="flex items-center space-x-2 mt-2">
+                         {activeOrder.status === 'assigned' && (
+                           <Button 
+                             size="sm"
+                             onClick={() => handleStartShopping(activeOrder.id)}
+                             className="bg-blue-600 hover:bg-blue-700"
+                             disabled={workflowLoading}
+                           >
+                             Start Shopping
+                           </Button>
+                         )}
+                         {activeOrder.status === 'shopping' && getCompletionPercentage() === 100 && (
+                           <Button 
+                             size="sm"
+                             onClick={() => handleCompleteShopping()}
+                             className="bg-green-600 hover:bg-green-700"
+                             disabled={workflowLoading}
+                           >
+                             Complete & Pack
+                           </Button>
+                         )}
+                         <Badge 
+                           variant={activeOrder.status === 'shopping' ? 'default' : 'secondary'}
+                           className="animate-fade-in"
+                         >
+                           {activeOrder.status}
+                         </Badge>
+                       </div>
+                     </div>
                           <Button 
                             size="sm" 
                             onClick={() => handleStartShopping(activeOrder.id)}

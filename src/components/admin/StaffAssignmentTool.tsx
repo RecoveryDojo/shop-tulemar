@@ -257,13 +257,17 @@ export function StaffAssignmentTool() {
         description: `${selectedStaff.display_name} assigned as ${role} for ${selectedOrderData.customer_name}'s order ($${selectedOrderData.total_amount})`,
       });
 
-      // Show assignment details in a follow-up toast
+      // Show follow-up notification options
       setTimeout(() => {
         toast({
-          title: "Assignment Details",
-          description: `Order now has ${result.order_details?.items?.length || 0} items. Customer and ${role} have been notified.`,
+          title: "Next Step: Notify Staff",
+          description: `Click here to send notification to ${selectedStaff.display_name}`,
+          action: {
+            altText: "Send Notification",
+            onClick: () => sendStaffNotification(selectedStaff.id, selectedOrder, role)
+          },
         });
-      }, 2000);
+      }, 1500);
 
       // Refresh data to show updated assignments
       fetchAvailableOrders();
@@ -273,6 +277,37 @@ export function StaffAssignmentTool() {
       toast({
         title: "Assignment Failed ❌",
         description: error.message || "Failed to assign staff member. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendStaffNotification = async (staffId: string, orderId: string, role: string) => {
+    try {
+      // Send targeted notification to specific staff member
+      await supabase.functions.invoke('notification-orchestrator', {
+        body: {
+          orderId,
+          notificationType: 'staff_assignment_notification',
+          recipientId: staffId,
+          role,
+          metadata: {
+            urgency: 'high',
+            requiresResponse: true,
+            responseWindow: '15_minutes'
+          }
+        }
+      });
+
+      toast({
+        title: "Notification Sent! 📱",
+        description: `${role} has been notified and has 15 minutes to accept the assignment`,
+      });
+    } catch (error) {
+      console.error('Error sending staff notification:', error);
+      toast({
+        title: "Notification Failed",
+        description: "Assignment successful but notification failed to send",
         variant: "destructive",
       });
     }
@@ -462,7 +497,7 @@ export function StaffAssignmentTool() {
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'shopper')}
                               className="text-xs"
                             >
-                              Shopper
+                              Assign Shopper
                             </Button>
                           )}
                           {member.roles.includes('driver') && (
@@ -472,7 +507,7 @@ export function StaffAssignmentTool() {
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'driver')}
                               className="text-xs"
                             >
-                              Driver
+                              Assign Driver
                             </Button>
                           )}
                           {member.roles.includes('concierge') && (
@@ -482,7 +517,7 @@ export function StaffAssignmentTool() {
                               onClick={() => assignStaffToOrder(member.id, selectedOrder, 'concierge')}
                               className="text-xs"
                             >
-                              Concierge
+                              Assign Concierge
                             </Button>
                           )}
                         </div>

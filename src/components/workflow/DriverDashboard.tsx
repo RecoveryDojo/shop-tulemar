@@ -400,6 +400,48 @@ export function DriverDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
+            {/* Show newly assigned deliveries that need acceptance */}
+            {orders.filter(o => o.status === 'packed' && !activeRoute.some(ao => ao.id === o.id)).map((order) => (
+              <div key={order.id} className="p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center text-sm font-medium">
+                      !
+                    </div>
+                    <div>
+                      <div className="font-medium">{order.customer_name}</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <MapPin className="h-3 w-3" />
+                        {order.property_address}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ${order.total_amount.toFixed(2)} • {order.guest_count} guests • Ready for pickup
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-yellow-100 border-yellow-400 text-yellow-800">
+                      Needs Acceptance
+                    </Badge>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        setActiveRoute(prev => [...prev, order]);
+                        toast({
+                          title: "Delivery Accepted",
+                          description: "Order added to your delivery route",
+                        });
+                      }}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Accept Delivery
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
             {activeRoute.map((order, index) => (
               <div 
                 key={order.id}
@@ -435,6 +477,7 @@ export function DriverDashboard() {
                       <Button 
                         size="sm"
                         onClick={() => startDelivery(order.id)}
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
                         Start Delivery
                       </Button>
@@ -444,7 +487,7 @@ export function DriverDashboard() {
               </div>
             ))}
             
-            {activeRoute.length === 0 && (
+            {activeRoute.length === 0 && orders.filter(o => o.status === 'packed').length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Truck className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <div>No deliveries scheduled</div>

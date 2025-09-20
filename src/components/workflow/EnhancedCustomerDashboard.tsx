@@ -439,7 +439,48 @@ export function EnhancedCustomerDashboard() {
         </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Order Status & Actions */}
+        {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
+          <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-green-100 p-3 rounded-full">
+                    <Truck className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-800">
+                      {order.status === 'delivered' ? 'Order Delivered!' : 'Out for Delivery'}
+                    </h3>
+                    <p className="text-sm text-green-600">
+                      {order.status === 'delivered' 
+                        ? 'Please confirm you received your order'
+                        : 'Your order is on the way to you'
+                      }
+                    </p>
+                  </div>
+                </div>
+                
+                {order.status === 'delivered' && (
+                  <Button 
+                    size="lg"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6"
+                    onClick={() => {
+                      // This would trigger order completion workflow
+                      toast({
+                        title: "Thank you!",
+                        description: "Delivery confirmed. We hope you enjoy your groceries!",
+                      });
+                    }}
+                  >
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                    Confirm Delivery Received
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tracking">Live Tracking</TabsTrigger>
           <TabsTrigger value="items">Items</TabsTrigger>
