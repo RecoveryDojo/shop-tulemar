@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { realtimeManager } from '@/utils/realtimeConnectionManager';
 import { useToast } from '@/hooks/use-toast';
 
 export interface OrderItem {
@@ -201,53 +202,64 @@ export const useShopperOrders = () => {
   useEffect(() => {
     fetchOrders();
 
-    // Set up real-time subscriptions
-    const ordersChannel = supabase
-      .channel('orders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        () => {
-          console.log('Orders changed, refetching...');
-          fetchOrders();
+    // Set up order-scoped real-time subscriptions for all user's orders
+    const setupRealtimeForOrders = async (userOrders: ShoppingOrder[]) => {
+      // Subscribe to each order individually
+      for (const order of userOrders) {
+        const channelName = `shopper-orders-${order.id}`;
+        
+        try {
+          await realtimeManager.subscribe({
+            channelName,
+            table: 'orders',
+            filter: `id=eq.${order.id}`,
+            onMessage: () => {
+              console.log(`Order ${order.id} changed, refetching...`);
+              fetchOrders();
+            },
+            onReconnect: () => {
+              console.log(`Reconnected to order ${order.id}, refetching...`);
+              fetchOrders();
+            },
+            retryAttempts: 3,
+            retryDelay: 3000
+          });
+
+          await realtimeManager.subscribe({
+            channelName: `${channelName}-items`,
+            table: 'order_items',
+            filter: `order_id=eq.${order.id}`,
+            onMessage: () => {
+              console.log(`Order items for ${order.id} changed, refetching...`);
+              fetchOrders();
+            },
+            onReconnect: () => {
+              console.log(`Reconnected to order items ${order.id}, refetching...`);
+              fetchOrders();
+            },
+            retryAttempts: 3,
+            retryDelay: 3000
+          });
+        } catch (error) {
+          console.error(`Failed to subscribe to order ${order.id}:`, error);
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items'
-        },
-        () => {
-          console.log('Order items changed, refetching...');
-          fetchOrders();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'stakeholder_assignments'
-        },
-        (payload) => {
-          const newUserId = (payload as any)?.new?.user_id;
-          const oldUserId = (payload as any)?.old?.user_id;
-          if (!user || !newUserId || newUserId === user.id || oldUserId === user.id) {
-            console.log('Stakeholder assignments changed, refetching...');
-            fetchOrders();
-          }
-        }
-      )
-      .subscribe();
+      }
+    };
+
+    // Initial setup with current orders
+    if (availableOrders.length > 0 || activeOrders.length > 0 || deliveryQueue.length > 0) {
+      const allOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
+      setupRealtimeForOrders(allOrders);
+    }
 
     return () => {
-      supabase.removeChannel(ordersChannel);
+      // Clean up all order subscriptions
+      const allOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
+      allOrders.forEach(async (order) => {
+        const channelName = `shopper-orders-${order.id}`;
+        await realtimeManager.unsubscribe(channelName);
+        await realtimeManager.unsubscribe(`${channelName}-items`);
+      });
     };
   }, [user]);
 

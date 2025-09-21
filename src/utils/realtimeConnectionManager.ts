@@ -148,8 +148,8 @@ export class RealtimeConnectionManager {
     const config = this.configs.get(channelName);
     if (!config) return;
 
-    const maxRetries = config.retryAttempts ?? 3; // Reduced from 5
-    const retryDelay = config.retryDelay ?? 5000; // Increased from 2000ms
+    const maxRetries = config.retryAttempts ?? 3;
+    const retryDelay = config.retryDelay ?? 3000; // 3 second backoff as requested
     const currentAttempts = this.reconnectAttempts.get(channelName) ?? 0;
 
     if (currentAttempts >= maxRetries) {
@@ -164,7 +164,7 @@ export class RealtimeConnectionManager {
       clearTimeout(existingTimer);
     }
 
-    // More conservative exponential backoff: 5s, 15s, 45s
+    // Exponential backoff with 3s base: 3s, 9s, 27s
     const delay = retryDelay * Math.pow(3, currentAttempts);
     console.log(`[RealtimeManager] Scheduling reconnect for ${channelName} in ${delay}ms (attempt ${currentAttempts + 1})`);
 

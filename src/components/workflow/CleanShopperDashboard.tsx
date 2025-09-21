@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { MessageInterface } from './MessageInterface';
+import { useOrderRealtime, broadcastOrderEvent } from '@/hooks/useOrderRealtime';
 
 export function CleanShopperDashboard() {
   const { user } = useAuth();
@@ -59,6 +60,33 @@ export function CleanShopperDashboard() {
   const [showDebugData, setShowDebugData] = useState(false);
   const [showMessageInterface, setShowMessageInterface] = useState(false);
 
+  // Setup order-scoped realtime when we have an active order
+  useOrderRealtime({
+    orderId: activeOrder?.id || '',
+    onOrderChange: () => {
+      console.log('Active order changed, refetching...');
+      refetchOrders();
+    },
+    onItemChange: () => {
+      console.log('Active order items changed, refetching...');
+      refetchOrders();
+    },
+    onEventReceived: (payload) => {
+      console.log('Order event received:', payload);
+      // Show toast for important events
+      if (payload.new?.action === 'substitution_requested') {
+        toast({
+          title: "Substitution Updated",
+          description: "Customer has responded to substitution request"
+        });
+      }
+    },
+    onReconnect: () => {
+      console.log('Realtime reconnected, refetching order data...');
+      refetchOrders();
+    }
+  });
+
   // Set first active order on load
   useEffect(() => {
     if (activeOrders.length > 0 && !activeOrder) {
@@ -81,6 +109,13 @@ export function CleanShopperDashboard() {
     try {
       const order = availableOrders.find(o => o.id === orderId);
       await acceptOrder(orderId, order?.status || 'pending');
+      
+      // Broadcast order accepted event
+      await broadcastOrderEvent(orderId, 'order_accepted', {
+        shopperId: user?.id,
+        previousStatus: order?.status
+      });
+      
       await refetchOrders();
     } catch (error) {
       console.error('Error accepting order:', error);
@@ -113,6 +148,15 @@ export function CleanShopperDashboard() {
       
       await markItemFound(itemId, quantity, notes);
       
+      // Broadcast the item found event
+      if (activeOrder) {
+        await broadcastOrderEvent(activeOrder.id, 'item_marked_found', {
+          itemId,
+          quantity,
+          notes
+        });
+      }
+      
       // Show success feedback
       toast({
         title: "Item Found!",
@@ -135,6 +179,15 @@ export function CleanShopperDashboard() {
       const notes = itemNotes[itemId] || '';
       await requestSubstitution(itemId, reason, '', notes);
       
+      // Broadcast the substitution request event
+      if (activeOrder) {
+        await broadcastOrderEvent(activeOrder.id, 'substitution_requested', {
+          itemId,
+          reason,
+          notes
+        });
+      }
+      
       // Show success feedback  
       toast({
         title: "Substitution Requested",
@@ -156,6 +209,13 @@ export function CleanShopperDashboard() {
     
     try {
       await completeShopping(activeOrder.id, activeOrder.status);
+      
+      // Broadcast shopping completed event
+      await broadcastOrderEvent(activeOrder.id, 'shopping_completed', {
+        shopperId: user?.id,
+        completionTime: new Date().toISOString()
+      });
+      
       await refetchOrders();
       setActiveOrder(null);
     } catch (error) {

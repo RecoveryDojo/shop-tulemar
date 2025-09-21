@@ -42,6 +42,7 @@ import {
 import { formatCurrency } from '@/lib/currency';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useToast } from '@/hooks/use-toast';
+import { useOrderRealtime } from '@/hooks/useOrderRealtime';
 
 interface OrderItem {
   id: string;
@@ -112,6 +113,53 @@ export function EnhancedCustomerDashboard() {
   const [activeTab, setActiveTab] = useState('tracking');
   const [showDeliveryMap, setShowDeliveryMap] = useState(false);
   const { toast } = useToast();
+
+  // Setup order-scoped realtime for the current order
+  useOrderRealtime({
+    orderId: order?.id || '',
+    onOrderChange: (payload) => {
+      console.log('Customer order changed:', payload);
+      // Update order state if needed
+      if (payload.new && order) {
+        setOrder(prev => prev ? { ...prev, ...payload.new } : null);
+      }
+      toast({
+        title: "Order Updated",
+        description: "Your order status has been updated"
+      });
+    },
+    onItemChange: (payload) => {
+      console.log('Customer order items changed:', payload);
+      // Update order items if needed
+      if (payload.new && order) {
+        const updatedItems = order.items.map(item => 
+          item.id === payload.new.id ? { ...item, ...payload.new } : item
+        );
+        setOrder(prev => prev ? { ...prev, items: updatedItems } : null);
+      }
+    },
+    onEventReceived: (payload) => {
+      console.log('Customer order event:', payload);
+      // Handle specific events
+      if (payload.new?.action === 'item_collected') {
+        toast({
+          title: "Item Found",
+          description: `Your shopper found: ${payload.new?.notes || 'an item'}`
+        });
+      } else if (payload.new?.action === 'substitution_requested') {
+        toast({
+          title: "Substitution Suggested",
+          description: "Your shopper has suggested a substitution. Please review.",
+          action: <Button variant="outline" onClick={() => setActiveTab('items')}>Review</Button>
+        });
+      }
+    },
+    onReconnect: () => {
+      console.log('Customer realtime reconnected');
+      // Refetch order data on reconnect
+      // In a real app, you'd have a refetch function here
+    }
+  });
 
   // Mock data for demo
   useEffect(() => {
