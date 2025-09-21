@@ -14,11 +14,12 @@ export const useEnhancedOrderWorkflow = () => {
   const { toast } = useToast();
 
   const executeWorkflowAction = async (
-    action: string, 
-    orderId: string, 
-    itemId?: string, 
+    orderId: string,
+    targetStatus: string,
+    expectedCurrentStatus: string,
+    actor?: { id?: string; role?: string },
     data?: any,
-    expectedCurrentStatus?: string
+    itemId?: string
   ) => {
     setLoading(true);
     setLastError(null);
@@ -26,19 +27,24 @@ export const useEnhancedOrderWorkflow = () => {
     try {
       const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { 
-          action, 
-          orderId, 
-          itemId, 
+          orderId,
+          to: targetStatus,
+          expectedStatus: expectedCurrentStatus,
+          actor: {
+            id: actor?.id || 'current_user',
+            role: actor?.role || 'shopper'
+          },
           data,
-          expectedCurrentStatus 
+          itemId
         }
       });
 
       if (error) {
+        const errorCode = error.message?.split(':')[0] || 'UNKNOWN_ERROR';
         const workflowError: WorkflowError = {
-          code: 'WORKFLOW_ERROR',
+          code: errorCode,
           message: error.message || 'Unknown workflow error',
-          retryable: error.message?.includes('status has changed') || false
+          retryable: errorCode === 'STALE_WRITE'
         };
         setLastError(workflowError);
         throw error;
@@ -51,12 +57,13 @@ export const useEnhancedOrderWorkflow = () => {
 
       return result;
     } catch (error: any) {
-      console.error(`Error executing ${action}:`, error);
+      console.error(`Error executing workflow action:`, error);
       
-      const errorMessage = error.message || `Failed to ${action.replace('_', ' ')}`;
+      const errorMessage = error.message || 'Failed to execute workflow action';
+      const errorCode = errorMessage.split(':')[0];
       
-      // Check if it's a status inconsistency error
-      if (errorMessage.includes('status has changed') || errorMessage.includes('Invalid status transition')) {
+      // Handle specific error types
+      if (errorCode === 'STALE_WRITE') {
         toast({
           title: "Status Conflict",
           description: "The order status has changed. Please refresh and try again.",
@@ -64,9 +71,33 @@ export const useEnhancedOrderWorkflow = () => {
         });
         
         setLastError({
-          code: 'STATUS_CONFLICT',
+          code: 'STALE_WRITE',
           message: errorMessage,
           retryable: true
+        });
+      } else if (errorCode === 'ILLEGAL_TRANSITION') {
+        toast({
+          title: "Invalid Transition",
+          description: "This status change is not allowed.",
+          variant: "destructive",
+        });
+        
+        setLastError({
+          code: 'ILLEGAL_TRANSITION', 
+          message: errorMessage,
+          retryable: false
+        });
+      } else if (errorCode === 'UNAUTHORIZED') {
+        toast({
+          title: "Unauthorized",
+          description: "You don't have permission to perform this action.",
+          variant: "destructive",
+        });
+        
+        setLastError({
+          code: 'UNAUTHORIZED',
+          message: errorMessage,
+          retryable: false
         });
       } else {
         toast({
@@ -89,31 +120,58 @@ export const useEnhancedOrderWorkflow = () => {
   };
 
   const confirmOrder = (orderId: string, currentStatus = 'pending') => 
-    executeWorkflowAction('confirm_order', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'confirmed', currentStatus);
 
   const acceptOrder = (orderId: string, currentStatus = 'confirmed') => 
-    executeWorkflowAction('accept_order', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'assigned', currentStatus);
 
   const startShopping = (orderId: string, currentStatus = 'assigned') => 
-    executeWorkflowAction('start_shopping', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'shopping', currentStatus);
 
-  const markItemFound = (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) =>
-    executeWorkflowAction('mark_item_found', '', itemId, { foundQuantity, notes, photoUrl });
+  const markItemFound = (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) => {
+    // Item updates use legacy API for now
+    const data = { foundQuantity, notes, photoUrl };
+    return supabase.functions.invoke('enhanced-order-workflow', {
+      body: { action: 'mark_item_found', itemId, data }
+    }).then(({ data: result, error }) => {
+      if (error) throw error;
+      toast({ title: "Item Found", description: "Item marked as found successfully" });
+      return result;
+    });
+  };
 
-  const requestSubstitution = (itemId: string, reason: string, suggestedProduct?: string, notes?: string) =>
-    executeWorkflowAction('request_substitution', '', itemId, { reason, suggestedProduct, notes });
+  const requestSubstitution = (itemId: string, reason: string, suggestedProduct?: string, notes?: string) => {
+    // Item updates use legacy API for now  
+    const data = { reason, suggestedProduct, notes };
+    return supabase.functions.invoke('enhanced-order-workflow', {
+      body: { action: 'request_substitution', itemId, data }
+    }).then(({ data: result, error }) => {
+      if (error) throw error;
+      toast({ title: "Substitution Requested", description: "Substitution request sent successfully" });
+      return result;
+    });
+  };
 
   const completeShopping = (orderId: string, currentStatus = 'shopping') =>
-    executeWorkflowAction('complete_shopping', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'packed', currentStatus);
 
   const startDelivery = (orderId: string, currentStatus = 'packed') =>
-    executeWorkflowAction('start_delivery', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'in_transit', currentStatus);
 
   const completeDelivery = (orderId: string, currentStatus = 'in_transit') =>
-    executeWorkflowAction('complete_delivery', orderId, undefined, undefined, currentStatus);
+    executeWorkflowAction(orderId, 'delivered', currentStatus);
 
-  const rollbackStatus = (orderId: string, targetStatus: string) =>
-    executeWorkflowAction('rollback_status', orderId, undefined, { targetStatus });
+  const rollbackStatus = (orderId: string, targetStatus: string) => {
+    // Rollback uses legacy API
+    const data = { targetStatus };
+    return supabase.functions.invoke('enhanced-order-workflow', {
+      body: { action: 'rollback_status', orderId, data }
+    }).then(({ data: result, error }) => {
+      if (error) throw error;
+      toast({ title: "Status Rolled Back", description: `Order status rolled back to ${targetStatus}` });
+      return result;
+    });
+  };
 
   const clearError = () => {
     setLastError(null);

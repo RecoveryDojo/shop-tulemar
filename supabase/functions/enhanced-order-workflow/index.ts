@@ -6,17 +6,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Status transition rules
-const STATUS_TRANSITIONS = {
+// ALLOWED_TRANSITIONS map - defines valid state transitions
+const ALLOWED_TRANSITIONS = {
   'pending': ['confirmed', 'cancelled'],
   'confirmed': ['assigned', 'cancelled'],
   'assigned': ['shopping', 'cancelled'],
   'shopping': ['packed', 'cancelled'],
   'packed': ['in_transit', 'cancelled'],
   'in_transit': ['delivered', 'cancelled'],
-  'delivered': [], // Terminal state
-  'cancelled': [] // Terminal state
-};
+  'delivered': ['closed'], // Allow closing delivered orders
+  'cancelled': [], // Terminal state
+  'closed': [] // Terminal state
+} as const;
+
+// Error constants for consistent error handling
+const ERRORS = {
+  STALE_WRITE: 'STALE_WRITE',
+  ILLEGAL_TRANSITION: 'ILLEGAL_TRANSITION',
+  ORDER_NOT_FOUND: 'ORDER_NOT_FOUND',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  INVALID_PARAMETERS: 'INVALID_PARAMETERS'
+} as const;
+
+interface Actor {
+  id: string;
+  role: string;
+}
+
+interface ActionParams {
+  orderId: string;
+  to: string;
+  expectedStatus: string;
+  actor: Actor;
+  data?: any;
+  itemId?: string;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -28,103 +52,295 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, orderId, itemId, data, expectedCurrentStatus } = await req.json();
-    console.log(`Enhanced workflow action: ${action} for order ${orderId}`);
+    const body = await req.json();
+    console.log('Enhanced workflow request:', body);
 
     const authHeader = req.headers.get('authorization');
     const { data: { user } } = await supabase.auth.getUser(authHeader?.replace('Bearer ', '') || '');
     
     if (!user) {
-      throw new Error('Unauthorized');
+      throw new Error(ERRORS.UNAUTHORIZED);
     }
 
-    const userId = user.id;
-
-    // Validate current order status before any transition
-    if (orderId && expectedCurrentStatus) {
-      const isValidTransition = await validateStatusTransition(supabase, orderId, expectedCurrentStatus, action);
-      if (!isValidTransition) {
-        throw new Error('Invalid status transition - order status has changed');
-      }
+    // Handle legacy action-based calls (for backwards compatibility)
+    if (body.action) {
+      return await handleLegacyAction(supabase, body, user.id);
     }
 
-    switch (action) {
-      case 'confirm_order':
-        return await confirmOrder(supabase, orderId, userId);
-      
-      case 'accept_order':
-        return await acceptOrder(supabase, orderId, userId);
-      
-      case 'start_shopping':
-        return await startShopping(supabase, orderId, userId);
-      
-      case 'mark_item_found':
-        return await markItemFound(supabase, itemId, data, userId);
-      
-      case 'request_substitution':
-        return await requestSubstitution(supabase, itemId, data, userId);
-      
-      case 'complete_shopping':
-        return await completeShopping(supabase, orderId, userId);
-      
-      case 'start_delivery':
-        return await startDelivery(supabase, orderId, userId);
-      
-      case 'complete_delivery':
-        return await completeDelivery(supabase, orderId, userId);
-      
-      case 'rollback_status':
-        return await rollbackStatus(supabase, orderId, data.targetStatus, userId);
-      
-      default:
-        throw new Error(`Unknown action: ${action}`);
+    // New guarded status transition API
+    const { orderId, to, expectedStatus, actor, data, itemId } = body as ActionParams;
+
+    if (!orderId || !to || !expectedStatus || !actor) {
+      throw new Error(`${ERRORS.INVALID_PARAMETERS}: Missing required parameters: orderId, to, expectedStatus, actor`);
     }
+
+    // Execute guarded status transition
+    const result = await advanceOrderStatus(supabase, {
+      orderId,
+      to,
+      expectedStatus,
+      actor,
+      data,
+      itemId
+    });
+
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
   } catch (error) {
     console.error('Error in enhanced-order-workflow:', error);
+    
+    const errorMessage = error.message;
+    let status = 400;
+    
+    if (errorMessage === ERRORS.UNAUTHORIZED) {
+      status = 401;
+    } else if (errorMessage === ERRORS.ORDER_NOT_FOUND) {
+      status = 404;
+    } else if (errorMessage.startsWith(ERRORS.STALE_WRITE)) {
+      status = 409; // Conflict
+    } else if (errorMessage.startsWith(ERRORS.ILLEGAL_TRANSITION)) {
+      status = 422; // Unprocessable Entity
+    }
+
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: errorMessage,
+        errorCode: errorMessage.split(':')[0] || 'UNKNOWN_ERROR'
+      }),
       {
-        status: 400,
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
 });
 
-async function validateStatusTransition(supabase: any, orderId: string, expectedStatus: string, action: string): Promise<boolean> {
-  const { data: order } = await supabase
-    .from('orders')
-    .select('status')
-    .eq('id', orderId)
-    .single();
+/**
+ * Guarded status transition function with database transaction
+ */
+async function advanceOrderStatus(supabase: any, params: ActionParams) {
+  const { orderId, to, expectedStatus, actor } = params;
 
-  if (!order) {
-    throw new Error('Order not found');
+  console.log(`Advancing order ${orderId} from ${expectedStatus} to ${to} by ${actor.role}:${actor.id}`);
+
+  // Start transaction-like operations (Supabase doesn't have true transactions, so we simulate)
+  try {
+    // Step (a): Fetch current order
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !currentOrder) {
+      console.error('Order fetch error:', fetchError);
+      throw new Error(`${ERRORS.ORDER_NOT_FOUND}: Order ${orderId} not found`);
+    }
+
+    // Step (b): Check if current status matches expected status  
+    if (currentOrder.status !== expectedStatus) {
+      const message = `${ERRORS.STALE_WRITE}: Expected status '${expectedStatus}', but order is currently '${currentOrder.status}'`;
+      console.error(message);
+      throw new Error(message);
+    }
+
+    // Step (c): Validate transition is allowed
+    const allowedTransitions = ALLOWED_TRANSITIONS[currentOrder.status as keyof typeof ALLOWED_TRANSITIONS] || [];
+    if (!allowedTransitions.includes(to as any)) {
+      const message = `${ERRORS.ILLEGAL_TRANSITION}: Cannot transition from '${currentOrder.status}' to '${to}'. Allowed: [${allowedTransitions.join(', ')}]`;
+      console.error(message);
+      throw new Error(message);
+    }
+
+    // Additional business rule validations based on target status
+    await validateBusinessRules(supabase, currentOrder, to, actor);
+
+    // Step (d): Update order status
+    const updateData: any = {
+      status: to,
+      updated_at: new Date().toISOString()
+    };
+
+    // Set specific timestamps based on status
+    if (to === 'assigned') updateData.assigned_shopper_id = actor.id;
+    if (to === 'shopping') updateData.shopping_started_at = new Date().toISOString();
+    if (to === 'packed') updateData.shopping_completed_at = new Date().toISOString();
+    if (to === 'in_transit') updateData.delivery_started_at = new Date().toISOString();
+    if (to === 'delivered') updateData.delivery_completed_at = new Date().toISOString();
+
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .eq('status', expectedStatus) // Ensure status hasn't changed since we checked
+      .select('*, order_items(*)')
+      .single();
+
+    if (updateError) {
+      console.error('Order update error:', updateError);
+      throw new Error(`${ERRORS.STALE_WRITE}: Order status changed during update`);
+    }
+
+    // Step (e): Append event log
+    const { error: logError } = await supabase
+      .from('order_workflow_log')
+      .insert({
+        order_id: orderId,
+        actor_id: actor.id,
+        action: `advance_status_to_${to}`,
+        phase: getPhaseForStatus(to),
+        previous_status: expectedStatus,
+        new_status: to,
+        actor_role: actor.role,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          source: 'guarded_workflow',
+          transition_type: 'STATUS_CHANGED',
+          payload: { from: expectedStatus, to }
+        }
+      });
+
+    if (logError) {
+      console.error('Failed to log workflow event:', logError);
+      // Don't fail the whole operation for logging errors
+    }
+
+    // Step (f): Broadcast to order-{orderId} channel
+    await broadcastOrderEvent(supabase, orderId, 'STATUS_CHANGED', {
+      from: expectedStatus,
+      to,
+      actor: actor.id,
+      timestamp: new Date().toISOString()
+    });
+
+    // Send notifications
+    await sendStatusNotification(supabase, orderId, to);
+
+    // Step (g): Return fresh order data
+    return {
+      success: true,
+      order: updatedOrder,
+      message: `Order status advanced from ${expectedStatus} to ${to}`,
+      transition: { from: expectedStatus, to }
+    };
+
+  } catch (error) {
+    console.error('Transaction failed:', error);
+    throw error;
   }
-
-  // Check if current status matches expected status
-  if (order.status !== expectedStatus) {
-    console.warn(`Status mismatch: expected ${expectedStatus}, got ${order.status}`);
-    return false;
-  }
-
-  // Get target status for this action
-  const targetStatus = getTargetStatusForAction(action);
-  if (!targetStatus) {
-    return true; // Non-status changing actions
-  }
-
-  // Check if transition is allowed
-  const allowedTransitions = STATUS_TRANSITIONS[order.status] || [];
-  if (!allowedTransitions.includes(targetStatus)) {
-    console.warn(`Invalid transition from ${order.status} to ${targetStatus}`);
-    return false;
-  }
-
-  return true;
 }
 
-function getTargetStatusForAction(action: string): string | null {
+async function validateBusinessRules(supabase: any, order: any, targetStatus: string, actor: Actor) {
+  // Validate user permissions
+  if (targetStatus === 'assigned' && actor.role !== 'shopper' && actor.role !== 'admin' && actor.role !== 'sysadmin') {
+    throw new Error(`${ERRORS.UNAUTHORIZED}: Only shoppers can accept orders`);
+  }
+
+  if (['shopping', 'packed', 'in_transit', 'delivered'].includes(targetStatus)) {
+    if (order.assigned_shopper_id !== actor.id && actor.role !== 'admin' && actor.role !== 'sysadmin') {
+      throw new Error(`${ERRORS.UNAUTHORIZED}: Only the assigned shopper can perform this action`);
+    }
+  }
+
+  // Validate order assignment
+  if (targetStatus === 'assigned' && order.assigned_shopper_id && order.assigned_shopper_id !== actor.id) {
+    throw new Error(`${ERRORS.ILLEGAL_TRANSITION}: Order already assigned to another shopper`);
+  }
+
+  // Validate all items are processed before delivery
+  if (targetStatus === 'in_transit') {
+    const pendingItems = order.order_items?.filter((item: any) => item.shopping_status === 'pending') || [];
+    if (pendingItems.length > 0) {
+      throw new Error(`${ERRORS.ILLEGAL_TRANSITION}: Cannot start delivery with ${pendingItems.length} unprocessed items`);
+    }
+  }
+}
+
+function getPhaseForStatus(status: string): string {
+  const phaseMap: { [key: string]: string } = {
+    'confirmed': 'order_confirmation',
+    'assigned': 'order_assignment', 
+    'shopping': 'shopping',
+    'packed': 'shopping',
+    'in_transit': 'delivery',
+    'delivered': 'delivery',
+    'closed': 'completion',
+    'cancelled': 'cancellation'
+  };
+  return phaseMap[status] || 'general';
+}
+
+async function broadcastOrderEvent(supabase: any, orderId: string, eventType: string, payload: any) {
+  try {
+    const channelName = `order-${orderId}`;
+    console.log(`Broadcasting ${eventType} to ${channelName}:`, payload);
+    
+    // In a full implementation, this would use Supabase realtime channels
+    // For now, we'll use the broadcast-order-event function
+    await supabase.functions.invoke('broadcast-order-event', {
+      body: {
+        orderId,
+        eventType,
+        data: payload
+      }
+    });
+  } catch (error) {
+    console.error('Failed to broadcast order event:', error);
+    // Don't fail the operation for broadcast errors
+  }
+}
+
+async function sendStatusNotification(supabase: any, orderId: string, status: string) {
+  const messageMap: { [key: string]: string } = {
+    'confirmed': 'Your order has been confirmed and is being assigned to a shopper',
+    'assigned': 'Your order has been assigned to a shopper',
+    'shopping': 'Your shopper has started shopping for your order',
+    'packed': 'Your order has been packed and is ready for delivery',
+    'in_transit': 'Your order is on the way!',
+    'delivered': 'Your order has been delivered!',
+    'closed': 'Your order is complete',
+    'cancelled': 'Your order has been cancelled'
+  };
+
+  const message = messageMap[status] || `Order status updated to ${status}`;
+
+  try {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('customer_email')
+      .eq('id', orderId)
+      .single();
+
+    if (order?.customer_email) {
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: orderId,
+          notification_type: `status_${status}`,
+          recipient_type: 'customer',
+          recipient_identifier: order.customer_email,
+          channel: 'in_app',
+          status: 'pending',
+          message_content: message
+        });
+    }
+  } catch (error) {
+    console.error('Failed to send notification:', error);
+  }
+}
+
+/**
+ * Legacy action handler for backwards compatibility
+ */
+async function handleLegacyAction(supabase: any, body: any, userId: string) {
+  const { action, orderId, itemId, data, expectedCurrentStatus } = body;
+  
+  console.log(`Legacy action: ${action} for order ${orderId}`);
+
+  // Map legacy actions to new status transitions
   const actionStatusMap: { [key: string]: string } = {
     'confirm_order': 'confirmed',
     'accept_order': 'assigned',
@@ -133,119 +349,38 @@ function getTargetStatusForAction(action: string): string | null {
     'start_delivery': 'in_transit',
     'complete_delivery': 'delivered'
   };
+
+  const targetStatus = actionStatusMap[action];
   
-  return actionStatusMap[action] || null;
-}
-
-async function confirmOrder(supabase: any, orderId: string, userId: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: 'confirmed',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId)
-    .eq('status', 'pending'); // Only allow if currently pending
-
-  if (error) {
-    console.error('Confirm order error:', error);
-    throw new Error('Failed to confirm order');
+  if (targetStatus && orderId && expectedCurrentStatus) {
+    // Use new guarded API for status changes
+    return await advanceOrderStatus(supabase, {
+      orderId,
+      to: targetStatus,
+      expectedStatus: expectedCurrentStatus,
+      actor: { id: userId, role: 'shopper' },
+      data,
+      itemId
+    });
   }
 
-  await logWorkflowAction(supabase, orderId, userId, 'confirm_order', 'order_confirmation', 'pending', 'confirmed');
-  await sendNotification(supabase, orderId, 'order_confirmed', 'Your order has been confirmed and is being assigned to a shopper');
-  await broadcastStatusUpdate(supabase, orderId, 'confirmed');
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Order confirmed successfully' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function acceptOrder(supabase: any, orderId: string, userId: string) {
-  // Start transaction-like operations
-  try {
-    // Create stakeholder assignment
-    const { error: assignmentError } = await supabase
-      .from('stakeholder_assignments')
-      .insert({
-        order_id: orderId,
-        user_id: userId,
-        role: 'shopper',
-        status: 'accepted',
-        accepted_at: new Date().toISOString()
-      });
-
-    if (assignmentError) {
-      console.error('Assignment error:', assignmentError);
-      throw new Error('Failed to accept order assignment');
-    }
-
-    // Update order with assigned shopper
-    const { error: orderError } = await supabase
-      .from('orders')
-      .update({ 
-        assigned_shopper_id: userId,
-        status: 'assigned',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', orderId)
-      .eq('status', 'confirmed'); // Only allow if currently confirmed
-
-    if (orderError) {
-      console.error('Order update error:', orderError);
-      // Rollback stakeholder assignment
-      await supabase
-        .from('stakeholder_assignments')
-        .delete()
-        .eq('order_id', orderId)
-        .eq('user_id', userId);
-      
-      throw new Error('Failed to update order - may have been accepted by another shopper');
-    }
-
-    await logWorkflowAction(supabase, orderId, userId, 'accept_order', 'order_assignment', 'confirmed', 'assigned');
-    await sendNotification(supabase, orderId, 'order_accepted', `Order has been accepted by shopper`);
-    await broadcastStatusUpdate(supabase, orderId, 'assigned');
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Order accepted successfully' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Accept order transaction failed:', error);
-    throw error;
-  }
-}
-
-async function startShopping(supabase: any, orderId: string, userId: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: 'shopping',
-      shopping_started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId)
-    .eq('assigned_shopper_id', userId)
-    .eq('status', 'assigned'); // Only allow if currently assigned
-
-  if (error) {
-    console.error('Start shopping error:', error);
-    throw new Error('Failed to start shopping - order may have changed status');
+  // Handle non-status changing actions
+  if (action === 'mark_item_found') {
+    return await markItemFound(supabase, itemId, data);
   }
 
-  await logWorkflowAction(supabase, orderId, userId, 'start_shopping', 'shopping', 'assigned', 'shopping');
-  await sendNotification(supabase, orderId, 'shopping_started', 'Shopper has started shopping for your order');
-  await broadcastStatusUpdate(supabase, orderId, 'shopping');
+  if (action === 'request_substitution') {
+    return await requestSubstitution(supabase, itemId, data);
+  }
 
-  return new Response(
-    JSON.stringify({ success: true, message: 'Shopping started' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  if (action === 'rollback_status') {
+    return await rollbackStatus(supabase, orderId, data.targetStatus, userId);
+  }
+
+  throw new Error(`${ERRORS.INVALID_PARAMETERS}: Unknown action: ${action}`);
 }
 
-async function markItemFound(supabase: any, itemId: string, data: any, userId: string) {
+async function markItemFound(supabase: any, itemId: string, data: any) {
   const { foundQuantity, notes, photoUrl } = data;
 
   const { error } = await supabase
@@ -264,24 +399,13 @@ async function markItemFound(supabase: any, itemId: string, data: any, userId: s
     throw new Error('Failed to mark item as found');
   }
 
-  // Get order ID and broadcast item update
-  const { data: orderItem } = await supabase
-    .from('order_items')
-    .select('order_id')
-    .eq('id', itemId)
-    .single();
-
-  if (orderItem) {
-    await broadcastItemUpdate(supabase, orderItem.order_id, itemId, 'found');
-  }
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Item marked as found' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  return {
+    success: true,
+    message: 'Item marked as found'
+  };
 }
 
-async function requestSubstitution(supabase: any, itemId: string, data: any, userId: string) {
+async function requestSubstitution(supabase: any, itemId: string, data: any) {
   const { reason, suggestedProduct, notes } = data;
 
   const { error } = await supabase
@@ -303,220 +427,29 @@ async function requestSubstitution(supabase: any, itemId: string, data: any, use
     throw new Error('Failed to request substitution');
   }
 
-  const { data: orderItem } = await supabase
-    .from('order_items')
-    .select('order_id')
-    .eq('id', itemId)
-    .single();
-
-  if (orderItem) {
-    await sendNotification(supabase, orderItem.order_id, 'substitution_requested', 'Substitution requested for an item');
-    await broadcastItemUpdate(supabase, orderItem.order_id, itemId, 'substitution_needed');
-  }
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Substitution requested' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function completeShopping(supabase: any, orderId: string, userId: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: 'packed',
-      shopping_completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId)
-    .eq('assigned_shopper_id', userId)
-    .eq('status', 'shopping'); // Only allow if currently shopping
-
-  if (error) {
-    console.error('Complete shopping error:', error);
-    throw new Error('Failed to complete shopping - order may have changed status');
-  }
-
-  await logWorkflowAction(supabase, orderId, userId, 'complete_shopping', 'shopping', 'shopping', 'packed');
-  await sendNotification(supabase, orderId, 'shopping_completed', 'Your order has been packed and is ready for delivery');
-  await broadcastStatusUpdate(supabase, orderId, 'packed');
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Shopping completed' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function startDelivery(supabase: any, orderId: string, userId: string) {
-  // First check current status
-  const { data: currentOrder } = await supabase
-    .from('orders')
-    .select('status')
-    .eq('id', orderId)
-    .single();
-
-  if (!currentOrder || currentOrder.status !== 'packed') {
-    console.error(`Start delivery error: Order ${orderId} is not in packed status. Current status: ${currentOrder?.status}`);
-    throw new Error('Order must be in packed status to start delivery');
-  }
-
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: 'in_transit',
-      delivery_started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId)
-    .eq('assigned_shopper_id', userId)
-    .eq('status', 'packed'); // Only update if still packed
-
-  if (error) {
-    console.error('Start delivery error:', error);
-    throw new Error('Failed to start delivery - order may have changed status');
-  }
-
-  await logWorkflowAction(supabase, orderId, userId, 'start_delivery', 'delivery', 'packed', 'in_transit');
-  await sendNotification(supabase, orderId, 'delivery_started', 'Your order is on the way!');
-  await broadcastStatusUpdate(supabase, orderId, 'in_transit');
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Delivery started' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function completeDelivery(supabase: any, orderId: string, userId: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: 'delivered',
-      delivery_completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId)
-    .eq('assigned_shopper_id', userId)
-    .eq('status', 'in_transit'); // Only allow if currently in_transit
-
-  if (error) {
-    console.error('Complete delivery error:', error);
-    throw new Error('Failed to complete delivery - order may have changed status');
-  }
-
-  await logWorkflowAction(supabase, orderId, userId, 'complete_delivery', 'delivery', 'in_transit', 'delivered');
-  await sendNotification(supabase, orderId, 'delivery_completed', 'Your order has been delivered!');
-  await broadcastStatusUpdate(supabase, orderId, 'delivered');
-
-  return new Response(
-    JSON.stringify({ success: true, message: 'Delivery completed' }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  return {
+    success: true,
+    message: 'Substitution requested'
+  };
 }
 
 async function rollbackStatus(supabase: any, orderId: string, targetStatus: string, userId: string) {
-  // Get current order status
-  const { data: order } = await supabase
-    .from('orders')
-    .select('status')
-    .eq('id', orderId)
-    .single();
-
-  if (!order) {
-    throw new Error('Order not found');
-  }
-
-  const currentStatus = order.status;
-
-  // Validate rollback is allowed (can only rollback to previous statuses)
-  const validRollbacks: { [key: string]: string[] } = {
-    'assigned': ['confirmed'],
-    'shopping': ['assigned'],
-    'packed': ['shopping'],
-    'in_transit': ['packed']
-  };
-
-  if (!validRollbacks[currentStatus]?.includes(targetStatus)) {
-    throw new Error(`Cannot rollback from ${currentStatus} to ${targetStatus}`);
-  }
-
-  const { error } = await supabase
-    .from('orders')
-    .update({ 
-      status: targetStatus,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId);
+  // Use database function for rollback validation
+  const { data: result, error } = await supabase
+    .rpc('rollback_workflow_status', {
+      p_order_id: orderId,
+      p_target_status: targetStatus,
+      p_reason: 'Manual rollback via API'
+    });
 
   if (error) {
     console.error('Rollback error:', error);
-    throw new Error('Failed to rollback order status');
+    throw new Error(error.message || 'Failed to rollback order status');
   }
 
-  await logWorkflowAction(supabase, orderId, userId, 'rollback_status', 'rollback', currentStatus, targetStatus);
-  await sendNotification(supabase, orderId, 'status_rollback', `Order status has been rolled back to ${targetStatus}`);
-  await broadcastStatusUpdate(supabase, orderId, targetStatus);
-
-  return new Response(
-    JSON.stringify({ success: true, message: `Order rolled back to ${targetStatus}` }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
-
-async function logWorkflowAction(
-  supabase: any, 
-  orderId: string, 
-  actorId: string, 
-  action: string, 
-  phase: string, 
-  previousStatus: string, 
-  newStatus: string
-) {
-  await supabase
-    .from('order_workflow_log')
-    .insert({
-      order_id: orderId,
-      actor_id: actorId,
-      action,
-      phase,
-      previous_status: previousStatus,
-      new_status: newStatus,
-      actor_role: 'shopper',
-      metadata: {
-        timestamp: new Date().toISOString(),
-        source: 'enhanced_workflow'
-      }
-    });
-}
-
-async function sendNotification(supabase: any, orderId: string, type: string, message: string) {
-  const { data: order } = await supabase
-    .from('orders')
-    .select('customer_email')
-    .eq('id', orderId)
-    .single();
-
-  if (order) {
-    await supabase
-      .from('order_notifications')
-      .insert({
-        order_id: orderId,
-        notification_type: type,
-        recipient_type: 'customer',
-        recipient_identifier: order.customer_email,
-        channel: 'app',
-        message_content: message,
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      });
-  }
-}
-
-async function broadcastStatusUpdate(supabase: any, orderId: string, newStatus: string) {
-  // This will trigger real-time updates via the orders table changes
-  console.log(`Broadcasting status update for order ${orderId}: ${newStatus}`);
-}
-
-async function broadcastItemUpdate(supabase: any, orderId: string, itemId: string, newStatus: string) {
-  // This will trigger real-time updates via the order_items table changes
-  console.log(`Broadcasting item update for order ${orderId}, item ${itemId}: ${newStatus}`);
+  return {
+    success: true,
+    message: `Order rolled back to ${targetStatus}`,
+    result
+  };
 }
