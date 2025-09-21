@@ -51,6 +51,7 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { ShopperGuideDialog } from './ShopperGuideDialog';
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 import { ErrorDisplay } from '@/components/ui/error-display';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Using ShoppingOrder and OrderItem interfaces from useShopperOrders hook
 
@@ -100,7 +101,8 @@ export function EnhancedShopperDashboard() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const fileInputRef = useRef<HTMLInputElement>(null);
+const { user } = useAuth();
   
   const handleDeliveryProofChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -362,6 +364,15 @@ export function EnhancedShopperDashboard() {
 
         {/* Bottom gradient fade */}
         <div className="h-4 bg-gradient-to-b from-transparent to-background/20"></div>
+      </div>
+
+      {/* Session Debug Info - helps verify active account and counts */}
+      <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Signed in as: <span className="font-medium">{user?.email || 'Unknown user'}</span>
+          {' '}• Active: {activeOrders.length} • Available: {availableOrders.length} • Delivery: {deliveryQueue.length}
+        </p>
+        <Button size="sm" variant="outline" onClick={refetchOrders}>Refresh</Button>
       </div>
 
       {/* Header Stats */}
