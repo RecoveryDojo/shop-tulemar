@@ -21,7 +21,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
-import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
+import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,8 +46,10 @@ export function CleanShopperDashboard() {
     requestSubstitution,
     completeShopping,
     startDelivery,
-    completeDelivery
-  } = useOrderWorkflow();
+    completeDelivery,
+    lastError,
+    clearError
+  } = useEnhancedOrderWorkflow();
 
   const { toast } = useToast();
   
@@ -77,12 +79,9 @@ export function CleanShopperDashboard() {
 
   const handleAcceptOrder = async (orderId: string) => {
     try {
-      await acceptOrder(orderId);
+      const order = availableOrders.find(o => o.id === orderId);
+      await acceptOrder(orderId, order?.status || 'pending');
       await refetchOrders();
-      toast({
-        title: "Order Accepted",
-        description: "You can now start shopping for this order."
-      });
     } catch (error) {
       console.error('Error accepting order:', error);
     }
@@ -90,7 +89,8 @@ export function CleanShopperDashboard() {
 
   const handleStartShopping = async (orderId: string) => {
     try {
-      await startShopping(orderId);
+      const order = activeOrders.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+      await startShopping(orderId, order?.status || 'assigned');
       await refetchOrders();
     } catch (error) {
       console.error('Error starting shopping:', error);
@@ -155,13 +155,9 @@ export function CleanShopperDashboard() {
     if (!activeOrder) return;
     
     try {
-      await completeShopping(activeOrder.id);
+      await completeShopping(activeOrder.id, activeOrder.status);
       await refetchOrders();
       setActiveOrder(null);
-      toast({
-        title: "Shopping Complete",
-        description: "Order is ready for delivery."
-      });
     } catch (error) {
       console.error('Error completing shopping:', error);
     }
@@ -169,7 +165,8 @@ export function CleanShopperDashboard() {
 
   const handleStartDelivery = async (orderId: string) => {
     try {
-      await startDelivery(orderId);
+      const order = deliveryQueue.find(o => o.id === orderId);
+      await startDelivery(orderId, order?.status || 'packed');
       await refetchOrders();
     } catch (error) {
       console.error('Error starting delivery:', error);
@@ -178,12 +175,9 @@ export function CleanShopperDashboard() {
 
   const handleCompleteDelivery = async (orderId: string) => {
     try {
-      await completeDelivery(orderId);
+      const order = deliveryQueue.find(o => o.id === orderId);
+      await completeDelivery(orderId, order?.status || 'in_transit');
       await refetchOrders();
-      toast({
-        title: "Delivery Complete",
-        description: "Order has been successfully delivered."
-      });
     } catch (error) {
       console.error('Error completing delivery:', error);
     }

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
+import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 
 interface DeliveryOrder {
   id: string;
@@ -46,6 +47,10 @@ export function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [deliveryNotes, setDeliveryNotes] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const {
+    startDelivery: enhancedStartDelivery,
+    completeDelivery: enhancedCompleteDelivery
+  } = useEnhancedOrderWorkflow();
 
   // Mock stakeholders for communication
   const mockStakeholders = [
@@ -98,62 +103,25 @@ export function DriverDashboard() {
 
   const startDelivery = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
-        body: {
-          action: 'start_delivery',
-          orderId: orderId
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Delivery Started",
-        description: "Customer and concierge have been notified",
-      });
-
+      await enhancedStartDelivery(orderId, 'packed');
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error starting delivery:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start delivery",
-        variant: "destructive",
-      });
     }
   };
 
   const completeDelivery = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
-        body: {
-          action: 'complete_delivery',
-          orderId: orderId
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Delivery Complete",
-        description: "Order marked as delivered",
-      });
-
+      await enhancedCompleteDelivery(orderId, 'in_transit');
       setCurrentOrder(null);
       setDeliveryNotes(prev => {
         const updated = { ...prev };
         delete updated[orderId];
         return updated;
       });
-      
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error completing delivery:', error);
-      toast({
-        title: "Error",
-        description: "Failed to complete delivery",
-        variant: "destructive",
-      });
     }
   };
 

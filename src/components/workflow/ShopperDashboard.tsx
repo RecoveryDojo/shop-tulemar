@@ -18,6 +18,7 @@ import {
   Scan
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useEnhancedOrderWorkflow } from "@/hooks/useEnhancedOrderWorkflow";
 
 interface OrderItem {
   id: string;
@@ -56,6 +57,12 @@ export function ShopperDashboard() {
   const [loading, setLoading] = useState(true);
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const {
+    acceptOrder: enhancedAcceptOrder,
+    startShopping: enhancedStartShopping,
+    markItemFound: enhancedMarkItemFound,
+    requestSubstitution: enhancedRequestSubstitution
+  } = useEnhancedOrderWorkflow();
 
   useEffect(() => {
     fetchAssignedOrders();
@@ -114,124 +121,37 @@ export function ShopperDashboard() {
 
   const acceptOrder = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
-        body: {
-          action: 'accept_order',
-          orderId: orderId
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Order Accepted",
-        description: "Order has been assigned to you",
-      });
-
+      const order = orders.find(o => o.id === orderId);
+      await enhancedAcceptOrder(orderId, order?.status || 'pending');
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error accepting order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to accept order",
-        variant: "destructive",
-      });
     }
   };
 
   const startShopping = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-order-workflow', {
-        body: {
-          action: 'start_shopping',
-          orderId: orderId
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Shopping Started",
-        description: "Order status updated and notifications sent",
-      });
-
+      const order = orders.find(o => o.id === orderId);
+      await enhancedStartShopping(orderId, order?.status || 'assigned');
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error starting shopping:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start shopping",
-        variant: "destructive",
-      });
     }
   };
 
   const markItemFound = async (itemId: string) => {
-    if (!activeOrder) return;
-
     try {
-      // Update item status in local state
-      const updatedItems = activeOrder.items.map(item =>
-        item.id === itemId ? { ...item, status: 'found' as const } : item
-      );
-      
-      setActiveOrder({ ...activeOrder, items: updatedItems });
-
-      // Log the item collection
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: activeOrder.id,
-          phase: 'shopping',
-          action: 'item_collected',
-          notes: `Item collected: ${updatedItems.find(i => i.id === itemId)?.product?.name}`,
-          metadata: { item_id: itemId }
-        });
-
-      toast({
-        title: "Item Found",
-        description: "Item marked as collected",
-      });
+      await enhancedMarkItemFound(itemId, 1, itemNotes[itemId] || '');
+      fetchAssignedOrders();
     } catch (error) {
       console.error('Error marking item found:', error);
     }
   };
 
-  const requestSubstitution = async (itemId: string, substitutionData: any) => {
-    if (!activeOrder) return;
-
+  const requestSubstitution = async (itemId: string, reason: string) => {
     try {
-      // Update item with substitution info
-      const updatedItems = activeOrder.items.map(item =>
-        item.id === itemId 
-          ? { 
-              ...item, 
-              status: 'substitution_needed' as const,
-              substitution: substitutionData
-            } 
-          : item
-      );
-      
-      setActiveOrder({ ...activeOrder, items: updatedItems });
-
-      // Send substitution notification
-      await supabase.functions.invoke('notification-orchestrator', {
-        body: {
-          orderId: activeOrder.id,
-          notificationType: 'substitution_needed',
-          phase: 'shopping',
-          metadata: {
-            item: updatedItems.find(i => i.id === itemId)?.product?.name,
-            substitution: substitutionData.product_name,
-            reason: substitutionData.reason
-          }
-        }
-      });
-
-      toast({
-        title: "Substitution Requested",
-        description: "Customer will be notified for approval",
-      });
+      await enhancedRequestSubstitution(itemId, reason, '', itemNotes[itemId] || '');
+      fetchAssignedOrders();
     } catch (error) {
       console.error('Error requesting substitution:', error);
     }
@@ -404,13 +324,7 @@ export function ShopperDashboard() {
                               size="sm" 
                               variant="outline"
                               onClick={() => {
-                                // Would open substitution dialog
-                                const substitution = {
-                                  product_name: "Similar Brand Alternative",
-                                  price: item.unit_price * 1.1,
-                                  reason: "Original brand not available",
-                                };
-                                requestSubstitution(item.id, substitution);
+                                requestSubstitution(item.id, "Original brand not available");
                               }}
                             >
                               <AlertTriangle className="h-4 w-4" />

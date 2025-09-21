@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
+import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { CheckCircle, Play, AlertCircle, Users, Truck, Package, Home } from 'lucide-react';
 
 interface WorkflowStep {
@@ -27,7 +27,7 @@ export function WorkflowEndToEndTest() {
     completeShopping,
     startDelivery,
     completeDelivery
-  } = useOrderWorkflow();
+  } = useEnhancedOrderWorkflow();
 
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([
     {
@@ -52,7 +52,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await acceptOrder(testOrderId);
+          await acceptOrder(testOrderId, 'pending');
         }
       }
     },
@@ -64,7 +64,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await startShopping(testOrderId);
+          await startShopping(testOrderId, 'assigned');
         }
       }
     },
@@ -76,7 +76,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await completeShopping(testOrderId);
+          await completeShopping(testOrderId, 'shopping');
         }
       }
     },
@@ -88,7 +88,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await startDelivery(testOrderId);
+          await startDelivery(testOrderId, 'packed');
         }
       }
     },
@@ -100,7 +100,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await completeDelivery(testOrderId);
+          await completeDelivery(testOrderId, 'in_transit');
         }
       }
     },
