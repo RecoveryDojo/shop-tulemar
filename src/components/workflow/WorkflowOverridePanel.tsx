@@ -46,8 +46,7 @@ export function WorkflowOverridePanel() {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          status: targetStatus,
-          updated_at: new Date().toISOString()
+          status: targetStatus
         })
         .eq('id', orderId);
 
@@ -114,8 +113,7 @@ export function WorkflowOverridePanel() {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          status: rollbackStatus,
-          updated_at: new Date().toISOString()
+          status: rollbackStatus
         })
         .eq('id', orderId);
 

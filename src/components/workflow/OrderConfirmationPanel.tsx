@@ -60,8 +60,7 @@ export function OrderConfirmationPanel() {
       const { error } = await supabase
         .from('orders')
         .update({ 
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
+          status: 'confirmed'
         })
         .eq('id', orderId);
 
@@ -97,8 +96,7 @@ export function OrderConfirmationPanel() {
       const { error } = await supabase
         .from('orders')
         .update({ 
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
+          status: 'cancelled'
         })
         .eq('id', orderId);
 

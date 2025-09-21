@@ -453,8 +453,7 @@ export function useWorkflowAutomation() {
       const { error } = await supabase
         .from('orders')
         .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
+          status: newStatus
         })
         .eq('id', orderId);
 

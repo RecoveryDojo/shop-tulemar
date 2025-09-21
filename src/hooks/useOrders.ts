@@ -159,7 +159,7 @@ export const useOrders = () => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ status })
         .eq('id', orderId);
 
       if (error) throw error;
@@ -187,8 +187,7 @@ export const useOrders = () => {
         .from('orders')
         .update({ 
           payment_status: paymentStatus,
-          payment_intent_id: paymentIntentId,
-          updated_at: new Date().toISOString()
+          payment_intent_id: paymentIntentId
         })
         .eq('id', orderId);
 
