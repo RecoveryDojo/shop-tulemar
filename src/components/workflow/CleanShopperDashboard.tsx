@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -60,8 +60,8 @@ export function CleanShopperDashboard() {
   const [showDebugData, setShowDebugData] = useState(false);
   const [showMessageInterface, setShowMessageInterface] = useState(false);
 
-  // Setup order-scoped realtime when we have an active order
-  useOrderRealtime({
+  // Memoize realtime config to prevent excessive re-subscriptions
+  const realtimeConfig = useMemo(() => ({
     orderId: activeOrder?.id || '',
     onOrderChange: () => {
       console.log('Active order changed, refetching...');
@@ -71,7 +71,7 @@ export function CleanShopperDashboard() {
       console.log('Active order items changed, refetching...');
       refetchOrders();
     },
-    onEventReceived: (payload) => {
+    onEventReceived: (payload: any) => {
       console.log('Order event received:', payload);
       // Show toast for important events
       if (payload.new?.action === 'substitution_requested') {
@@ -85,7 +85,10 @@ export function CleanShopperDashboard() {
       console.log('Realtime reconnected, refetching order data...');
       refetchOrders();
     }
-  });
+  }), [activeOrder?.id, refetchOrders, toast]);
+
+  // Setup order-scoped realtime when we have an active order
+  useOrderRealtime(realtimeConfig);
 
   // Set first active order on load
   useEffect(() => {

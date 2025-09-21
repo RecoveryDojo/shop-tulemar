@@ -116,9 +116,18 @@ export const useOrderRealtime = (config: OrderRealtimeConfig) => {
 
   // Subscribe/unsubscribe when orderId changes
   useEffect(() => {
-    if (orderId) {
+    if (!orderId) {
+      // Clean up if no orderId
+      if (subscribedOrderId.current) {
+        unsubscribeFromOrder(subscribedOrderId.current);
+      }
+      return;
+    }
+
+    // Only subscribe if we're not already subscribed to this order
+    if (subscribedOrderId.current !== orderId) {
       // Unsubscribe from previous order if different
-      if (subscribedOrderId.current && subscribedOrderId.current !== orderId) {
+      if (subscribedOrderId.current) {
         unsubscribeFromOrder(subscribedOrderId.current);
       }
       

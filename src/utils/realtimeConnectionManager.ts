@@ -128,10 +128,13 @@ export class RealtimeConnectionManager {
           console.log(`[RealtimeManager] Successfully subscribed to ${channelName}`);
           this.reconnectAttempts.set(channelName, 0);
           onReconnect?.();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`[RealtimeManager] Channel ${channelName} error:`, status);
           this.handleChannelDisconnection(channelName);
           onError?.(new Error(`Channel status: ${status}`));
+        } else if (status === 'CLOSED') {
+          // Don't treat CLOSED as an error - it's normal during cleanup
+          console.log(`[RealtimeManager] Channel ${channelName} closed normally`);
         }
       });
 
@@ -197,10 +200,15 @@ export class RealtimeConnectionManager {
       this.reconnectTimers.delete(channelName);
     }
 
-    // Remove channel
+    // Remove channel - handle already closed channels gracefully
     const channel = this.channels.get(channelName);
     if (channel) {
-      await supabase.removeChannel(channel);
+      try {
+        await supabase.removeChannel(channel);
+      } catch (error) {
+        // Channel might already be closed, which is fine
+        console.log(`[RealtimeManager] Channel ${channelName} was already closed during unsubscribe`);
+      }
       this.channels.delete(channelName);
     }
 

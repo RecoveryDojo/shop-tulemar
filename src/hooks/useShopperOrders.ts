@@ -202,15 +202,21 @@ export const useShopperOrders = () => {
   useEffect(() => {
     fetchOrders();
 
-    // Set up order-scoped real-time subscriptions for all user's orders
-    const setupRealtimeForOrders = async (userOrders: ShoppingOrder[]) => {
-      // Subscribe to each order individually
-      for (const order of userOrders) {
-        const channelName = `shopper-orders-${order.id}`;
+    // Only set up realtime if we have a user
+    if (!user) return;
+
+    // Set up order-scoped real-time subscriptions for current user's orders
+    const currentOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
+    const subscriptions: string[] = [];
+
+    const setupRealtimeForOrders = async () => {
+      for (const order of currentOrders) {
+        const ordersChannelName = `shopper-orders-${order.id}`;
+        const itemsChannelName = `shopper-orders-${order.id}-items`;
         
         try {
           await realtimeManager.subscribe({
-            channelName,
+            channelName: ordersChannelName,
             table: 'orders',
             filter: `id=eq.${order.id}`,
             onMessage: () => {
@@ -221,12 +227,15 @@ export const useShopperOrders = () => {
               console.log(`Reconnected to order ${order.id}, refetching...`);
               fetchOrders();
             },
-            retryAttempts: 3,
+            onError: (error) => {
+              console.error(`Error with order ${order.id} subscription:`, error);
+            },
+            retryAttempts: 2, // Reduced to prevent loops
             retryDelay: 3000
           });
 
           await realtimeManager.subscribe({
-            channelName: `${channelName}-items`,
+            channelName: itemsChannelName,
             table: 'order_items',
             filter: `order_id=eq.${order.id}`,
             onMessage: () => {
@@ -237,31 +246,35 @@ export const useShopperOrders = () => {
               console.log(`Reconnected to order items ${order.id}, refetching...`);
               fetchOrders();
             },
-            retryAttempts: 3,
+            onError: (error) => {
+              console.error(`Error with order items ${order.id} subscription:`, error);
+            },
+            retryAttempts: 2,
             retryDelay: 3000
           });
+
+          subscriptions.push(ordersChannelName, itemsChannelName);
         } catch (error) {
           console.error(`Failed to subscribe to order ${order.id}:`, error);
         }
       }
     };
 
-    // Initial setup with current orders
-    if (availableOrders.length > 0 || activeOrders.length > 0 || deliveryQueue.length > 0) {
-      const allOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
-      setupRealtimeForOrders(allOrders);
+    if (currentOrders.length > 0) {
+      setupRealtimeForOrders();
     }
 
     return () => {
-      // Clean up all order subscriptions
-      const allOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
-      allOrders.forEach(async (order) => {
-        const channelName = `shopper-orders-${order.id}`;
-        await realtimeManager.unsubscribe(channelName);
-        await realtimeManager.unsubscribe(`${channelName}-items`);
+      // Clean up all subscriptions
+      subscriptions.forEach(async (channelName) => {
+        try {
+          await realtimeManager.unsubscribe(channelName);
+        } catch (error) {
+          console.log(`Cleanup error for ${channelName}:`, error);
+        }
       });
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent excessive re-subscriptions
 
   return {
     availableOrders,
