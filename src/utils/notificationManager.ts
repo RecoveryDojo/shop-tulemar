@@ -53,8 +53,16 @@ export class NotificationManager {
     // Register service worker for background notifications
     if ('serviceWorker' in navigator) {
       try {
-        this.serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js');
-        console.log('[NotificationManager] Service worker registered');
+        // Avoid duplicate registrations by checking existing controller
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const alreadyRegistered = registrations.some((r) => r.active?.scriptURL.endsWith('/sw.js'));
+        if (!alreadyRegistered) {
+          this.serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js');
+          console.log('[NotificationManager] Service worker registered');
+        } else {
+          this.serviceWorkerRegistration = registrations.find((r) => r.active?.scriptURL.endsWith('/sw.js')) || null;
+          console.log('[NotificationManager] Service worker already registered');
+        }
       } catch (error) {
         console.warn('[NotificationManager] Service worker registration failed:', error);
         // Fallback to regular notifications

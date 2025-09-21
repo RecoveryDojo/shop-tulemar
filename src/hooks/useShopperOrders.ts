@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { realtimeManager } from '@/utils/realtimeConnectionManager';
@@ -50,7 +50,7 @@ export const useShopperOrders = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) {
       console.log('useShopperOrders: No user, skipping fetch');
       return;
@@ -193,11 +193,11 @@ export const useShopperOrders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const refetchOrders = () => {
+  const refetchOrders = useCallback(() => {
     fetchOrders();
-  };
+  }, [fetchOrders]);
 
   useEffect(() => {
     fetchOrders();
