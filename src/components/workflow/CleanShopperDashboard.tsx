@@ -25,6 +25,7 @@ import { useOrderWorkflow } from '@/hooks/useOrderWorkflow';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
+import { MessageInterface } from './MessageInterface';
 
 export function CleanShopperDashboard() {
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export function CleanShopperDashboard() {
   const [itemQuantities, setItemQuantities] = useState<{ [key: string]: number }>({});
   const [itemNotes, setItemNotes] = useState<{ [key: string]: string }>({});
   const [showDebugData, setShowDebugData] = useState(false);
+  const [showMessageInterface, setShowMessageInterface] = useState(false);
 
   // Set first active order on load
   useEffect(() => {
@@ -99,7 +101,29 @@ export function CleanShopperDashboard() {
     try {
       const quantity = itemQuantities[itemId] || 0;
       const notes = itemNotes[itemId] || '';
+      
+      if (quantity === 0) {
+        toast({
+          title: "Error",
+          description: "Please enter a quantity found greater than 0",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       await markItemFound(itemId, quantity, notes);
+      
+      // Show success feedback
+      toast({
+        title: "Item Found!",
+        description: `Marked ${quantity} items as found`,
+      });
+      
+      // Clear the input for this item
+      setItemQuantities(prev => ({ ...prev, [itemId]: 0 }));
+      setItemNotes(prev => ({ ...prev, [itemId]: '' }));
+      
+      // Refresh data
       await refetchOrders();
     } catch (error) {
       console.error('Error marking item found:', error);
@@ -110,6 +134,17 @@ export function CleanShopperDashboard() {
     try {
       const notes = itemNotes[itemId] || '';
       await requestSubstitution(itemId, reason, '', notes);
+      
+      // Show success feedback  
+      toast({
+        title: "Substitution Requested",
+        description: "Customer will be notified about substitution options",
+      });
+      
+      // Clear the input for this item
+      setItemNotes(prev => ({ ...prev, [itemId]: '' }));
+      
+      // Refresh data
       await refetchOrders();
     } catch (error) {
       console.error('Error requesting substitution:', error);
@@ -352,20 +387,42 @@ export function CleanShopperDashboard() {
                       <CardContent className="space-y-4">
                         {activeOrder.items?.map((item) => (
                           <div key={item.id} className="border rounded-lg p-4">
-                            <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start gap-4 mb-3">
+                              {/* Product Image */}
+                              {item.product?.image_url && (
+                                <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={item.product.image_url} 
+                                    alt={item.product.name || 'Product'}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              
                               <div className="flex-1">
-                                <h4 className="font-medium">{item.product?.name || 'Product'}</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  Quantity: {item.quantity} • {formatCurrency(item.unit_price)} each
-                                </p>
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <h4 className="font-medium">{item.product?.name || 'Product'}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      Quantity: {item.quantity} • {formatCurrency(item.unit_price)} each
+                                    </p>
+                                    {item.product?.description && (
+                                      <p className="text-xs text-muted-foreground mt-1">{item.product.description}</p>
+                                    )}
+                                  </div>
+                                  <Badge variant={
+                                    item.shopping_status === 'found' ? 'default' :
+                                    item.shopping_status === 'substitution_needed' ? 'secondary' :
+                                    'outline'
+                                  }>
+                                    {item.shopping_status || 'pending'}
+                                  </Badge>
+                                </div>
                               </div>
-                              <Badge variant={
-                                item.shopping_status === 'found' ? 'default' :
-                                item.shopping_status === 'substitution_needed' ? 'secondary' :
-                                'outline'
-                              }>
-                                {item.shopping_status || 'pending'}
-                              </Badge>
                             </div>
 
                             {item.shopping_status === 'pending' && (
@@ -403,17 +460,26 @@ export function CleanShopperDashboard() {
                                     disabled={workflowLoading || (itemQuantities[item.id] || 0) === 0}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-1" />
-                                    Mark Found
+                                    {workflowLoading ? 'Updating...' : 'Mark Found'}
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleRequestSubstitution(item.id, 'Not available')}
+                                    onClick={() => {
+                                      handleRequestSubstitution(item.id, 'Not available in requested quantity');
+                                      setShowMessageInterface(true);
+                                    }}
                                     disabled={workflowLoading}
                                   >
                                     <AlertCircle className="h-4 w-4 mr-1" />
-                                    Request Substitution
+                                    {workflowLoading ? 'Requesting...' : 'Request Substitution'}
                                   </Button>
+                                </div>
+                                
+                                {/* Show what happens when buttons are clicked */}
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  <p>• Mark Found: Updates quantity and notifies customer</p>
+                                  <p>• Request Substitution: Asks customer for alternate product approval</p>
                                 </div>
                               </div>
                             )}
@@ -448,7 +514,7 @@ export function CleanShopperDashboard() {
                           </div>
                         )}
 
-                        {activeOrder.status === 'assigned' && (
+                        {(activeOrder.status === 'assigned' || activeOrder.status === 'confirmed') && (
                           <div className="pt-4 border-t">
                             <Button 
                               onClick={() => handleStartShopping(activeOrder.id)}
@@ -456,8 +522,11 @@ export function CleanShopperDashboard() {
                               className="w-full"
                             >
                               <ShoppingCart className="h-4 w-4 mr-2" />
-                              Start Shopping
+                              {workflowLoading ? 'Starting...' : 'Start Shopping'}
                             </Button>
+                            <p className="text-xs text-muted-foreground mt-2 text-center">
+                              This will change order status to "Shopping" and you can start marking items as found
+                            </p>
                           </div>
                         )}
                       </CardContent>
@@ -593,6 +662,17 @@ export function CleanShopperDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+      
+      {/* Message Interface Overlay */}
+      {showMessageInterface && activeOrder && (
+        <MessageInterface
+          orderId={activeOrder.id}
+          customerEmail={activeOrder.customer_email}
+          customerName={activeOrder.customer_name}
+          isVisible={showMessageInterface}
+          onClose={() => setShowMessageInterface(false)}
+        />
+      )}
     </div>
   );
 }
