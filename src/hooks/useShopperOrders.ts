@@ -203,6 +203,22 @@ export const useShopperOrders = () => {
           fetchOrders();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stakeholder_assignments'
+        },
+        (payload) => {
+          const newUserId = (payload as any)?.new?.user_id;
+          const oldUserId = (payload as any)?.old?.user_id;
+          if (!user || !newUserId || newUserId === user.id || oldUserId === user.id) {
+            console.log('Stakeholder assignments changed, refetching...');
+            fetchOrders();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
