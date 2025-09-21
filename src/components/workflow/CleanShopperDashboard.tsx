@@ -210,6 +210,166 @@ export function CleanShopperDashboard() {
     }
   };
 
+  // Component for rendering individual items
+  const ItemCard = ({ 
+    item, 
+    itemQuantities, 
+    setItemQuantities, 
+    itemNotes, 
+    setItemNotes, 
+    onMarkFound, 
+    onRequestSubstitution,
+    showActions 
+  }: {
+    item: OrderItem;
+    itemQuantities: { [key: string]: number };
+    setItemQuantities: React.Dispatch<React.SetStateAction<{ [key: string]: number }>>;
+    itemNotes: { [key: string]: string };
+    setItemNotes: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+    onMarkFound: (itemId: string) => void;
+    onRequestSubstitution: (itemId: string, reason: string) => void;
+    showActions: boolean;
+  }) => (
+    <div className="border rounded-lg p-4">
+      <div className="flex items-start gap-4 mb-3">
+        {/* Product Image */}
+        {item.product?.image_url && (
+          <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+            <img 
+              src={item.product.image_url} 
+              alt={item.product.name || 'Product'}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="flex-1">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="font-medium">{item.product?.name || 'Product'}</h4>
+              <p className="text-sm text-muted-foreground">
+                Quantity: {item.quantity} • {formatCurrency(item.unit_price)} each
+              </p>
+              {item.product?.description && (
+                <p className="text-xs text-muted-foreground mt-1">{item.product.description}</p>
+              )}
+            </div>
+            <Badge variant={
+              item.shopping_status === 'found' ? 'default' :
+              item.shopping_status === 'substitution_needed' ? 'secondary' :
+              'outline'
+            }>
+              {item.shopping_status || 'pending'}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {showActions && item.shopping_status === 'pending' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="Found quantity"
+              value={itemQuantities[item.id] || ''}
+              onChange={(e) => setItemQuantities(prev => ({
+                ...prev,
+                [item.id]: parseInt(e.target.value) || 0
+              }))}
+              min="0"
+              max={item.quantity}
+              className="w-32"
+            />
+            <span className="text-sm text-muted-foreground">of {item.quantity}</span>
+          </div>
+
+          <Textarea
+            placeholder="Notes (optional)"
+            value={itemNotes[item.id] || ''}
+            onChange={(e) => setItemNotes(prev => ({
+              ...prev,
+              [item.id]: e.target.value
+            }))}
+            className="min-h-[60px]"
+          />
+
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => onMarkFound(item.id)}
+              disabled={workflowLoading || (itemQuantities[item.id] || 0) === 0}
+              className="flex-1"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Mark Found
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => onRequestSubstitution(item.id, 'Not available')}
+              disabled={workflowLoading}
+              className="flex-1"
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Request Substitution
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setShowMessageInterface(true)}
+              size="sm"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {item.shopping_status === 'found' && (
+        <div className="bg-green-50 p-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-800">
+              Found: {item.found_quantity} of {item.quantity}
+            </span>
+          </div>
+          {item.shopper_notes && (
+            <p className="text-sm text-green-700 mt-1">Notes: {item.shopper_notes}</p>
+          )}
+        </div>
+      )}
+
+      {item.shopping_status === 'substitution_needed' && (
+        <div className="bg-yellow-50 p-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-800">
+              Substitution requested
+            </span>
+          </div>
+          {item.shopper_notes && (
+            <p className="text-sm text-yellow-700 mt-1">Notes: {item.shopper_notes}</p>
+          )}
+        </div>
+      )}
+
+      {item.shopping_status === 'skipped' && (
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-800">
+              Item skipped
+            </span>
+          </div>
+          {item.shopper_notes && (
+            <p className="text-sm text-gray-700 mt-1">Notes: {item.shopper_notes}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   if (ordersLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -379,185 +539,132 @@ export function CleanShopperDashboard() {
                       </CardHeader>
                     </Card>
 
-                    {/* Shopping List */}
+                    {/* Shopping List with Tabs */}
                     <Card>
                       <CardHeader>
-                        <CardTitle>Shopping List ({activeOrder.items?.length || 0} items)</CardTitle>
+                        <CardTitle>Shopping List</CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {activeOrder.items?.map((item) => (
-                          <div key={item.id} className="border rounded-lg p-4">
-                            <div className="flex items-start gap-4 mb-3">
-                              {/* Product Image */}
-                              {item.product?.image_url && (
-                                <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                                  <img 
-                                    src={item.product.image_url} 
-                                    alt={item.product.name || 'Product'}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              
-                              <div className="flex-1">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <h4 className="font-medium">{item.product?.name || 'Product'}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      Quantity: {item.quantity} • {formatCurrency(item.unit_price)} each
-                                    </p>
-                                    {item.product?.description && (
-                                      <p className="text-xs text-muted-foreground mt-1">{item.product.description}</p>
-                                    )}
-                                  </div>
-                                  <Badge variant={
-                                    item.shopping_status === 'found' ? 'default' :
-                                    item.shopping_status === 'substitution_needed' ? 'secondary' :
-                                    'outline'
-                                  }>
-                                    {item.shopping_status || 'pending'}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
+                      <CardContent>
+                        <Tabs defaultValue="pending" className="w-full">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="pending">
+                              Pending ({activeOrder.items?.filter(item => item.shopping_status === 'pending').length || 0})
+                            </TabsTrigger>
+                            <TabsTrigger value="found">
+                              Found ({activeOrder.items?.filter(item => item.shopping_status === 'found').length || 0})
+                            </TabsTrigger>
+                            <TabsTrigger value="done">
+                              Done ({activeOrder.items?.filter(item => 
+                                item.shopping_status === 'found' || 
+                                item.shopping_status === 'substitution_needed' ||
+                                item.shopping_status === 'skipped'
+                              ).length || 0})
+                            </TabsTrigger>
+                          </TabsList>
 
-                            {item.shopping_status === 'pending' && (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    placeholder="Found quantity"
-                                    value={itemQuantities[item.id] || ''}
-                                    onChange={(e) => setItemQuantities(prev => ({
-                                      ...prev,
-                                      [item.id]: parseInt(e.target.value) || 0
-                                    }))}
-                                    min="0"
-                                    max={item.quantity}
-                                    className="w-32"
-                                  />
-                                  <span className="text-sm text-muted-foreground">of {item.quantity}</span>
-                                </div>
-
-                                <Textarea
-                                  placeholder="Notes (optional)"
-                                  value={itemNotes[item.id] || ''}
-                                  onChange={(e) => setItemNotes(prev => ({
-                                    ...prev,
-                                    [item.id]: e.target.value
-                                  }))}
-                                  className="min-h-[60px]"
-                                />
-
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleMarkItemFound(item.id)}
-                                    disabled={workflowLoading || (itemQuantities[item.id] || 0) === 0}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    {workflowLoading ? 'Updating...' : 'Mark Found'}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      handleRequestSubstitution(item.id, 'Not available in requested quantity');
-                                      setShowMessageInterface(true);
-                                    }}
-                                    disabled={workflowLoading}
-                                  >
-                                    <AlertCircle className="h-4 w-4 mr-1" />
-                                    {workflowLoading ? 'Requesting...' : 'Request Substitution'}
-                                  </Button>
-                                </div>
-                                
-                                {/* Show what happens when buttons are clicked */}
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  <p>• Mark Found: Updates quantity and notifies customer</p>
-                                  <p>• Request Substitution: Asks customer for alternate product approval</p>
-                                </div>
+                          <TabsContent value="pending" className="space-y-4 mt-4">
+                            {activeOrder.items?.filter(item => item.shopping_status === 'pending').map((item) => (
+                              <ItemCard 
+                                key={item.id} 
+                                item={item} 
+                                itemQuantities={itemQuantities}
+                                setItemQuantities={setItemQuantities}
+                                itemNotes={itemNotes}
+                                setItemNotes={setItemNotes}
+                                onMarkFound={handleMarkItemFound}
+                                onRequestSubstitution={handleRequestSubstitution}
+                                showActions={true}
+                              />
+                            ))}
+                            {activeOrder.items?.filter(item => item.shopping_status === 'pending').length === 0 && (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <CheckCircle className="h-12 w-12 mx-auto mb-2" />
+                                <p>No pending items</p>
                               </div>
                             )}
+                          </TabsContent>
 
-                            {item.shopping_status === 'found' && (
-                              <div className="text-sm text-green-600">
-                                ✓ Found {item.found_quantity} of {item.quantity}
-                                {item.shopper_notes && <p className="mt-1">Notes: {item.shopper_notes}</p>}
+                          <TabsContent value="found" className="space-y-4 mt-4">
+                            {activeOrder.items?.filter(item => item.shopping_status === 'found').map((item) => (
+                              <ItemCard 
+                                key={item.id} 
+                                item={item} 
+                                itemQuantities={itemQuantities}
+                                setItemQuantities={setItemQuantities}
+                                itemNotes={itemNotes}
+                                setItemNotes={setItemNotes}
+                                onMarkFound={handleMarkItemFound}
+                                onRequestSubstitution={handleRequestSubstitution}
+                                showActions={false}
+                              />
+                            ))}
+                            {activeOrder.items?.filter(item => item.shopping_status === 'found').length === 0 && (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Package className="h-12 w-12 mx-auto mb-2" />
+                                <p>No found items</p>
                               </div>
                             )}
+                          </TabsContent>
 
-                            {item.shopping_status === 'substitution_needed' && (
-                              <div className="text-sm text-orange-600">
-                                ⚠ Substitution needed
-                                {item.shopper_notes && <p className="mt-1">Notes: {item.shopper_notes}</p>}
+                          <TabsContent value="done" className="space-y-4 mt-4">
+                            {activeOrder.items?.filter(item => 
+                              item.shopping_status === 'found' || 
+                              item.shopping_status === 'substitution_needed' ||
+                              item.shopping_status === 'skipped'
+                            ).map((item) => (
+                              <ItemCard 
+                                key={item.id} 
+                                item={item} 
+                                itemQuantities={itemQuantities}
+                                setItemQuantities={setItemQuantities}
+                                itemNotes={itemNotes}
+                                setItemNotes={setItemNotes}
+                                onMarkFound={handleMarkItemFound}
+                                onRequestSubstitution={handleRequestSubstitution}
+                                showActions={false}
+                              />
+                            ))}
+                            {activeOrder.items?.filter(item => 
+                              item.shopping_status === 'found' || 
+                              item.shopping_status === 'substitution_needed' ||
+                              item.shopping_status === 'skipped'
+                            ).length === 0 && (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Clock className="h-12 w-12 mx-auto mb-2" />
+                                <p>No completed items</p>
                               </div>
                             )}
-                          </div>
-                        ))}
-
-                        {activeOrder.status === 'shopping' && 
-                         getCompletionPercentage(activeOrder.items || []) === 100 && (
-                          <div className="pt-4 border-t">
-                            <Button 
-                              onClick={handleCompleteShopping}
-                              disabled={workflowLoading}
-                              className="w-full"
-                            >
-                              <Package className="h-4 w-4 mr-2" />
-                              Complete Shopping & Pack Items
-                            </Button>
-                          </div>
-                        )}
-
-                        {(activeOrder.status === 'assigned' || activeOrder.status === 'confirmed') && (
-                          <div className="pt-4 border-t">
-                            <Button 
-                              onClick={() => handleStartShopping(activeOrder.id)}
-                              disabled={workflowLoading}
-                              className="w-full"
-                            >
-                              <ShoppingCart className="h-4 w-4 mr-2" />
-                              {workflowLoading ? 'Starting...' : 'Start Shopping'}
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2 text-center">
-                              This will change order status to "Shopping" and you can start marking items as found
-                            </p>
-                          </div>
-                        )}
+                          </TabsContent>
+                        </Tabs>
                       </CardContent>
                     </Card>
 
-                    {/* Order Info */}
+                    {/* Action Buttons */}
                     <Card>
-                      <CardHeader>
-                        <CardTitle>Order Information</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <strong>Customer:</strong> {activeOrder.customer_name}
-                          </div>
-                          <div>
-                            <strong>Phone:</strong> {activeOrder.customer_phone || 'Not provided'}
-                          </div>
-                          <div>
-                            <strong>Address:</strong> {activeOrder.property_address}
-                          </div>
-                          <div>
-                            <strong>Total:</strong> {formatCurrency(activeOrder.total_amount)}
-                          </div>
+                      <CardContent className="pt-6">
+                        <div className="flex gap-4">
+                          {activeOrder.status === 'assigned' && (
+                            <Button 
+                              onClick={() => handleStartShopping(activeOrder.id)} 
+                              className="flex-1"
+                              disabled={workflowLoading}
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              Start Shopping
+                            </Button>
+                          )}
+                          
+                          {activeOrder.status === 'shopping' && (
+                            <Button 
+                              onClick={handleCompleteShopping} 
+                              className="flex-1"
+                              disabled={workflowLoading}
+                            >
+                              <Package className="h-4 w-4 mr-2" />
+                              Complete Shopping
+                            </Button>
+                          )}
                         </div>
-                        {activeOrder.special_instructions && (
-                          <div>
-                            <strong>Special Instructions:</strong>
-                            <p className="mt-1 text-muted-foreground">{activeOrder.special_instructions}</p>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   </>
@@ -567,14 +674,14 @@ export function CleanShopperDashboard() {
           </TabsContent>
 
           {/* Available Orders Tab */}
-          <TabsContent value="available" className="space-y-4">
+          <TabsContent value="available" className="space-y-6">
             {availableOrders.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Package className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Available Orders</h3>
                   <p className="text-muted-foreground text-center">
-                    There are no orders available to accept at the moment. Check back later.
+                    There are no orders available to accept at the moment. Check back later!
                   </p>
                 </CardContent>
               </Card>
@@ -582,14 +689,12 @@ export function CleanShopperDashboard() {
               <div className="grid gap-4">
                 {availableOrders.map((order) => (
                   <Card key={order.id}>
-                    <CardContent className="p-6">
+                    <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div>
                           <h3 className="font-semibold">{order.customer_name}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{order.property_address}</p>
-                          <p className="text-sm">
-                            {order.items?.length || 0} items • {formatCurrency(order.total_amount)}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{order.property_address}</p>
+                          <p className="text-sm text-muted-foreground">{order.items?.length || 0} items • {formatCurrency(order.total_amount)}</p>
                         </div>
                         <Button 
                           onClick={() => handleAcceptOrder(order.id)}
@@ -606,12 +711,12 @@ export function CleanShopperDashboard() {
           </TabsContent>
 
           {/* Delivery Queue Tab */}
-          <TabsContent value="delivery" className="space-y-4">
+          <TabsContent value="delivery" className="space-y-6">
             {deliveryQueue.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Deliveries Pending</h3>
+                  <h3 className="text-lg font-semibold mb-2">No Deliveries</h3>
                   <p className="text-muted-foreground text-center">
                     You don't have any orders ready for delivery.
                   </p>
@@ -621,15 +726,12 @@ export function CleanShopperDashboard() {
               <div className="grid gap-4">
                 {deliveryQueue.map((order) => (
                   <Card key={order.id}>
-                    <CardContent className="p-6">
+                    <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div>
                           <h3 className="font-semibold">{order.customer_name}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{order.property_address}</p>
-                          <p className="text-sm">
-                            {order.items?.length || 0} items • {formatCurrency(order.total_amount)}
-                          </p>
-                          <Badge className={`${getStatusColor(order.status)} mt-2`}>
+                          <p className="text-sm text-muted-foreground">{order.property_address}</p>
+                          <Badge className={getStatusColor(order.status)}>
                             {order.status}
                           </Badge>
                         </div>
@@ -662,8 +764,8 @@ export function CleanShopperDashboard() {
           </TabsContent>
         </Tabs>
       </main>
-      
-      {/* Message Interface Overlay */}
+
+      {/* Message Interface Modal */}
       {showMessageInterface && activeOrder && (
         <MessageInterface
           orderId={activeOrder.id}
