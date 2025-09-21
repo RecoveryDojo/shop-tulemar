@@ -370,7 +370,6 @@ async function startDelivery(supabase: any, orderId: string, userId: string) {
     .eq('id', orderId)
     .eq('assigned_shopper_id', userId)
     .eq('status', 'packed'); // Only update if still packed
-    .eq('status', 'packed'); // Only allow if currently packed
 
   if (error) {
     console.error('Start delivery error:', error);
