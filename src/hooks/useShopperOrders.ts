@@ -73,6 +73,7 @@ export const useShopperOrders = () => {
       }
 
       // Fetch shopper's active orders (assigned to them OR via stakeholder assignments)
+      // Remove the accepted_at requirement since admin assignments should be immediately visible
       const { data: assignedOrders, error: assignedError } = await supabase
         .from('stakeholder_assignments')
         .select(`

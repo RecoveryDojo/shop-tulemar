@@ -57,6 +57,8 @@ serve(async (req) => {
       .eq('role', role)
       .single();
 
+    const currentTime = new Date().toISOString();
+    
     if (existing) {
       // Update existing assignment
       await supabase
@@ -64,7 +66,8 @@ serve(async (req) => {
         .update({ 
           user_id: staffId,
           status: 'assigned',
-          assigned_at: new Date().toISOString()
+          assigned_at: currentTime,
+          accepted_at: currentTime  // Auto-accept when admin assigns
         })
         .eq('id', existing.id);
     } else {
@@ -75,7 +78,9 @@ serve(async (req) => {
           order_id: orderId,
           user_id: staffId,
           role,
-          status: 'assigned'
+          status: 'assigned',
+          assigned_at: currentTime,
+          accepted_at: currentTime  // Auto-accept when admin assigns
         });
     }
 
