@@ -61,6 +61,7 @@ export function EnhancedShopperDashboard() {
     activeOrders, 
     deliveryQueue, 
     loading: ordersLoading, 
+    error: ordersError,
     refetchOrders 
   } = useShopperOrders();
   
@@ -101,8 +102,9 @@ export function EnhancedShopperDashboard() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
-const fileInputRef = useRef<HTMLInputElement>(null);
-const { user } = useAuth();
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   
   const handleDeliveryProofChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -368,12 +370,80 @@ const { user } = useAuth();
 
       {/* Session Debug Info - helps verify active account and counts */}
       <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Signed in as: <span className="font-medium">{user?.email || 'Unknown user'}</span>
-          {' '}• Active: {activeOrders.length} • Available: {availableOrders.length} • Delivery: {deliveryQueue.length}
-        </p>
-        <Button size="sm" variant="outline" onClick={refetchOrders}>Refresh</Button>
+        <div className="flex items-center space-x-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">{user?.email || 'Unknown user'}</span>
+            {' '}• Active: <span className="font-bold text-primary">{activeOrders.length}</span> 
+            • Available: <span className="font-bold text-green-600">{availableOrders.length}</span> 
+            • Delivery: <span className="font-bold text-blue-600">{deliveryQueue.length}</span>
+            {ordersError && <span className="text-red-600 font-medium">• Error: Data fetch failed</span>}
+            {connectionStatus !== 'connected' && <span className="text-yellow-600">• Realtime: {connectionStatus}</span>}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+          >
+            {showDebugPanel ? 'Hide' : 'Show'} Data
+          </Button>
+          <Button size="sm" variant="outline" onClick={refetchOrders} disabled={ordersLoading}>
+            {ordersLoading ? 'Loading...' : 'Refresh'}
+          </Button>
+        </div>
       </div>
+
+      {/* Data Debug Panel */}
+      {showDebugPanel && (
+        <div className="max-w-6xl mx-auto px-6 py-4 bg-muted/30 border-y">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <h4 className="font-semibold text-green-600 mb-2">Available Orders ({availableOrders.length})</h4>
+              {availableOrders.length === 0 ? (
+                <p className="text-muted-foreground">No available orders</p>
+              ) : (
+                availableOrders.slice(0, 3).map(order => (
+                  <div key={order.id} className="bg-green-50 p-2 rounded mb-1">
+                    <p className="font-medium">{order.customer_name}</p>
+                    <p className="text-muted-foreground">#{order.id.slice(-6)} • ${order.total_amount}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div>
+              <h4 className="font-semibold text-primary mb-2">Active Orders ({activeOrders.length})</h4>
+              {activeOrders.length === 0 ? (
+                ordersError ? (
+                  <p className="text-red-600">RLS Error: Check permissions</p>
+                ) : (
+                  <p className="text-muted-foreground">No active orders</p>
+                )
+              ) : (
+                activeOrders.slice(0, 3).map(order => (
+                  <div key={order.id} className="bg-primary/5 p-2 rounded mb-1">
+                    <p className="font-medium">{order.customer_name}</p>
+                    <p className="text-muted-foreground">#{order.id.slice(-6)} • {order.status} • ${order.total_amount}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-600 mb-2">Delivery Queue ({deliveryQueue.length})</h4>
+              {deliveryQueue.length === 0 ? (
+                <p className="text-muted-foreground">No deliveries ready</p>
+              ) : (
+                deliveryQueue.slice(0, 3).map(order => (
+                  <div key={order.id} className="bg-blue-50 p-2 rounded mb-1">
+                    <p className="font-medium">{order.customer_name}</p>
+                    <p className="text-muted-foreground">#{order.id.slice(-6)} • ${order.total_amount}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

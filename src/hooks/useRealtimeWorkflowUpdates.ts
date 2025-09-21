@@ -114,9 +114,13 @@ export const useRealtimeWorkflowUpdates = () => {
   }, []);
 
   const setupRealtimeSubscriptions = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setConnectionStatus('disconnected');
+      return;
+    }
 
     try {
+      setConnectionStatus('reconnecting');
       // Subscribe to order status changes
       await realtimeManager.subscribe({
         channelName: 'workflow-orders',
@@ -124,8 +128,8 @@ export const useRealtimeWorkflowUpdates = () => {
         event: 'UPDATE',
         onMessage: handleOrderStatusChange,
         onError: (error) => {
-          console.error('Orders subscription error:', error);
-          setConnectionStatus('disconnected');
+          console.warn('Orders subscription error (non-critical):', error);
+          // Don't set disconnected for subscription errors - keep trying
         },
         onReconnect: () => {
           console.log('Orders subscription reconnected');
@@ -140,7 +144,7 @@ export const useRealtimeWorkflowUpdates = () => {
         event: 'UPDATE',
         onMessage: handleOrderItemChange,
         onError: (error) => {
-          console.error('Order items subscription error:', error);
+          console.warn('Order items subscription error (non-critical):', error);
         },
         onReconnect: () => {
           console.log('Order items subscription reconnected');
@@ -154,7 +158,7 @@ export const useRealtimeWorkflowUpdates = () => {
         event: 'INSERT',
         onMessage: handleNotificationReceived,
         onError: (error) => {
-          console.error('Notifications subscription error:', error);
+          console.warn('Notifications subscription error (non-critical):', error);
         },
         onReconnect: () => {
           console.log('Notifications subscription reconnected');
@@ -168,7 +172,7 @@ export const useRealtimeWorkflowUpdates = () => {
         event: 'INSERT',
         onMessage: handleWorkflowLogChange,
         onError: (error) => {
-          console.error('Workflow logs subscription error:', error);
+          console.warn('Workflow logs subscription error (non-critical):', error);
         },
         onReconnect: () => {
           console.log('Workflow logs subscription reconnected');
@@ -179,8 +183,9 @@ export const useRealtimeWorkflowUpdates = () => {
       console.log('All workflow subscriptions established');
 
     } catch (error) {
-      console.error('Failed to setup realtime subscriptions:', error);
+      console.warn('Failed to setup realtime subscriptions (non-critical):', error);
       setConnectionStatus('disconnected');
+      // Continue without realtime - the app still works with manual refresh
     }
   }, [user, handleOrderStatusChange, handleOrderItemChange, handleNotificationReceived, handleWorkflowLogChange]);
 

@@ -45,6 +45,7 @@ export const useShopperOrders = () => {
   const [activeOrders, setActiveOrders] = useState<ShoppingOrder[]>([]);
   const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -183,7 +184,7 @@ export const useShopperOrders = () => {
 
     } catch (error: any) {
       console.error('Error fetching orders:', error);
-      // Don't show error toast - just log it and continue with empty state
+      setError(error.message || 'Failed to fetch orders');
       // Set empty arrays so the UI shows "no orders" messages
       setAvailableOrders([]);
       setActiveOrders([]);
@@ -255,6 +256,7 @@ export const useShopperOrders = () => {
     activeOrders,
     deliveryQueue,
     loading,
+    error,
     refetchOrders
   };
 };
