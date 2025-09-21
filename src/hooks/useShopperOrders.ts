@@ -49,9 +49,13 @@ export const useShopperOrders = () => {
   const { toast } = useToast();
 
   const fetchOrders = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('useShopperOrders: No user, skipping fetch');
+      return;
+    }
 
     try {
+      console.log('useShopperOrders: Starting fetch for user:', user.id, user.email);
       setLoading(true);
 
       // Fetch available orders (pending, not assigned)
@@ -66,6 +70,8 @@ export const useShopperOrders = () => {
         `)
         .eq('status', 'pending')
         .is('assigned_shopper_id', null);
+
+      console.log('useShopperOrders: Available orders query:', { available, availableError });
 
       // If there's an error, just log it and continue with empty arrays
       if (availableError) {
@@ -92,6 +98,8 @@ export const useShopperOrders = () => {
         .eq('role', 'shopper')
         .in('orders.status', ['confirmed', 'assigned', 'shopping']);
 
+      console.log('useShopperOrders: Stakeholder assignments query:', { assignedOrders, assignedError });
+
       const { data: directAssigned, error: directError } = await supabase
         .from('orders')
         .select(`
@@ -103,6 +111,8 @@ export const useShopperOrders = () => {
         `)
         .eq('assigned_shopper_id', user.id)
         .in('status', ['assigned', 'shopping']);
+
+      console.log('useShopperOrders: Direct assignment query:', { directAssigned, directError });
 
       // Combine both assignment methods
       let active: any[] = [];
@@ -117,6 +127,8 @@ export const useShopperOrders = () => {
       active = active.filter((order, index, self) => 
         index === self.findIndex(o => o.id === order.id)
       );
+
+      console.log('useShopperOrders: Combined active orders:', active);
 
       if (assignedError) {
         console.log('No assigned orders found:', assignedError);
@@ -138,6 +150,8 @@ export const useShopperOrders = () => {
         .eq('assigned_shopper_id', user.id)
         .in('status', ['packed', 'in_transit']);
 
+      console.log('useShopperOrders: Delivery queue query:', { delivery, deliveryError });
+
       if (deliveryError) {
         console.log('No delivery orders found:', deliveryError);
       }
@@ -153,9 +167,19 @@ export const useShopperOrders = () => {
         }));
       };
 
-      setAvailableOrders(transformOrders(available || []));
-      setActiveOrders(transformOrders(active || []));
-      setDeliveryQueue(transformOrders(delivery || []));
+      const transformedAvailable = transformOrders(available || []);
+      const transformedActive = transformOrders(active || []);
+      const transformedDelivery = transformOrders(delivery || []);
+
+      console.log('useShopperOrders: Final transformed data:', {
+        available: transformedAvailable.length,
+        active: transformedActive.length,
+        delivery: transformedDelivery.length
+      });
+
+      setAvailableOrders(transformedAvailable);
+      setActiveOrders(transformedActive);
+      setDeliveryQueue(transformedDelivery);
 
     } catch (error: any) {
       console.error('Error fetching orders:', error);
