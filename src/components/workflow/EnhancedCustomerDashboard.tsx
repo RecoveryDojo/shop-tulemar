@@ -113,8 +113,9 @@ export function EnhancedCustomerDashboard() {
   const [showDeliveryMap, setShowDeliveryMap] = useState(false);
   const { toast } = useToast();
 
-  // Use unified order store with real-time updates
-  const { order: orderData, loading: orderLoading } = useOrder('1'); // Mock order ID
+  // Use unified order store with real-time updates  
+  // TODO: Get actual order ID from URL params or user context
+  const { order: orderData, loading: orderLoading } = useOrder(''); // Disable for now to prevent UUID errors
 
   // Transform to expected format
   const order: OrderTracking | null = orderData ? {

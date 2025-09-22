@@ -75,7 +75,7 @@ export function EnhancedShopperDashboard() {
     completeDelivery,
     lastError,
     clearError
-  } = useEnhancedOrderWorkflow();
+  } = useEnhancedOrderWorkflow({ optimistic: false, requireExpectedStatus: false });
 
   const { 
     notifications, 
@@ -98,10 +98,10 @@ export function EnhancedShopperDashboard() {
   const [deliveryProof, setDeliveryProof] = useState<string | null>(null);
   const [showGuideDialog, setShowGuideDialog] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   
@@ -138,33 +138,75 @@ export function EnhancedShopperDashboard() {
   }, [activeOrder]);
 
   const handleAcceptOrder = async (orderId: string) => {
+    // INSTRUMENTATION: Log button click
+    const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+    console.log('[SHOPPER DEBUG] Accept Order clicked:', { 
+      intent: 'acceptOrder', 
+      orderId, 
+      expectedStatus: order?.status || 'unknown' 
+    });
+    
     try {
-      await acceptOrder(orderId);
+      const result = await acceptOrder(orderId, order?.status || 'confirmed');
+      
+      // INSTRUMENTATION: Log success  
+      console.log('[SHOPPER DEBUG] Accept Order success:', result);
+      toast({ title: "OK: acceptOrder", description: `Order ${orderId} accepted` });
+      
       refetchOrders();
     } catch (error) {
-      console.error('Failed to accept order:', error);
-      // Error is already handled by the hook with toast
+      console.error('[SHOPPER DEBUG] Accept Order error:', error);
+      toast({ title: "ERROR: acceptOrder", description: error.message || 'Failed to accept order', variant: "destructive" });
     }
   };
 
   const handleStartShopping = async (orderId: string) => {
+    // INSTRUMENTATION: Log button click
+    const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+    console.log('[SHOPPER DEBUG] Start Shopping clicked:', { 
+      intent: 'startShopping', 
+      orderId, 
+      expectedStatus: order?.status || 'unknown' 
+    });
+    
     try {
-      await startShopping(orderId);
+      const result = await startShopping(orderId, order?.status || 'assigned');
+      
+      // INSTRUMENTATION: Log success
+      console.log('[SHOPPER DEBUG] Start Shopping success:', result);
+      toast({ title: "OK: startShopping", description: `Shopping started for order ${orderId}` });
+      
       refetchOrders();
     } catch (error) {
-      console.error('Failed to start shopping:', error);
-      // Error is already handled by the hook with toast
+      console.error('[SHOPPER DEBUG] Start Shopping error:', error);
+      toast({ title: "ERROR: startShopping", description: error.message || 'Failed to start shopping', variant: "destructive" });
     }
   };
 
   const handleMarkItemFound = async (itemId: string) => {
+    // INSTRUMENTATION: Log button click
+    const quantity = itemQuantities[itemId] || 0;
+    const notes = itemNotes[itemId] || '';
+    console.log('[SHOPPER DEBUG] Item Found clicked:', { 
+      intent: 'markItemFound', 
+      itemId, 
+      quantity,
+      notes,
+      orderId: activeOrder?.id,
+      expectedStatus: activeOrder?.status 
+    });
+    
     try {
-      const quantity = itemQuantities[itemId] || 0;
-      const notes = itemNotes[itemId] || '';
-      await markItemFound(itemId, quantity, notes);
+      const result = await markItemFound(itemId, quantity, notes);
+      
+      // INSTRUMENTATION: Log success
+      console.log('[SHOPPER DEBUG] Item Found success:', result);
+      toast({ title: "OK: markItemFound", description: `Item ${itemId} marked as found` });
+      
       refetchOrders();
     } catch (error) {
-      console.error('Failed to mark item as found:', error);
+      console.error('[SHOPPER DEBUG] Item Found error:', error);
+      toast({ title: "ERROR: markItemFound", description: error.message || 'Failed to mark item as found', variant: "destructive" });
     }
   };
 
