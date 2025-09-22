@@ -42,7 +42,7 @@ import {
 import { formatCurrency } from '@/lib/currency';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useToast } from '@/hooks/use-toast';
-import { useOrderRealtime } from '@/hooks/useOrderRealtime';
+import { useOrder } from '@/hooks/useOrder';
 
 interface OrderItem {
   id: string;
@@ -107,120 +107,62 @@ interface Message {
 }
 
 export function EnhancedCustomerDashboard() {
-  const [order, setOrder] = useState<OrderTracking | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [activeTab, setActiveTab] = useState('tracking');
   const [showDeliveryMap, setShowDeliveryMap] = useState(false);
   const { toast } = useToast();
 
-  // Setup order-scoped realtime for the current order
-  useOrderRealtime({
-    orderId: order?.id || '',
-    onOrderChange: (payload) => {
-      console.log('Customer order changed:', payload);
-      // Update order state if needed
-      if (payload.new && order) {
-        setOrder(prev => prev ? { ...prev, ...payload.new } : null);
-      }
-      toast({
-        title: "Order Updated",
-        description: "Your order status has been updated"
-      });
-    },
-    onItemChange: (payload) => {
-      console.log('Customer order items changed:', payload);
-      // Update order items if needed
-      if (payload.new && order) {
-        const updatedItems = order.items.map(item => 
-          item.id === payload.new.id ? { ...item, ...payload.new } : item
-        );
-        setOrder(prev => prev ? { ...prev, items: updatedItems } : null);
-      }
-    },
-    onEventReceived: (payload) => {
-      console.log('Customer order event:', payload);
-      // Handle specific events
-      if (payload.new?.action === 'item_collected') {
-        toast({
-          title: "Item Found",
-          description: `Your shopper found: ${payload.new?.notes || 'an item'}`
-        });
-      } else if (payload.new?.action === 'substitution_requested') {
-        toast({
-          title: "Substitution Suggested",
-          description: "Your shopper has suggested a substitution. Please review.",
-          action: <Button variant="outline" onClick={() => setActiveTab('items')}>Review</Button>
-        });
-      }
-    },
-    onReconnect: () => {
-      console.log('Customer realtime reconnected');
-      // Refetch order data on reconnect
-      // In a real app, you'd have a refetch function here
-    }
-  });
+  // Use unified order store with real-time updates
+  const { order: orderData, loading: orderLoading } = useOrder('1'); // Mock order ID
 
-  // Mock data for demo
+  // Transform to expected format
+  const order: OrderTracking | null = orderData ? {
+    id: orderData.id,
+    order_number: `ORD-${orderData.id.slice(-8)}`,
+    status: orderData.status as any,
+    shopper: {
+      name: 'Maria Rodriguez',
+      avatar: '/placeholder-avatar.jpg',
+      rating: 4.96,
+      total_orders: 247
+    },
+    store_name: 'Whole Foods Market - Downtown',
+    estimated_delivery: '3:30 PM - 4:00 PM',
+    delivery_address: orderData.property_address || '123 Oak Street, Apt 4B, Seattle, WA 98101',
+    subtotal: orderData.total_amount * 0.8,
+    tax: orderData.total_amount * 0.1,
+    delivery_fee: 5.99,
+    tip: orderData.total_amount * 0.15,
+    total: orderData.total_amount,
+    special_instructions: orderData.special_instructions,
+    timeline: {
+      confirmed_at: '2:15 PM',
+      shopping_started_at: orderData.shopping_started_at ? '2:30 PM' : undefined,
+      checked_out_at: orderData.shopping_completed_at ? '3:15 PM' : undefined,
+      out_for_delivery_at: orderData.delivery_started_at ? '3:20 PM' : undefined,
+      delivered_at: orderData.delivery_completed_at ? '3:45 PM' : undefined
+    },
+    items: orderData.items.map(item => ({
+      id: item.id,
+      product_name: item.product?.name || 'Unknown Product',
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+      status: item.shopping_status as any,
+      substitution: item.substitution_data ? {
+        product_name: item.substitution_data.suggested_product,
+        reason: item.substitution_data.reason,
+        price_difference: 0.50,
+        image_url: '/placeholder-substitution.jpg'
+      } : undefined,
+      photo_url: item.photo_url,
+      notes: item.shopper_notes
+    }))
+  } : null;
+
+  // Mock messages for demo
   useEffect(() => {
-    const mockOrder: OrderTracking = {
-      id: '1',
-      order_number: 'ORD-2024-001',
-      status: 'shopping',
-      shopper: {
-        name: 'Maria Rodriguez',
-        avatar: '/placeholder-avatar.jpg',
-        rating: 4.96,
-        total_orders: 247
-      },
-      store_name: 'Whole Foods Market - Downtown',
-      estimated_delivery: '3:30 PM - 4:00 PM',
-      delivery_address: '123 Oak Street, Apt 4B, Seattle, WA 98101',
-      subtotal: 87.43,
-      tax: 7.87,
-      delivery_fee: 5.99,
-      tip: 15.50,
-      total: 116.79,
-      special_instructions: 'Please ring doorbell and leave at door if no answer',
-      timeline: {
-        confirmed_at: '2:15 PM',
-        shopping_started_at: '2:30 PM'
-      },
-      items: [
-        {
-          id: '1',
-          product_name: 'Organic Bananas',
-          quantity: 2,
-          unit_price: 3.99,
-          total_price: 7.98,
-          status: 'found',
-          photo_url: '/placeholder-product.jpg'
-        },
-        {
-          id: '2',
-          product_name: 'Almond Milk (Unsweetened)',
-          quantity: 1,
-          unit_price: 4.99,
-          total_price: 4.99,
-          status: 'substituted',
-          substitution: {
-            product_name: 'Almond Milk (Vanilla)',
-            reason: 'Unsweetened was out of stock',
-            price_difference: 0.50,
-            image_url: '/placeholder-substitution.jpg'
-          }
-        },
-        {
-          id: '3',
-          product_name: 'Organic Ground Turkey',
-          quantity: 1,
-          unit_price: 12.99,
-          total_price: 12.99,
-          status: 'pending'
-        }
-      ]
-    };
-
     const mockMessages: Message[] = [
       {
         id: '1',
@@ -253,7 +195,6 @@ export function EnhancedCustomerDashboard() {
       }
     ];
 
-    setOrder(mockOrder);
     setMessages(mockMessages);
   }, []);
 
@@ -275,15 +216,14 @@ export function EnhancedCustomerDashboard() {
   const approveSubstitution = (itemId: string) => {
     if (!order) return;
     
-    setOrder({
-      ...order,
-      items: order.items.map(item =>
-        item.id === itemId ? { ...item, status: 'found' } : item
-      )
+    // In a real app, this would update the order via API
+    toast({
+      title: "Substitution Approved",
+      description: "Substitution has been approved",
     });
   };
 
-  if (!order) return <div>Loading...</div>;
+  if (orderLoading || !order) return <div>Loading...</div>;
 
   const completedItems = order.items.filter(item => item.status === 'found').length;
   const totalItems = order.items.length;

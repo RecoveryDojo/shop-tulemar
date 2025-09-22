@@ -57,12 +57,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function EnhancedShopperDashboard() {
   const { 
+    shopperQueue, 
     availableOrders, 
-    activeOrders, 
-    deliveryQueue, 
     loading: ordersLoading, 
     error: ordersError,
-    refetchOrders 
+    refetchOrders
   } = useShopperOrders();
   
   const {

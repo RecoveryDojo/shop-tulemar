@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Search, UserPlus, Clock, Star, MapPin, Phone, CheckCircle2, AlertCircle, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { orderEventBus } from "@/lib/orderEventBus";
 
 interface StaffMember {
   id: string;
@@ -255,22 +256,50 @@ export function StaffAssignmentTool() {
         throw new Error('Staff member or order not found');
       }
 
-      // Call the comprehensive assignment workflow
-      const { data: result, error } = await supabase.functions.invoke('assignment-workflow', {
-        body: { 
-          orderId,
-          staffId,
-          role,
-          adminId: user?.id
-        }
-      });
-
-      if (error) {
-        console.error('Assignment workflow error:', error);
-        throw new Error(error.message || 'Assignment failed');
+      // Enhanced assignment with role-specific updates
+      const updateData: any = {};
+      
+      if (role === 'shopper') {
+        updateData.assigned_shopper_id = staffId;
+      } else if (role === 'concierge') {
+        updateData.assigned_concierge_id = staffId;
       }
 
-      console.log('Assignment result:', result);
+      // If order was confirmed and we're assigning first staff, move to assigned
+      if (selectedOrderData.status === 'confirmed') {
+        updateData.status = 'assigned';
+      }
+
+      // Update order with assignments
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
+
+      // Create stakeholder assignment record
+      const { error: assignmentError } = await supabase
+        .from('stakeholder_assignments')
+        .insert({
+          order_id: orderId,
+          user_id: staffId,
+          role,
+          status: 'assigned'
+        });
+
+      if (assignmentError) throw assignmentError;
+
+      // Publish assignment event
+      await orderEventBus.publish(orderId, 'ASSIGNED', {
+        shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
+        concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
+        role,
+        staff_name: selectedStaff.display_name
+      }, {
+        id: user?.id,
+        role: 'admin'
+      });
 
       // Show detailed success toast
       toast({

@@ -42,9 +42,8 @@ export interface ShoppingOrder {
 }
 
 export const useShopperOrders = () => {
+  const [shopperQueue, setShopperQueue] = useState<ShoppingOrder[]>([]);
   const [availableOrders, setAvailableOrders] = useState<ShoppingOrder[]>([]);
-  const [activeOrders, setActiveOrders] = useState<ShoppingOrder[]>([]);
-  const [deliveryQueue, setDeliveryQueue] = useState<ShoppingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -59,6 +58,21 @@ export const useShopperOrders = () => {
     try {
       console.log('useShopperOrders: Starting fetch for user:', user.id, user.email);
       setLoading(true);
+
+      // Fetch shopper queue - orders assigned to this shopper in active states
+      const { data: shopperQueueData, error: queueError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (name, description, image_url, unit, price)
+          )
+        `)
+        .eq('assigned_shopper_id', user.id)
+        .in('status', ['assigned', 'shopping', 'ready_for_checkout', 'checked_out', 'enroute']);
+
+      console.log('useShopperOrders: Shopper queue query:', { shopperQueueData, queueError });
 
       // Fetch available orders (pending, not assigned)
       const { data: available, error: availableError } = await supabase
@@ -76,86 +90,11 @@ export const useShopperOrders = () => {
       console.log('useShopperOrders: Available orders query:', { available, availableError });
 
       // If there's an error, just log it and continue with empty arrays
+      if (queueError) {
+        console.log('No shopper queue found:', queueError);
+      }
       if (availableError) {
         console.log('No available orders found or permission issue:', availableError);
-      }
-
-      // Fetch shopper's active orders (assigned to them OR via stakeholder assignments)
-      // Remove the accepted_at requirement since admin assignments should be immediately visible
-      const { data: assignedOrders, error: assignedError } = await supabase
-        .from('stakeholder_assignments')
-        .select(`
-          order_id,
-          status,
-          accepted_at,
-          orders!inner (
-            *,
-            order_items (
-              *,
-              products (name, description, image_url, unit, price)
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('role', 'shopper')
-        .in('orders.status', ['confirmed', 'assigned', 'shopping']);
-
-      console.log('useShopperOrders: Stakeholder assignments query:', { assignedOrders, assignedError });
-
-      const { data: directAssigned, error: directError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (name, description, image_url, unit, price)
-          )
-        `)
-        .eq('assigned_shopper_id', user.id)
-        .in('status', ['assigned', 'shopping']);
-
-      console.log('useShopperOrders: Direct assignment query:', { directAssigned, directError });
-
-      // Combine both assignment methods
-      let active: any[] = [];
-      if (assignedOrders) {
-        active = active.concat(assignedOrders.map((assignment: any) => assignment.orders));
-      }
-      if (directAssigned) {
-        active = active.concat(directAssigned);
-      }
-
-      // Remove duplicates
-      active = active.filter((order, index, self) => 
-        index === self.findIndex(o => o.id === order.id)
-      );
-
-      console.log('useShopperOrders: Combined active orders:', active);
-
-      if (assignedError) {
-        console.log('No assigned orders found:', assignedError);
-      }
-      if (directError) {
-        console.log('No direct assigned orders found:', directError);
-      }
-
-      // Fetch delivery queue (packed orders assigned to shopper)
-      const { data: delivery, error: deliveryError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (name, description, image_url, unit, price)
-          )
-        `)
-        .eq('assigned_shopper_id', user.id)
-        .in('status', ['packed', 'in_transit']);
-
-      console.log('useShopperOrders: Delivery queue query:', { delivery, deliveryError });
-
-      if (deliveryError) {
-        console.log('No delivery orders found:', deliveryError);
       }
 
       // Transform the data
@@ -169,27 +108,23 @@ export const useShopperOrders = () => {
         }));
       };
 
+      const transformedQueue = transformOrders(shopperQueueData || []);
       const transformedAvailable = transformOrders(available || []);
-      const transformedActive = transformOrders(active || []);
-      const transformedDelivery = transformOrders(delivery || []);
 
       console.log('useShopperOrders: Final transformed data:', {
-        available: transformedAvailable.length,
-        active: transformedActive.length,
-        delivery: transformedDelivery.length
+        queue: transformedQueue.length,
+        available: transformedAvailable.length
       });
 
+      setShopperQueue(transformedQueue);
       setAvailableOrders(transformedAvailable);
-      setActiveOrders(transformedActive);
-      setDeliveryQueue(transformedDelivery);
 
     } catch (error: any) {
       console.error('Error fetching orders:', error);
       setError(error.message || 'Failed to fetch orders');
       // Set empty arrays so the UI shows "no orders" messages
+      setShopperQueue([]);
       setAvailableOrders([]);
-      setActiveOrders([]);
-      setDeliveryQueue([]);
     } finally {
       setLoading(false);
     }
@@ -205,8 +140,8 @@ export const useShopperOrders = () => {
     // Only set up realtime if we have a user
     if (!user) return;
 
-    // Set up per-order event bus subscriptions for current user's orders
-    const currentOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
+    // Set up per-order event bus subscriptions for shopper's orders
+    const currentOrders = [...shopperQueue, ...availableOrders];
     const cleanupFunctions: (() => Promise<void>)[] = [];
 
     const setupOrderSubscriptions = async () => {
@@ -223,7 +158,10 @@ export const useShopperOrders = () => {
             } else if (
               event.event_type === 'order_updated' || 
               event.event_type === 'items_updated' ||
-              event.event_type.includes('status_changed')
+              event.event_type.includes('status_changed') ||
+              event.event_type === 'ASSIGNED' ||
+              event.event_type === 'ITEM_PICKED' ||
+              event.event_type === 'SUBSTITUTION_SUGGESTED'
             ) {
               // Refetch on any data changes
               console.log(`[useShopperOrders] Order ${order.id} data changed, refetching...`);
@@ -264,9 +202,8 @@ export const useShopperOrders = () => {
   }, [user?.id]); // Only depend on user.id to prevent excessive re-subscriptions
 
   return {
+    shopperQueue,
     availableOrders,
-    activeOrders,
-    deliveryQueue,
     loading,
     error,
     refetchOrders
