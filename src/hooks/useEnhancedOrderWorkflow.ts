@@ -8,7 +8,25 @@ export interface WorkflowError {
   retryable: boolean;
 }
 
-export const useEnhancedOrderWorkflow = () => {
+// Centralized transitions map - single source of truth
+const ALLOWED_TRANSITIONS = {
+  "pending": ["confirmed", "cancelled"],
+  "confirmed": ["assigned", "cancelled"], 
+  "assigned": ["shopping", "cancelled"],
+  "shopping": ["packed", "cancelled"],
+  "packed": ["in_transit", "cancelled"],
+  "in_transit": ["delivered", "cancelled"],
+  "delivered": [],
+  "cancelled": []
+};
+
+export interface WorkflowOptions {
+  optimistic?: boolean;
+  requireExpectedStatus?: boolean;
+}
+
+export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
+  const { optimistic = false, requireExpectedStatus = true } = options;
   const [loading, setLoading] = useState(false);
   const [lastError, setLastError] = useState<WorkflowError | null>(null);
   const { toast } = useToast();
@@ -24,6 +42,17 @@ export const useEnhancedOrderWorkflow = () => {
     setLoading(true);
     setLastError(null);
 
+    // Validate transition using centralized map
+    if (requireExpectedStatus && !ALLOWED_TRANSITIONS[expectedCurrentStatus]?.includes(targetStatus)) {
+      const error = new Error(`ILLEGAL_TRANSITION: Cannot transition from ${expectedCurrentStatus} to ${targetStatus}`);
+      setLastError({
+        code: 'ILLEGAL_TRANSITION',
+        message: error.message,
+        retryable: false
+      });
+      throw error;
+    }
+
     try {
       const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { 
@@ -35,7 +64,8 @@ export const useEnhancedOrderWorkflow = () => {
             role: actor?.role || 'shopper'
           },
           data,
-          itemId
+          itemId,
+          optimistic
         }
       });
 
@@ -129,7 +159,10 @@ export const useEnhancedOrderWorkflow = () => {
     executeWorkflowAction(orderId, 'shopping', currentStatus);
 
   const markItemFound = (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) => {
-    // Item updates use legacy API for now
+    if (requireExpectedStatus) {
+      throw new Error('ILLEGAL_TRANSITION: Item operations require expectedStatus parameter');
+    }
+    // Item updates - no client timestamps, let DB handle them
     const data = { foundQuantity, notes, photoUrl };
     return supabase.functions.invoke('enhanced-order-workflow', {
       body: { action: 'mark_item_found', itemId, data }
@@ -141,7 +174,10 @@ export const useEnhancedOrderWorkflow = () => {
   };
 
   const requestSubstitution = (itemId: string, reason: string, suggestedProduct?: string, notes?: string) => {
-    // Item updates use legacy API for now  
+    if (requireExpectedStatus) {
+      throw new Error('ILLEGAL_TRANSITION: Item operations require expectedStatus parameter');
+    }
+    // Item updates - no client timestamps, let DB handle them
     const data = { reason, suggestedProduct, notes };
     return supabase.functions.invoke('enhanced-order-workflow', {
       body: { action: 'request_substitution', itemId, data }

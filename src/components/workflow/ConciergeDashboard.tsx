@@ -293,7 +293,6 @@ export function ConciergeDashboard() {
           metadata: {
             completion_notes: completionNotes,
             quality_checks: qualityChecks,
-            completion_time: new Date().toISOString(),
             property_address: activeOrder.property_address,
             stakeholders_notified: ['customer', 'store_manager', 'driver', 'admin']
           }
@@ -336,8 +335,7 @@ export function ConciergeDashboard() {
           metadata: {
             property_address: order.property_address,
             arrival_date: order.arrival_date,
-            guest_count: order.guest_count,
-            completion_time: new Date().toISOString()
+            guest_count: order.guest_count
           }
         });
 
@@ -386,8 +384,7 @@ export function ConciergeDashboard() {
           message_content: `Order workflow completed. Order ${order.id.slice(-8)} delivered, stocked, and guest-ready at ${order.property_address}. Revenue: $${order.total_amount}.`,
           metadata: {
             workflow_complete: true,
-            revenue: order.total_amount,
-            completion_time: new Date().toISOString()
+            revenue: order.total_amount
           }
         });
 

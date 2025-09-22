@@ -76,7 +76,7 @@ export default function ProductEdit() {
           stock_quantity: product.stock_quantity,
           is_active: product.is_active,
           image_url: product.image_url,
-          updated_at: new Date().toISOString(),
+          // Let DB trigger handle updated_at
         })
         .eq('id', product.id);
 

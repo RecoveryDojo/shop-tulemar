@@ -213,10 +213,9 @@ export function CleanShopperDashboard() {
     try {
       await completeShopping(activeOrder.id, activeOrder.status);
       
-      // Broadcast shopping completed event
+      // Broadcast shopping completed event - DB will set timestamps
       await broadcastOrderEvent(activeOrder.id, 'shopping_completed', {
-        shopperId: user?.id,
-        completionTime: new Date().toISOString()
+        shopperId: user?.id
       });
       
       await refetchOrders();

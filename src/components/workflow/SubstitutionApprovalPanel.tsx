@@ -60,7 +60,7 @@ export function SubstitutionApprovalPanel() {
           shopper_notes: item.shopper_notes,
           photo_url: item.photo_url,
           price_difference: 0, // Would calculate based on substitute price
-          created_at: new Date(item.created_at || new Date()).toISOString()
+          created_at: item.created_at // Use DB timestamp
         };
       });
 
