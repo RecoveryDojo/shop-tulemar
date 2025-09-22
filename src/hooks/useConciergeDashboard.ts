@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { orderEventBus } from '@/lib/orderEventBus';
 
 export interface ConciergeOrder {
   id: string;
@@ -9,6 +10,11 @@ export interface ConciergeOrder {
   property_address: string;
   total_amount: number;
   status: string;
+  arrival_date?: string;
+  departure_date?: string;
+  guest_count?: number;
+  dietary_restrictions?: any;
+  special_instructions?: string;
 }
 
 export const useConciergeDashboard = () => {
@@ -20,9 +26,12 @@ export const useConciergeDashboard = () => {
   const fetchConciergeOrders = async () => {
     try {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error: fetchError } = await supabase
         .from('orders')
-        .select('*')
+        .select('id, customer_name, customer_email, property_address, total_amount, status')
         .in('status', ['enroute', 'arrived_property', 'stocking']);
 
       if (fetchError) throw fetchError;
@@ -49,6 +58,9 @@ export const useConciergeDashboard = () => {
 
       if (error) throw error;
 
+      // Publish event
+      await orderEventBus.publish(orderId, 'ARRIVED_PROPERTY', { status: 'arrived_property' }, { role: 'concierge' });
+
       toast({
         title: "Arrived at Property",
         description: "Marked as arrived at property",
@@ -73,6 +85,9 @@ export const useConciergeDashboard = () => {
 
       if (error) throw error;
 
+      // Publish event
+      await orderEventBus.publish(orderId, 'STOCKING_STARTED', { status: 'stocking' }, { role: 'concierge' });
+
       toast({
         title: "Stocking Started",
         description: "Kitchen preparation protocol initiated",
@@ -96,6 +111,9 @@ export const useConciergeDashboard = () => {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Publish event
+      await orderEventBus.publish(orderId, 'STOCKED_IN_UNIT', { status: 'stocked_in_unit' }, { role: 'concierge' });
 
       toast({
         title: "Stocking Complete",  

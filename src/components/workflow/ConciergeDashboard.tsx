@@ -26,20 +26,17 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
+import { useConciergeDashboard } from '@/hooks/useConciergeDashboard';
 
-interface StockingOrder {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  property_address: string;
-  arrival_date: string;
-  departure_date: string;
-  guest_count: number;
-  dietary_restrictions: any;
-  special_instructions: string;
-  total_amount: number;
-  status: string;
-  items: Array<{
+import { ConciergeOrder } from '@/hooks/useConciergeDashboard';
+
+interface StockingOrder extends ConciergeOrder {
+  arrival_date?: string;
+  departure_date?: string;
+  guest_count?: number;
+  dietary_restrictions?: any;
+  special_instructions?: string;
+  items?: Array<{
     id: string;
     product_name: string;
     quantity: number;
@@ -101,10 +98,18 @@ const STOCKING_PROTOCOL = [
 ];
 
 export function ConciergeDashboard() {
-  const [orders, setOrders] = useState<StockingOrder[]>([]);
-  const [activeOrder, setActiveOrder] = useState<StockingOrder | null>(null);
+  const { 
+    conciergeQueue, 
+    loading, 
+    error,
+    arrivedProperty,
+    startStocking,
+    completeStocking,
+    refetchOrders 
+  } = useConciergeDashboard();
+  
+  const [activeOrder, setActiveOrder] = useState<ConciergeOrder | null>(null);
   const [stockingTasks, setStockingTasks] = useState<StockingTask[]>([]);
-  const [loading, setLoading] = useState(true);
   const [completionNotes, setCompletionNotes] = useState("");
   const [qualityChecks, setQualityChecks] = useState<Record<string, boolean>>({});
   const [notificationMessage, setNotificationMessage] = useState("");
@@ -119,91 +124,24 @@ export function ConciergeDashboard() {
   ];
 
   useEffect(() => {
-    fetchStockingOrders();
-  }, []);
-
-  const fetchStockingOrders = async () => {
-    try {
-      // Get orders assigned to concierge
-      const { data: assignments } = await supabase
-        .from('stakeholder_assignments')
-        .select('order_id')
-        .eq('role', 'concierge')
-        .eq('status', 'assigned');
-
-      if (assignments && assignments.length > 0) {
-        const orderIds = assignments.map(a => a.order_id);
-        
-        const { data: ordersData, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            order_items(
-              *,
-              products(name, unit, category_id)
-            )
-          `)
-          .in('id', orderIds)
-          .in('status', ['delivered', 'stocking']);
-
-        if (error) throw error;
-        
-        const formattedOrders = ordersData?.map(order => ({
-          ...order,
-          items: order.order_items?.map(item => ({
-            id: item.id,
-            product_name: item.products?.name || 'Unknown Product',
-            quantity: item.quantity,
-            unit: item.products?.unit || 'unit',
-            category: item.products?.category_id || 'other'
-          })) || []
-        })) || [];
-
-        setOrders(formattedOrders);
-
-        // Set first stocking order as active
-        const stockingOrder = formattedOrders.find(o => o.status === 'stocking');
-        if (stockingOrder) {
-          setActiveOrder(stockingOrder);
-          generateStockingTasks(stockingOrder);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch stocking orders",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    if (conciergeQueue.length > 0 && !activeOrder) {
+      setActiveOrder(conciergeQueue[0]);
     }
-  };
+  }, [conciergeQueue, activeOrder]);
 
-  const generateStockingTasks = (order: StockingOrder) => {
-    const tasksByCategory = order.items.reduce((acc, item) => {
-      const category = getCategoryDisplayName(item.category);
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push({
-        name: item.product_name,
-        quantity: item.quantity,
-        unit: item.unit,
-        stocked: false
-      });
-      return acc;
-    }, {} as Record<string, any[]>);
-
-    const tasks = STOCKING_PROTOCOL.map(protocol => ({
+  const generateStockingTasks = (order: ConciergeOrder) => {
+    // For now, create default stocking tasks since we don't have order items
+    const defaultTasks = STOCKING_PROTOCOL.map(protocol => ({
       id: protocol.category,
       category: protocol.category,
       location: protocol.location,
-      items: tasksByCategory[protocol.category] || [],
+      items: [
+        { name: `${protocol.category} items`, quantity: 1, unit: 'batch', stocked: false }
+      ],
       completed: false
-    })).filter(task => task.items.length > 0);
+    }));
 
-    setStockingTasks(tasks);
+    setStockingTasks(defaultTasks);
   };
 
   const getCategoryDisplayName = (categoryId: string): string => {
@@ -220,35 +158,6 @@ export function ConciergeDashboard() {
     return categoryMap[categoryId] || 'Pantry Items';
   };
 
-  const startStocking = async (orderId: string) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'stocking' })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Log workflow
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: orderId,
-          phase: 'stocking',
-          action: 'stocking_started',
-          notes: 'Concierge began kitchen stocking protocol'
-        });
-
-      toast({
-        title: "Stocking Started",
-        description: "Kitchen preparation protocol initiated",
-      });
-
-      fetchStockingOrders();
-    } catch (error) {
-      console.error('Error starting stocking:', error);
-    }
-  };
 
   const toggleItemStocked = (taskId: string, itemIndex: number) => {
     setStockingTasks(prev => prev.map(task => {
@@ -266,58 +175,14 @@ export function ConciergeDashboard() {
     }));
   };
 
-  const completeStocking = async () => {
+  const handleCompleteStocking = async () => {
     if (!activeOrder) return;
-
-    try {
-      // Update order status to completed
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'completed' })
-        .eq('id', activeOrder.id);
-
-      if (error) throw error;
-
-      // Send notifications to ALL stakeholders
-      await sendCompletionNotifications(activeOrder);
-
-      // Log completion in workflow
-      await supabase
-        .from('order_workflow_log')
-        .insert({
-          order_id: activeOrder.id,
-          phase: 'completion',
-          action: 'order_completed',
-          actor_role: 'concierge',
-          notes: `Rental unit stocked and organized. All stakeholders notified. ${completionNotes}`,
-          metadata: {
-            completion_notes: completionNotes,
-            quality_checks: qualityChecks,
-            property_address: activeOrder.property_address,
-            stakeholders_notified: ['customer', 'store_manager', 'driver', 'admin']
-          }
-        });
-
-      toast({
-        title: "Order Complete!",
-        description: "Rental unit stocked successfully. All stakeholders have been notified.",
-      });
-
-      setActiveOrder(null);
-      setStockingTasks([]);
-      setCompletionNotes("");
-      setQualityChecks({});
-      setNotificationMessage("");
-      
-      fetchStockingOrders();
-    } catch (error) {
-      console.error('Error completing stocking:', error);
-      toast({
-        title: "Error",
-        description: "Failed to complete stocking process",
-        variant: "destructive",
-      });
-    }
+    await completeStocking(activeOrder.id);
+    setActiveOrder(null);
+    setStockingTasks([]);
+    setCompletionNotes("");
+    setQualityChecks({});
+    setNotificationMessage("");
   };
 
   const sendCompletionNotifications = async (order: StockingOrder) => {
@@ -470,7 +335,7 @@ export function ConciergeDashboard() {
             <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
               <div className="flex items-center gap-2 text-white">
                 <Home className="h-5 w-5" />
-                <span className="font-bold text-lg">{orders.length}</span>
+                <span className="font-bold text-lg">{conciergeQueue.length}</span>
                 <span className="text-sm text-white/80">Properties</span>
               </div>
             </div>
@@ -493,7 +358,7 @@ export function ConciergeDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {orders.map((order) => (
+            {conciergeQueue.map((order) => (
               <div 
                 key={order.id} 
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -705,7 +570,7 @@ export function ConciergeDashboard() {
 
                 {getOverallProgress() === 100 && Object.keys(qualityChecks).length >= 5 && (
                   <Button 
-                    onClick={completeStocking}
+                    onClick={() => handleCompleteStocking()}
                     className="w-full"
                     size="lg"
                   >
