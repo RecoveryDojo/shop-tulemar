@@ -61,7 +61,7 @@ export function EnhancedShopperDashboard() {
     availableOrders, 
     loading: ordersLoading, 
     error: ordersError,
-    refetchOrders
+    refetchOrders 
   } = useShopperOrders();
   
   const {
@@ -121,10 +121,10 @@ export function EnhancedShopperDashboard() {
 
   // Set the first active order when they load
   useEffect(() => {
-    if (activeOrders.length > 0 && !activeOrder) {
-      setActiveOrder(activeOrders[0]);
+    if (shopperQueue.length > 0 && !activeOrder) {
+      setActiveOrder(shopperQueue[0]);
     }
-  }, [activeOrders, activeOrder]);
+  }, [shopperQueue, activeOrder]);
 
   // Initialize item quantities when active order changes
   useEffect(() => {
@@ -372,9 +372,8 @@ export function EnhancedShopperDashboard() {
         <div className="flex items-center space-x-4">
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">{user?.email || 'Unknown user'}</span>
-            {' '}• Active: <span className="font-bold text-primary">{activeOrders.length}</span> 
-            • Available: <span className="font-bold text-green-600">{availableOrders.length}</span> 
-            • Delivery: <span className="font-bold text-blue-600">{deliveryQueue.length}</span>
+            {' '}• Queue: <span className="font-bold text-primary">{shopperQueue.length}</span> 
+            • Available: <span className="font-bold text-green-600">{availableOrders.length}</span>
             {ordersError && <span className="text-red-600 font-medium">• Error: Data fetch failed</span>}
             {connectionStatus !== 'connected' && <span className="text-yellow-600">• Realtime: {connectionStatus}</span>}
           </p>
@@ -411,31 +410,18 @@ export function EnhancedShopperDashboard() {
               )}
             </div>
             <div>
-              <h4 className="font-semibold text-primary mb-2">Active Orders ({activeOrders.length})</h4>
-              {activeOrders.length === 0 ? (
+              <h4 className="font-semibold text-primary mb-2">Shopper Queue ({shopperQueue.length})</h4>
+              {shopperQueue.length === 0 ? (
                 ordersError ? (
                   <p className="text-red-600">RLS Error: Check permissions</p>
                 ) : (
                   <p className="text-muted-foreground">No active orders</p>
                 )
               ) : (
-                activeOrders.slice(0, 3).map(order => (
+                shopperQueue.slice(0, 3).map(order => (
                   <div key={order.id} className="bg-primary/5 p-2 rounded mb-1">
                     <p className="font-medium">{order.customer_name}</p>
                     <p className="text-muted-foreground">#{order.id.slice(-6)} • {order.status} • ${order.total_amount}</p>
-                  </div>
-                ))
-              )}
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-600 mb-2">Delivery Queue ({deliveryQueue.length})</h4>
-              {deliveryQueue.length === 0 ? (
-                <p className="text-muted-foreground">No deliveries ready</p>
-              ) : (
-                deliveryQueue.slice(0, 3).map(order => (
-                  <div key={order.id} className="bg-blue-50 p-2 rounded mb-1">
-                    <p className="font-medium">{order.customer_name}</p>
-                    <p className="text-muted-foreground">#{order.id.slice(-6)} • ${order.total_amount}</p>
                   </div>
                 ))
               )}
@@ -755,58 +741,6 @@ export function EnhancedShopperDashboard() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        {/* Delivery Tab */}
-        <TabsContent value="delivery" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Delivery Queue</h3>
-            <Badge variant="outline">{deliveryQueue.length} orders ready</Badge>
-          </div>
-
-          <div className="space-y-4">
-            {deliveryQueue.map((order) => (
-              <Card key={order.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{order.customer_name}</h4>
-                      <p className="text-sm text-muted-foreground flex items-center">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {order.property_address}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.items.length} items • ${order.total_amount}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline">{order.status}</Badge>
-                       <Button 
-                         size="sm"
-                         onClick={() => handleStartDelivery(order.id)}
-                         disabled={order.status !== 'packed' || workflowLoading}
-                       >
-                         <Truck className="h-4 w-4 mr-1" />
-                         {workflowLoading ? 'Starting...' : 'Start Delivery'}
-                       </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-
-            {deliveryQueue.length === 0 && (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Deliveries Ready</h3>
-                  <p className="text-muted-foreground text-center">
-                    Orders will appear here when shopping is complete
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </TabsContent>
 
         {/* Available Orders Tab */}
