@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { MessageInterface } from './MessageInterface';
-import { useOrderRealtime, broadcastOrderEvent } from '@/hooks/useOrderRealtime';
+import { orderEventBus } from '@/lib/orderEventBus';
 
 export function CleanShopperDashboard() {
   const { user } = useAuth();
@@ -60,35 +60,7 @@ export function CleanShopperDashboard() {
   const [showDebugData, setShowDebugData] = useState(false);
   const [showMessageInterface, setShowMessageInterface] = useState(false);
 
-  // Memoize realtime config to prevent excessive re-subscriptions
-  const realtimeConfig = useMemo(() => ({
-    orderId: activeOrder?.id || '',
-    onOrderChange: () => {
-      console.log('Active order changed, refetching...');
-      refetchOrders();
-    },
-    onItemChange: () => {
-      console.log('Active order items changed, refetching...');
-      refetchOrders();
-    },
-    onEventReceived: (payload: any) => {
-      console.log('Order event received:', payload);
-      // Show toast for important events
-      if (payload.new?.action === 'substitution_requested') {
-        toast({
-          title: "Substitution Updated",
-          description: "Customer has responded to substitution request"
-        });
-      }
-    },
-    onReconnect: () => {
-      console.log('Realtime reconnected, refetching order data...');
-      refetchOrders();
-    }
-  }), [activeOrder?.id, refetchOrders, toast]);
-
-  // Setup order-scoped realtime when we have an active order
-  useOrderRealtime(realtimeConfig);
+  // Order event bus subscriptions are handled in useShopperOrders
 
   // Set first active order on load
   useEffect(() => {
@@ -113,11 +85,11 @@ export function CleanShopperDashboard() {
       const order = availableOrders.find(o => o.id === orderId);
       await acceptOrder(orderId, order?.status || 'pending');
       
-      // Broadcast order accepted event
-      await broadcastOrderEvent(orderId, 'order_accepted', {
+      // Publish order accepted event
+      await orderEventBus.publish(orderId, 'order_accepted', {
         shopperId: user?.id,
         previousStatus: order?.status
-      });
+      }, { id: user?.id, role: 'shopper' });
       
       await refetchOrders();
     } catch (error) {
@@ -151,13 +123,13 @@ export function CleanShopperDashboard() {
       
       await markItemFound(itemId, quantity, notes);
       
-      // Broadcast the item found event
+      // Publish the item found event
       if (activeOrder) {
-        await broadcastOrderEvent(activeOrder.id, 'item_marked_found', {
+        await orderEventBus.publish(activeOrder.id, 'item_marked_found', {
           itemId,
           quantity,
           notes
-        });
+        }, { id: user?.id, role: 'shopper' });
       }
       
       // Show success feedback
@@ -182,13 +154,13 @@ export function CleanShopperDashboard() {
       const notes = itemNotes[itemId] || '';
       await requestSubstitution(itemId, reason, '', notes);
       
-      // Broadcast the substitution request event
+      // Publish the substitution request event
       if (activeOrder) {
-        await broadcastOrderEvent(activeOrder.id, 'substitution_requested', {
+        await orderEventBus.publish(activeOrder.id, 'substitution_requested', {
           itemId,
           reason,
           notes
-        });
+        }, { id: user?.id, role: 'shopper' });
       }
       
       // Show success feedback  
@@ -213,10 +185,10 @@ export function CleanShopperDashboard() {
     try {
       await completeShopping(activeOrder.id, activeOrder.status);
       
-      // Broadcast shopping completed event - DB will set timestamps
-      await broadcastOrderEvent(activeOrder.id, 'shopping_completed', {
+      // Publish shopping completed event - DB will set timestamps
+      await orderEventBus.publish(activeOrder.id, 'shopping_completed', {
         shopperId: user?.id
-      });
+      }, { id: user?.id, role: 'shopper' });
       
       await refetchOrders();
       setActiveOrder(null);

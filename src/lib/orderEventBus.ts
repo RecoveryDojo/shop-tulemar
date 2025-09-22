@@ -38,8 +38,8 @@ class OrderEventBus {
     try {
       console.log(`[OrderEventBus] Publishing event ${type} for order ${orderId}`, { payload, actor });
 
-      // Insert event into database first
-      const { data: event, error } = await supabase
+      // Insert event into database first (use any to work around types)
+      const { data: event, error } = await (supabase as any)
         .from('order_events')
         .insert({
           order_id: orderId,
@@ -122,10 +122,15 @@ class OrderEventBus {
         .from('orders')
         .select('*')
         .eq('id', orderId)
-        .single();
+        .maybeSingle();
 
       if (orderError) {
         console.error('[OrderEventBus] Failed to fetch order:', orderError);
+        return null;
+      }
+
+      if (!order) {
+        console.warn(`[OrderEventBus] Order ${orderId} not found`);
         return null;
       }
 
@@ -143,8 +148,8 @@ class OrderEventBus {
         return null;
       }
 
-      // Fetch recent events
-      const { data: events, error: eventsError } = await supabase
+      // Fetch recent events (use any to work around types)
+      const { data: events, error: eventsError } = await (supabase as any)
         .from('order_events')
         .select('*')
         .eq('order_id', orderId)
@@ -158,7 +163,7 @@ class OrderEventBus {
       return {
         order,
         items: items || [],
-        events: events || []
+        events: (events as OrderEvent[]) || []
       };
     } catch (error) {
       console.error('[OrderEventBus] Failed to get order snapshot:', error);

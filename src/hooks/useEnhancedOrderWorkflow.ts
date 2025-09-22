@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { orderEventBus } from '@/lib/orderEventBus';
 
 export interface WorkflowError {
   code: string;
@@ -84,6 +85,13 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
         title: "Success",
         description: result.message,
       });
+
+      // Publish event after successful mutation
+      await orderEventBus.publish(orderId, `status_changed_to_${targetStatus}`, {
+        from: expectedCurrentStatus,
+        to: targetStatus,
+        result
+      }, actor);
 
       return result;
     } catch (error: any) {

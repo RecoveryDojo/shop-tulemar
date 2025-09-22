@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { realtimeManager } from '@/utils/realtimeConnectionManager';
 import { useToast } from '@/hooks/use-toast';
+import { orderEventBus, OrderEvent } from '@/lib/orderEventBus';
 
 export interface OrderItem {
   id: string;
@@ -205,72 +205,59 @@ export const useShopperOrders = () => {
     // Only set up realtime if we have a user
     if (!user) return;
 
-    // Set up order-scoped real-time subscriptions for current user's orders
+    // Set up per-order event bus subscriptions for current user's orders
     const currentOrders = [...availableOrders, ...activeOrders, ...deliveryQueue];
-    const subscriptions: string[] = [];
+    const cleanupFunctions: (() => Promise<void>)[] = [];
 
-    const setupRealtimeForOrders = async () => {
+    const setupOrderSubscriptions = async () => {
       for (const order of currentOrders) {
-        const ordersChannelName = `shopper-orders-${order.id}`;
-        const itemsChannelName = `shopper-orders-${order.id}-items`;
-        
         try {
-          await realtimeManager.subscribe({
-            channelName: ordersChannelName,
-            table: 'orders',
-            filter: `id=eq.${order.id}`,
-            onMessage: () => {
-              console.log(`Order ${order.id} changed, refetching...`);
+          const handleOrderEvent = (event: OrderEvent) => {
+            console.log(`[useShopperOrders] Received event for order ${order.id}:`, event.event_type);
+            
+            // Handle different event types
+            if (event.event_type === 'snapshot_reconciled') {
+              // Reconcile with canonical data on reconnect
+              console.log(`[useShopperOrders] Reconciling order ${order.id}`);
               fetchOrders();
-            },
-            onReconnect: () => {
-              console.log(`Reconnected to order ${order.id}, refetching...`);
+            } else if (
+              event.event_type === 'order_updated' || 
+              event.event_type === 'items_updated' ||
+              event.event_type.includes('status_changed')
+            ) {
+              // Refetch on any data changes
+              console.log(`[useShopperOrders] Order ${order.id} data changed, refetching...`);
               fetchOrders();
-            },
-            onError: (error) => {
-              console.error(`Error with order ${order.id} subscription:`, error);
-            },
-            retryAttempts: 2, // Reduced to prevent loops
-            retryDelay: 3000
-          });
+            }
+          };
 
-          await realtimeManager.subscribe({
-            channelName: itemsChannelName,
-            table: 'order_items',
-            filter: `order_id=eq.${order.id}`,
-            onMessage: () => {
-              console.log(`Order items for ${order.id} changed, refetching...`);
-              fetchOrders();
-            },
-            onReconnect: () => {
-              console.log(`Reconnected to order items ${order.id}, refetching...`);
-              fetchOrders();
-            },
-            onError: (error) => {
-              console.error(`Error with order items ${order.id} subscription:`, error);
-            },
-            retryAttempts: 2,
-            retryDelay: 3000
+          await orderEventBus.subscribe(order.id, handleOrderEvent);
+          
+          // Add cleanup function
+          cleanupFunctions.push(async () => {
+            try {
+              await orderEventBus.unsubscribe(order.id, handleOrderEvent);
+            } catch (error) {
+              console.error(`[useShopperOrders] Cleanup error for order ${order.id}:`, error);
+            }
           });
-
-          subscriptions.push(ordersChannelName, itemsChannelName);
         } catch (error) {
-          console.error(`Failed to subscribe to order ${order.id}:`, error);
+          console.error(`[useShopperOrders] Failed to subscribe to order ${order.id}:`, error);
         }
       }
     };
 
     if (currentOrders.length > 0) {
-      setupRealtimeForOrders();
+      setupOrderSubscriptions();
     }
 
     return () => {
       // Clean up all subscriptions
-      subscriptions.forEach(async (channelName) => {
+      cleanupFunctions.forEach(async (cleanup) => {
         try {
-          await realtimeManager.unsubscribe(channelName);
+          await cleanup();
         } catch (error) {
-          console.log(`Cleanup error for ${channelName}:`, error);
+          console.error('[useShopperOrders] Cleanup error:', error);
         }
       });
     };

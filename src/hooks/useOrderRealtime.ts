@@ -149,33 +149,16 @@ export const useOrderRealtime = (config: OrderRealtimeConfig) => {
   };
 };
 
-// Broadcast minimal delta events to order channel
+// Legacy broadcast function - now routes through orderEventBus
 export const broadcastOrderEvent = async (orderId: string, eventType: string, data: any) => {
   if (!orderId) return;
   
-  const channelName = `order-${orderId}`;
-  console.log(`[OrderRealtime] Broadcasting ${eventType} to ${channelName}:`, data);
+  console.log(`[OrderRealtime] Broadcasting ${eventType} to order ${orderId}:`, data);
   
   try {
-    // Call the backend edge function to broadcast the event
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    const { error } = await supabase.functions.invoke('broadcast-order-event', { 
-      body: {
-        orderId,
-        eventType,
-        data: {
-          ...data,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-
-    if (error) {
-      console.error(`[OrderRealtime] Failed to broadcast event:`, error);
-    } else {
-      console.log(`[OrderRealtime] Successfully broadcasted ${eventType} for order ${orderId}`);
-    }
+    const { orderEventBus } = await import('@/lib/orderEventBus');
+    await orderEventBus.publish(orderId, eventType, data);
+    console.log(`[OrderRealtime] Successfully broadcasted ${eventType} for order ${orderId}`);
   } catch (error) {
     console.error(`[OrderRealtime] Failed to broadcast event for order ${orderId}:`, error);
   }
