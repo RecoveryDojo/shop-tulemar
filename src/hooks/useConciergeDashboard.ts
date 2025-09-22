@@ -36,7 +36,7 @@ export const useConciergeDashboard = () => {
 
       if (fetchError) throw fetchError;
 
-      setConciergeQueue(data || []);
+      setConciergeQueue((data as unknown as ConciergeOrder[]) ?? []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch orders');
       setConciergeQueue([]);
