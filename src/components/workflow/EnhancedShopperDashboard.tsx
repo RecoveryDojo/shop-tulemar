@@ -68,14 +68,14 @@ export function EnhancedShopperDashboard() {
     loading: workflowLoading,
     acceptOrder,
     startShopping,
-    markItemFound,
-    requestSubstitution,
+    pickItem,
+    suggestSub,
     completeShopping,
     startDelivery,
     completeDelivery,
     lastError,
     clearError
-  } = useEnhancedOrderWorkflow({ optimistic: false, requireExpectedStatus: false });
+  } = useEnhancedOrderWorkflow({ optimistic: false, requireExpectedStatus: true });
 
   const { 
     notifications, 
@@ -147,7 +147,7 @@ export function EnhancedShopperDashboard() {
     });
     
     try {
-      const result = await acceptOrder(orderId, order?.status || 'confirmed');
+      const result = await acceptOrder(orderId, (order?.status || 'confirmed') as any);
       
       // INSTRUMENTATION: Log success  
       console.log('[SHOPPER DEBUG] Accept Order success:', result);
@@ -170,7 +170,7 @@ export function EnhancedShopperDashboard() {
     });
     
     try {
-      const result = await startShopping(orderId, order?.status || 'assigned');
+      const result = await startShopping(orderId, (order?.status || 'assigned') as any);
       
       // INSTRUMENTATION: Log success
       console.log('[SHOPPER DEBUG] Start Shopping success:', result);
@@ -197,7 +197,13 @@ export function EnhancedShopperDashboard() {
     });
     
     try {
-      const result = await markItemFound(itemId, quantity, notes);
+      const result = await pickItem({ 
+        orderId: activeOrder.id,
+        itemId, 
+        qtyPicked: quantity, 
+        expectedStatus: activeOrder.status as any,
+        notes
+      });
       
       // INSTRUMENTATION: Log success
       console.log('[SHOPPER DEBUG] Item Found success:', result);
@@ -213,7 +219,13 @@ export function EnhancedShopperDashboard() {
   const handleRequestSubstitution = async (itemId: string, reason: string) => {
     try {
       const notes = itemNotes[itemId] || '';
-      await requestSubstitution(itemId, reason, '', notes);
+      await suggestSub({ 
+        orderId: activeOrder.id,
+        itemId, 
+        reason, 
+        expectedStatus: activeOrder.status as any,
+        notes 
+      });
       refetchOrders();
     } catch (error) {
       console.error('Failed to request substitution:', error);

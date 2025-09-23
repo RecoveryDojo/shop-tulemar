@@ -9,6 +9,14 @@ export interface WorkflowError {
   retryable: boolean;
 }
 
+export type OrderStatus = 'pending' | 'confirmed' | 'assigned' | 'shopping' | 'packed' | 'in_transit' | 'delivered' | 'cancelled';
+
+type Guard = { orderId: string; expectedStatus: OrderStatus };
+type ItemPickArgs = Guard & { itemId: string; qtyPicked: number; notes?: string; photoUrl?: string };
+type SubSuggestArgs = Guard & { itemId: string; reason: string; suggestedProduct?: string; notes?: string };
+type SubDecisionArgs = Guard & { itemId: string; decision: "accept" | "reject" };
+type StatusAdvanceArgs = Guard & { to: OrderStatus };
+
 // Centralized transitions map - single source of truth
 const ALLOWED_TRANSITIONS = {
   "pending": ["confirmed", "cancelled"],
@@ -160,40 +168,74 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
   const confirmOrder = (orderId: string, currentStatus = 'pending') => 
     executeWorkflowAction(orderId, 'confirmed', currentStatus);
 
-  const acceptOrder = (orderId: string, currentStatus = 'confirmed') => 
-    executeWorkflowAction(orderId, 'assigned', currentStatus);
-
-  const startShopping = (orderId: string, currentStatus = 'assigned') => 
-    executeWorkflowAction(orderId, 'shopping', currentStatus);
-
-  const markItemFound = (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) => {
-    if (requireExpectedStatus) {
-      throw new Error('ILLEGAL_TRANSITION: Item operations require expectedStatus parameter');
-    }
-    // Item updates - no client timestamps, let DB handle them
-    const data = { foundQuantity, notes, photoUrl };
-    return supabase.functions.invoke('enhanced-order-workflow', {
-      body: { action: 'mark_item_found', itemId, data }
-    }).then(({ data: result, error }) => {
-      if (error) throw error;
-      toast({ title: "Item Found", description: "Item marked as found successfully" });
-      return result;
-    });
+  const acceptOrder = (orderId: string, expectedStatus: OrderStatus) => {
+    assertExpected(expectedStatus);
+    return executeWorkflowAction(orderId, 'assigned', expectedStatus);
   };
 
-  const requestSubstitution = (itemId: string, reason: string, suggestedProduct?: string, notes?: string) => {
-    if (requireExpectedStatus) {
-      throw new Error('ILLEGAL_TRANSITION: Item operations require expectedStatus parameter');
+  const startShopping = (orderId: string, expectedStatus: OrderStatus) => {
+    assertExpected(expectedStatus);
+    return executeWorkflowAction(orderId, 'shopping', expectedStatus);
+  };
+
+  // Helper functions
+  const assertExpected = (s?: OrderStatus): s is OrderStatus => {
+    if (!s) throw new Error("expectedStatus is required for guarded workflow");
+    return true;
+  };
+
+  const mapError = (e: any): Error => {
+    const code = e?.code || e?.message?.split(':')[0];
+    if (code === "STALE_WRITE") return new Error("Order changed in the background. Refreshing…");
+    if (code === "ILLEGAL_TRANSITION") return new Error("That step isn't allowed from the current status.");
+    return new Error("Something went wrong. Please try again.");
+  };
+
+  const pickItem = async ({ orderId, itemId, qtyPicked, expectedStatus, notes, photoUrl }: ItemPickArgs) => {
+    assertExpected(expectedStatus);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
+        body: { action: 'mark_item_found', itemId, data: { foundQuantity: qtyPicked, notes, photoUrl }, expectedStatus }
+      });
+      if (error) throw mapError(error);
+      toast({ title: "Item Found", description: "Item marked as found successfully" });
+      return result;
+    } catch (error: any) {
+      throw mapError(error);
     }
-    // Item updates - no client timestamps, let DB handle them
-    const data = { reason, suggestedProduct, notes };
-    return supabase.functions.invoke('enhanced-order-workflow', {
-      body: { action: 'request_substitution', itemId, data }
-    }).then(({ data: result, error }) => {
-      if (error) throw error;
+  };
+
+  const suggestSub = async ({ orderId, itemId, reason, suggestedProduct, notes, expectedStatus }: SubSuggestArgs) => {
+    assertExpected(expectedStatus);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
+        body: { action: 'request_substitution', itemId, data: { reason, suggestedProduct, notes }, expectedStatus }
+      });
+      if (error) throw mapError(error);
       toast({ title: "Substitution Requested", description: "Substitution request sent successfully" });
       return result;
-    });
+    } catch (error: any) {
+      throw mapError(error);
+    }
+  };
+
+  const decideSub = async ({ orderId, itemId, decision, expectedStatus }: SubDecisionArgs) => {
+    assertExpected(expectedStatus);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
+        body: { action: 'decide_substitution', itemId, data: { decision }, expectedStatus }
+      });
+      if (error) throw mapError(error);
+      toast({ title: "Substitution Decision", description: `Substitution ${decision}ed successfully` });
+      return result;
+    } catch (error: any) {
+      throw mapError(error);
+    }
+  };
+
+  const advanceStatus = async ({ orderId, to, expectedStatus }: StatusAdvanceArgs) => {
+    assertExpected(expectedStatus);
+    return executeWorkflowAction(orderId, to, expectedStatus);
   };
 
   const completeShopping = (orderId: string, currentStatus = 'shopping') =>
@@ -227,8 +269,10 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
     confirmOrder,
     acceptOrder,
     startShopping,
-    markItemFound,
-    requestSubstitution,
+    pickItem,
+    suggestSub,
+    decideSub,
+    advanceStatus,
     completeShopping,
     startDelivery,
     completeDelivery,

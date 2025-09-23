@@ -60,8 +60,8 @@ export function ShopperDashboard() {
   const {
     acceptOrder: enhancedAcceptOrder,
     startShopping: enhancedStartShopping,
-    markItemFound: enhancedMarkItemFound,
-    requestSubstitution: enhancedRequestSubstitution
+    pickItem: enhancedPickItem,
+    suggestSub: enhancedSuggestSub
   } = useEnhancedOrderWorkflow();
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export function ShopperDashboard() {
   const acceptOrder = async (orderId: string) => {
     try {
       const order = orders.find(o => o.id === orderId);
-      await enhancedAcceptOrder(orderId, order?.status || 'pending');
+      await enhancedAcceptOrder(orderId, (order?.status || 'pending') as any);
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error accepting order:', error);
@@ -132,7 +132,7 @@ export function ShopperDashboard() {
   const startShopping = async (orderId: string) => {
     try {
       const order = orders.find(o => o.id === orderId);
-      await enhancedStartShopping(orderId, order?.status || 'assigned');
+      await enhancedStartShopping(orderId, (order?.status || 'assigned') as any);
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error starting shopping:', error);
@@ -141,7 +141,16 @@ export function ShopperDashboard() {
 
   const markItemFound = async (itemId: string) => {
     try {
-      await enhancedMarkItemFound(itemId, 1, itemNotes[itemId] || '');
+      const order = orders.find(o => o.items.some(i => i.id === itemId));
+      if (!order) throw new Error('Order not found');
+      
+      await enhancedPickItem({ 
+        orderId: order.id,
+        itemId, 
+        qtyPicked: 1, 
+        expectedStatus: order.status as any,
+        notes: itemNotes[itemId] || '' 
+      });
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error marking item found:', error);
@@ -150,7 +159,16 @@ export function ShopperDashboard() {
 
   const requestSubstitution = async (itemId: string, reason: string) => {
     try {
-      await enhancedRequestSubstitution(itemId, reason, '', itemNotes[itemId] || '');
+      const order = orders.find(o => o.items.some(i => i.id === itemId));
+      if (!order) throw new Error('Order not found');
+      
+      await enhancedSuggestSub({ 
+        orderId: order.id,
+        itemId, 
+        reason,
+        expectedStatus: order.status as any,
+        notes: itemNotes[itemId] || '' 
+      });
       fetchAssignedOrders();
     } catch (error) {
       console.error('Error requesting substitution:', error);

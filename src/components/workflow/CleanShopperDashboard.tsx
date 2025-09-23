@@ -33,6 +33,20 @@ import {
   EyeOff
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import type { OrderStatus } from '@/hooks/useEnhancedOrderWorkflow';
+
+// Empty state component
+function EmptyState({ message = "Select an order to get started" }: { message?: string }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center justify-center py-12">
+        <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No Order Selected</h3>
+        <p className="text-muted-foreground text-center">{message}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function CleanShopperDashboard() {
   const { user } = useAuth();
@@ -45,10 +59,12 @@ export function CleanShopperDashboard() {
   } = useShopperOrders();
 
   const {
+    pickItem,
+    advanceStatus,
+    suggestSub,
+    decideSub,
     acceptOrder,
     startShopping,
-    markItemFound,
-    requestSubstitution,
     completeShopping,
     startDelivery,
     completeDelivery,
@@ -63,8 +79,30 @@ export function CleanShopperDashboard() {
   const [showSubstitutionForm, setShowSubstitutionForm] = useState<{ [key: string]: boolean }>({});
   const [showDebugData, setShowDebugData] = useState(false);
   const [showMessageInterface, setShowMessageInterface] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
-  // Order event bus subscriptions are handled in useShopperOrders
+  // Per-order realtime subscription
+  useEffect(() => {
+    if (!activeOrder?.id) return;
+    
+    const reconcileFromEvent = (event: any) => {
+      if (event.type === 'ITEM_PICKED') {
+        setItemQuantities(prev => ({
+          ...prev,
+          [event.payload.item_id]: event.payload.found_quantity
+        }));
+      } else if (event.type === 'STATUS_CHANGED') {
+        // Refetch orders to get updated status
+        refetchOrders();
+      }
+    };
+
+    orderEventBus.subscribe(activeOrder.id, reconcileFromEvent);
+    return () => {
+      // Cleanup handled by orderEventBus
+    };
+  }, [activeOrder?.id, refetchOrders]);
 
   // Set first active order on load
   useEffect(() => {
@@ -85,72 +123,122 @@ export function CleanShopperDashboard() {
   }, [activeOrder]);
 
   const handleItemFound = async (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setProcessingAction('itemFound');
+    
     try {
-      await markItemFound(itemId, foundQuantity, notes, photoUrl);
+      const order = shopperQueue.find(o => o.items.some(i => i.id === itemId));
+      if (!order) throw new Error('Order not found');
+      
+      await pickItem({ 
+        orderId: order.id, 
+        itemId, 
+        qtyPicked: foundQuantity, 
+        expectedStatus: order.status as OrderStatus,
+        notes,
+        photoUrl
+      });
+      
+      toast({ title: "Success", description: "Item marked as found" });
       
       // Publish item picked event
-      const item = shopperQueue.flatMap(o => o.items).find(i => i.id === itemId);
-      if (item) {
-        const order = shopperQueue.find(o => o.items.some(i => i.id === itemId));
-        if (order) {
-          await orderEventBus.publish(order.id, 'ITEM_PICKED', {
-            item_id: itemId,
-            product_name: item.product?.name,
-            found_quantity: foundQuantity,
-            notes,
-            photo_url: photoUrl
-          });
-        }
-      }
+      await orderEventBus.publish(order.id, 'ITEM_PICKED', {
+        item_id: itemId,
+        product_name: order.items.find(i => i.id === itemId)?.product?.name,
+        found_quantity: foundQuantity,
+        notes,
+        photo_url: photoUrl
+      });
       
       refetchOrders();
-    } catch (error) {
-      console.error('Error marking item found:', error);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || 'Failed to mark item found', variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleSubstitutionRequest = async (itemId: string, reason: string, suggestedProduct?: string, notes?: string) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setProcessingAction('substitution');
+    
     try {
-      await requestSubstitution(itemId, reason, suggestedProduct, notes);
+      const order = shopperQueue.find(o => o.items.some(i => i.id === itemId));
+      if (!order) throw new Error('Order not found');
+      
+      await suggestSub({ 
+        orderId: order.id, 
+        itemId, 
+        reason, 
+        suggestedProduct, 
+        notes,
+        expectedStatus: order.status as OrderStatus
+      });
+      
+      toast({ title: "Success", description: "Substitution request sent" });
       
       // Publish substitution suggested event
-      const item = shopperQueue.flatMap(o => o.items).find(i => i.id === itemId);
-      if (item) {
-        const order = shopperQueue.find(o => o.items.some(i => i.id === itemId));
-        if (order) {
-          await orderEventBus.publish(order.id, 'SUBSTITUTION_SUGGESTED', {
-            item_id: itemId,
-            product_name: item.product?.name,
-            reason,
-            suggested_product: suggestedProduct,
-            notes
-          });
-        }
-      }
+      await orderEventBus.publish(order.id, 'SUBSTITUTION_SUGGESTED', {
+        item_id: itemId,
+        product_name: order.items.find(i => i.id === itemId)?.product?.name,
+        reason,
+        suggested_product: suggestedProduct,
+        notes
+      });
       
       refetchOrders();
-    } catch (error) {
-      console.error('Error requesting substitution:', error);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || 'Failed to request substitution', variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleAcceptOrder = async (orderId: string) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setProcessingAction('acceptOrder');
+    
     try {
       const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
-      await acceptOrder(orderId, order?.status || 'confirmed');
+      if (!order) throw new Error('Order not found');
+      
+      await acceptOrder(orderId, order.status as OrderStatus);
+      toast({ title: "Success", description: "Order accepted" });
       await refetchOrders();
-    } catch (error) {
-      console.error('Error accepting order:', error);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || 'Failed to accept order', variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleStartShopping = async (orderId: string) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setProcessingAction('startShopping');
+    
     try {
       const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
-      await startShopping(orderId, order?.status || 'assigned');
+      if (!order) throw new Error('Order not found');
+      
+      await startShopping(orderId, order.status as OrderStatus);
+      toast({ title: "Success", description: "Shopping started" });
       await refetchOrders();
-    } catch (error) {
-      console.error('Error starting shopping:', error);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || 'Failed to start shopping', variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -184,7 +272,7 @@ export function CleanShopperDashboard() {
         return (
           <Button 
             onClick={() => handleStartShopping(order.id)}
-            disabled={workflowLoading}
+            disabled={isProcessing || processingAction === 'startShopping'}
             className="bg-orange-500 hover:bg-orange-600"
           >
             Start Shopping
@@ -201,7 +289,7 @@ export function CleanShopperDashboard() {
             </Button>
             <Button 
               onClick={() => completeShopping(order.id, 'shopping')}
-              disabled={workflowLoading}
+              disabled={isProcessing}
               className="bg-green-500 hover:bg-green-600"
             >
               Complete Shopping
@@ -299,15 +387,9 @@ export function CleanShopperDashboard() {
           {/* Shopper Queue Tab */}
           <TabsContent value="queue" className="space-y-6">
             {shopperQueue.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Active Orders</h3>
-                  <p className="text-muted-foreground text-center">
-                    You don't have any orders assigned to you right now. Check the Available tab for new orders.
-                  </p>
-                </CardContent>
-              </Card>
+              <EmptyState message="You don't have any orders assigned to you right now. Check the Available tab for new orders." />
+            ) : !activeOrder ? (
+              <EmptyState message="Select an order from your queue to get started." />
             ) : (
               <div className="grid gap-6">
                 {/* Order Selection */}
@@ -437,11 +519,11 @@ export function CleanShopperDashboard() {
                                               <Plus className="h-3 w-3" />
                                             </Button>
                                           </div>
-                                          <Button
-                                            onClick={() => handleItemFound(item.id, itemQuantities[item.id] || 0, itemNotes[item.id])}
-                                            disabled={!itemQuantities[item.id]}
-                                            size="sm"
-                                          >
+                                           <Button
+                                             onClick={() => handleItemFound(item.id, itemQuantities[item.id] || 0, itemNotes[item.id])}
+                                             disabled={!itemQuantities[item.id] || isProcessing || processingAction === 'itemFound'}
+                                             size="sm"
+                                           >
                                             <CheckCircle2 className="h-4 w-4 mr-1" />
                                             Found
                                           </Button>
@@ -474,14 +556,14 @@ export function CleanShopperDashboard() {
                                         rows={2}
                                       />
                                       <div className="flex gap-2">
-                                        <Button
-                                          size="sm"
-                                          onClick={() => {
-                                            handleSubstitutionRequest(item.id, substitutionRequests[item.id]);
-                                            setShowSubstitutionForm(prev => ({ ...prev, [item.id]: false }));
-                                          }}
-                                          disabled={!substitutionRequests[item.id]}
-                                        >
+                                         <Button
+                                           size="sm"
+                                           onClick={() => {
+                                             handleSubstitutionRequest(item.id, substitutionRequests[item.id]);
+                                             setShowSubstitutionForm(prev => ({ ...prev, [item.id]: false }));
+                                           }}
+                                           disabled={!substitutionRequests[item.id] || isProcessing || processingAction === 'substitution'}
+                                         >
                                           Request Substitution
                                         </Button>
                                         <Button
@@ -549,10 +631,10 @@ export function CleanShopperDashboard() {
                             {order.status}
                           </Badge>
                         </div>
-                        <Button 
-                          onClick={() => handleAcceptOrder(order.id)}
-                          disabled={workflowLoading}
-                        >
+                         <Button 
+                           onClick={() => handleAcceptOrder(order.id)}
+                           disabled={isProcessing || processingAction === 'acceptOrder'}
+                         >
                           Accept Order
                         </Button>
                       </div>
