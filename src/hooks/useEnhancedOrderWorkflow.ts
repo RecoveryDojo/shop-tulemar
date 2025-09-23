@@ -193,43 +193,83 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
 
   const pickItem = async ({ orderId, itemId, qtyPicked, expectedStatus, notes, photoUrl }: ItemPickArgs) => {
     assertExpected(expectedStatus);
+    setLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { action: 'mark_item_found', itemId, data: { foundQuantity: qtyPicked, notes, photoUrl }, expectedStatus }
       });
       if (error) throw mapError(error);
-      toast({ title: "Item Found", description: "Item marked as found successfully" });
+      
+      toast({ title: "OK: pickItem", description: "Item marked as found successfully" });
+      
+      // Publish event after successful mutation
+      await orderEventBus.publish(orderId, 'ITEM_PICKED', {
+        item_id: itemId,
+        found_quantity: qtyPicked,
+        notes,
+        photo_url: photoUrl
+      }, { role: 'shopper' });
+      
       return result;
     } catch (error: any) {
+      toast({ title: "ERROR: pickItem", description: mapError(error).message, variant: "destructive" });
       throw mapError(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const suggestSub = async ({ orderId, itemId, reason, suggestedProduct, notes, expectedStatus }: SubSuggestArgs) => {
     assertExpected(expectedStatus);
+    setLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { action: 'request_substitution', itemId, data: { reason, suggestedProduct, notes }, expectedStatus }
       });
       if (error) throw mapError(error);
-      toast({ title: "Substitution Requested", description: "Substitution request sent successfully" });
+      
+      toast({ title: "OK: suggestSub", description: "Substitution request sent successfully" });
+      
+      // Publish event after successful mutation
+      await orderEventBus.publish(orderId, 'SUBSTITUTION_SUGGESTED', {
+        item_id: itemId,
+        reason,
+        suggested_product: suggestedProduct,
+        notes
+      }, { role: 'shopper' });
+      
       return result;
     } catch (error: any) {
+      toast({ title: "ERROR: suggestSub", description: mapError(error).message, variant: "destructive" });
       throw mapError(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const decideSub = async ({ orderId, itemId, decision, expectedStatus }: SubDecisionArgs) => {
     assertExpected(expectedStatus);
+    setLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('enhanced-order-workflow', {
         body: { action: 'decide_substitution', itemId, data: { decision }, expectedStatus }
       });
       if (error) throw mapError(error);
-      toast({ title: "Substitution Decision", description: `Substitution ${decision}ed successfully` });
+      
+      toast({ title: "OK: decideSub", description: `Substitution ${decision}ed successfully` });
+      
+      // Publish event after successful mutation
+      await orderEventBus.publish(orderId, 'SUBSTITUTION_DECISION', {
+        item_id: itemId,
+        decision
+      }, { role: 'customer' });
+      
       return result;
     } catch (error: any) {
+      toast({ title: "ERROR: decideSub", description: mapError(error).message, variant: "destructive" });
       throw mapError(error);
+    } finally {
+      setLoading(false);
     }
   };
 

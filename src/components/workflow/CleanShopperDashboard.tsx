@@ -87,20 +87,33 @@ export function CleanShopperDashboard() {
     if (!activeOrder?.id) return;
     
     const reconcileFromEvent = (event: any) => {
-      if (event.type === 'ITEM_PICKED') {
+      console.log('[CleanShopperDashboard] Received event:', event);
+      
+      if (event.event_type === 'ITEM_PICKED') {
+        // Patch item quantity from event
         setItemQuantities(prev => ({
           ...prev,
           [event.payload.item_id]: event.payload.found_quantity
         }));
-      } else if (event.type === 'STATUS_CHANGED') {
-        // Refetch orders to get updated status
+        toast({ title: "Item Updated", description: "Item quantity updated in real-time" });
+      } else if (event.event_type === 'STATUS_CHANGED' || event.event_type.startsWith('status_changed_to_')) {
+        // Apply status change from event
+        toast({ 
+          title: "Order Status Updated", 
+          description: `Status changed from ${event.payload.from} to ${event.payload.to}` 
+        });
+        refetchOrders();
+      } else if (event.event_type === 'snapshot_reconciled') {
+        // Refetch snapshot on reconnect
+        console.log('[CleanShopperDashboard] Reconciling from snapshot');
         refetchOrders();
       }
     };
 
     orderEventBus.subscribe(activeOrder.id, reconcileFromEvent);
+    
     return () => {
-      // Cleanup handled by orderEventBus
+      orderEventBus.unsubscribe(activeOrder.id, reconcileFromEvent);
     };
   }, [activeOrder?.id, refetchOrders]);
 
@@ -123,7 +136,7 @@ export function CleanShopperDashboard() {
   }, [activeOrder]);
 
   const handleItemFound = async (itemId: string, foundQuantity: number, notes?: string, photoUrl?: string) => {
-    if (isProcessing) return;
+    if (isProcessing || processingAction === 'itemFound') return;
     
     setIsProcessing(true);
     setProcessingAction('itemFound');
@@ -141,20 +154,17 @@ export function CleanShopperDashboard() {
         photoUrl
       });
       
-      toast({ title: "Success", description: "Item marked as found" });
-      
-      // Publish item picked event
-      await orderEventBus.publish(order.id, 'ITEM_PICKED', {
-        item_id: itemId,
-        product_name: order.items.find(i => i.id === itemId)?.product?.name,
-        found_quantity: foundQuantity,
-        notes,
-        photo_url: photoUrl
-      });
-      
+      // Event published by pickItem hook
       refetchOrders();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || 'Failed to mark item found', variant: "destructive" });
+      console.error('[CleanShopperDashboard] handleItemFound error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to mark item found', variant: "destructive" });
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -162,7 +172,7 @@ export function CleanShopperDashboard() {
   };
 
   const handleSubstitutionRequest = async (itemId: string, reason: string, suggestedProduct?: string, notes?: string) => {
-    if (isProcessing) return;
+    if (isProcessing || processingAction === 'substitution') return;
     
     setIsProcessing(true);
     setProcessingAction('substitution');
@@ -180,20 +190,17 @@ export function CleanShopperDashboard() {
         expectedStatus: order.status as OrderStatus
       });
       
-      toast({ title: "Success", description: "Substitution request sent" });
-      
-      // Publish substitution suggested event
-      await orderEventBus.publish(order.id, 'SUBSTITUTION_SUGGESTED', {
-        item_id: itemId,
-        product_name: order.items.find(i => i.id === itemId)?.product?.name,
-        reason,
-        suggested_product: suggestedProduct,
-        notes
-      });
-      
+      // Event published by suggestSub hook
       refetchOrders();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || 'Failed to request substitution', variant: "destructive" });
+      console.error('[CleanShopperDashboard] handleSubstitutionRequest error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to request substitution', variant: "destructive" });
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -201,20 +208,26 @@ export function CleanShopperDashboard() {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
-    if (isProcessing) return;
+    if (isProcessing || processingAction === 'acceptOrder') return;
     
     setIsProcessing(true);
     setProcessingAction('acceptOrder');
     
     try {
-      const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+      const order = availableOrders.find(o => o.id === orderId);
       if (!order) throw new Error('Order not found');
       
       await acceptOrder(orderId, order.status as OrderStatus);
-      toast({ title: "Success", description: "Order accepted" });
       await refetchOrders();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || 'Failed to accept order', variant: "destructive" });
+      console.error('[CleanShopperDashboard] handleAcceptOrder error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to accept order', variant: "destructive" });
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -222,20 +235,26 @@ export function CleanShopperDashboard() {
   };
 
   const handleStartShopping = async (orderId: string) => {
-    if (isProcessing) return;
+    if (isProcessing || processingAction === 'startShopping') return;
     
     setIsProcessing(true);
     setProcessingAction('startShopping');
     
     try {
-      const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+      const order = shopperQueue.find(o => o.id === orderId);
       if (!order) throw new Error('Order not found');
       
       await startShopping(orderId, order.status as OrderStatus);
-      toast({ title: "Success", description: "Shopping started" });
       await refetchOrders();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || 'Failed to start shopping', variant: "destructive" });
+      console.error('[CleanShopperDashboard] handleStartShopping error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to start shopping', variant: "destructive" });
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);

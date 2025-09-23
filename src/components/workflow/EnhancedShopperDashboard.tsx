@@ -139,7 +139,7 @@ export function EnhancedShopperDashboard() {
 
   const handleAcceptOrder = async (orderId: string) => {
     // INSTRUMENTATION: Log button click
-    const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+    const order = availableOrders.find(o => o.id === orderId);
     console.log('[SHOPPER DEBUG] Accept Order clicked:', { 
       intent: 'acceptOrder', 
       orderId, 
@@ -162,7 +162,7 @@ export function EnhancedShopperDashboard() {
 
   const handleStartShopping = async (orderId: string) => {
     // INSTRUMENTATION: Log button click
-    const order = shopperQueue.find(o => o.id === orderId) || availableOrders.find(o => o.id === orderId);
+    const order = shopperQueue.find(o => o.id === orderId);
     console.log('[SHOPPER DEBUG] Start Shopping clicked:', { 
       intent: 'startShopping', 
       orderId, 
