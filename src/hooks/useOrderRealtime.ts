@@ -273,7 +273,12 @@ export const broadcastOrderEvent = async (orderId: string, eventType: string, da
   
   try {
     const { orderEventBus } = await import('@/lib/orderEventBus');
-    await orderEventBus.publish(orderId, eventType, data);
+    orderEventBus.publish({
+      order_id: orderId,
+      event_type: eventType,
+      actor_role: 'system',
+      data: data
+    });
     console.log(`[OrderRealtime] Successfully broadcasted ${eventType} for order ${orderId}`);
   } catch (error) {
     console.error(`[OrderRealtime] Failed to broadcast event for order ${orderId}:`, error);

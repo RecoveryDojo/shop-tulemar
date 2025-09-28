@@ -291,14 +291,16 @@ export function StaffAssignmentTool() {
       if (assignmentError) throw assignmentError;
 
       // Publish assignment event
-      await orderEventBus.publish(orderId, 'ASSIGNED', {
-        shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
-        concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
-        role,
-        staff_name: selectedStaff.display_name
-      }, {
-        id: user?.id,
-        role: 'admin'
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'ASSIGNED',
+        actor_role: 'admin',
+        data: {
+          shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
+          concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
+          role,
+          staff_name: selectedStaff.display_name
+        }
       });
 
       // Show detailed success toast

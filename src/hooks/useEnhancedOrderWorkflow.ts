@@ -95,11 +95,16 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
       });
 
       // Publish event after successful mutation
-      await orderEventBus.publish(orderId, `status_changed_to_${targetStatus}`, {
-        from: expectedCurrentStatus,
-        to: targetStatus,
-        result
-      }, actor);
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: `status_changed_to_${targetStatus}`,
+        actor_role: actor?.role || 'system',
+        data: {
+          from: expectedCurrentStatus,
+          to: targetStatus,
+          result
+        }
+      });
 
       return result;
     } catch (error: any) {
@@ -203,12 +208,17 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
       toast({ title: "OK: pickItem", description: "Item marked as found successfully" });
       
       // Publish event after successful mutation
-      await orderEventBus.publish(orderId, 'ITEM_PICKED', {
-        item_id: itemId,
-        found_quantity: qtyPicked,
-        notes,
-        photo_url: photoUrl
-      }, { role: 'shopper' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'ITEM_PICKED',
+        actor_role: 'shopper',
+        data: {
+          item_id: itemId,
+          found_quantity: qtyPicked,
+          notes,
+          photo_url: photoUrl
+        }
+      });
       
       return result;
     } catch (error: any) {
@@ -231,12 +241,17 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
       toast({ title: "OK: suggestSub", description: "Substitution request sent successfully" });
       
       // Publish event after successful mutation
-      await orderEventBus.publish(orderId, 'SUBSTITUTION_SUGGESTED', {
-        item_id: itemId,
-        reason,
-        suggested_product: suggestedProduct,
-        notes
-      }, { role: 'shopper' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'SUBSTITUTION_SUGGESTED',
+        actor_role: 'shopper',
+        data: {
+          item_id: itemId,
+          reason,
+          suggested_product: suggestedProduct,
+          notes
+        }
+      });
       
       return result;
     } catch (error: any) {
@@ -259,10 +274,15 @@ export const useEnhancedOrderWorkflow = (options: WorkflowOptions = {}) => {
       toast({ title: "OK: decideSub", description: `Substitution ${decision}ed successfully` });
       
       // Publish event after successful mutation
-      await orderEventBus.publish(orderId, 'SUBSTITUTION_DECISION', {
-        item_id: itemId,
-        decision
-      }, { role: 'customer' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'SUBSTITUTION_DECISION',
+        actor_role: 'customer',
+        data: {
+          item_id: itemId,
+          decision
+        }
+      });
       
       return result;
     } catch (error: any) {

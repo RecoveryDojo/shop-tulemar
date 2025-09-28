@@ -61,7 +61,7 @@ export const useOrder = (orderId: string) => {
       setLoading(true);
       setError(null);
 
-      const snapshot = await orderEventBus.getOrderSnapshot(orderId);
+      const snapshot = await orderEventBus.fetchSnapshot(orderId);
       if (snapshot) {
         const transformedOrder: OrderState = {
           ...snapshot.order,
@@ -87,8 +87,8 @@ export const useOrder = (orderId: string) => {
     console.log(`[useOrder] Processing event for order ${orderId}:`, event.event_type);
 
     // Handle snapshot reconciliation on reconnect
-    if (event.event_type === 'snapshot_reconciled') {
-      const snapshot = event.payload as OrderSnapshot;
+    if (event.event_type === 'SNAPSHOT_RECONCILED') {
+      const snapshot = event.data as OrderSnapshot;
       const transformedOrder: OrderState = {
         ...snapshot.order,
         items: snapshot.items.map(item => ({
@@ -106,19 +106,19 @@ export const useOrder = (orderId: string) => {
       if (!prevOrder) return prevOrder;
 
       // Update order data
-      if (event.event_type === 'order_updated' && event.payload.new) {
+      if (event.event_type === 'order_updated' && event.data.new) {
         return {
           ...prevOrder,
-          ...event.payload.new,
+          ...event.data.new,
           events: [event, ...prevOrder.events]
         };
       }
 
       // Update items
-      if (event.event_type === 'items_updated' && event.payload.new) {
+      if (event.event_type === 'items_updated' && event.data.new) {
         const updatedItems = prevOrder.items.map(item =>
-          item.id === event.payload.new.id 
-            ? { ...item, ...event.payload.new, product: item.product }
+          item.id === event.data.new.id 
+            ? { ...item, ...event.data.new, product: item.product }
             : item
         );
         return {
@@ -153,7 +153,7 @@ export const useOrder = (orderId: string) => {
         description: "Please review the suggested substitution",
       });
     } else if (event.event_type === 'ASSIGNED') {
-      const { shopper_id, concierge_id } = event.payload;
+      const { shopper_id, concierge_id } = event.data;
       toast({
         title: "Staff Assigned",
         description: `Staff has been assigned to your order`,

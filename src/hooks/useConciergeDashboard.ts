@@ -59,7 +59,12 @@ export const useConciergeDashboard = () => {
       if (error) throw error;
 
       // Publish event
-      await orderEventBus.publish(orderId, 'ARRIVED_PROPERTY', { status: 'arrived_property' }, { role: 'concierge' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'ARRIVED_PROPERTY',
+        actor_role: 'concierge',
+        data: { status: 'arrived_property' }
+      });
 
       toast({
         title: "Arrived at Property",
@@ -86,7 +91,12 @@ export const useConciergeDashboard = () => {
       if (error) throw error;
 
       // Publish event
-      await orderEventBus.publish(orderId, 'STOCKING_STARTED', { status: 'stocking' }, { role: 'concierge' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'STOCKING_STARTED',
+        actor_role: 'concierge',
+        data: { status: 'stocking' }
+      });
 
       toast({
         title: "Stocking Started",
@@ -113,7 +123,12 @@ export const useConciergeDashboard = () => {
       if (error) throw error;
 
       // Publish event
-      await orderEventBus.publish(orderId, 'STOCKED_IN_UNIT', { status: 'stocked_in_unit' }, { role: 'concierge' });
+      orderEventBus.publish({
+        order_id: orderId,
+        event_type: 'STOCKED_IN_UNIT',
+        actor_role: 'concierge',
+        data: { status: 'stocked_in_unit' }
+      });
 
       toast({
         title: "Stocking Complete",  
