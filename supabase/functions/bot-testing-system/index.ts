@@ -298,7 +298,7 @@ async function createBotUser(botProfile: any) {
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
-        id: user.id,
+        id: user?.id || '',
         display_name: botProfile.display_name,
         email: botProfile.email,
         bio: botProfile.bio,
@@ -313,7 +313,7 @@ async function createBotUser(botProfile: any) {
     const { error: roleError } = await supabase
       .from('user_roles')
       .upsert({
-        user_id: user.id,
+        user_id: user?.id || '',
         role: botProfile.role
       });
 
@@ -322,7 +322,7 @@ async function createBotUser(botProfile: any) {
     }
 
     // Store user_id in botProfile for messaging
-    botProfile.user_id = user.id;
+    botProfile.user_id = user?.id || '';
 
     return user;
   } catch (error) {
@@ -392,7 +392,7 @@ async function sendBotMessage(senderId: string, recipientId: string, messageType
       order_complete: `Your order has been completed successfully! Thank you for choosing our service. We hope you enjoyed everything!`
     };
 
-    const message = messages[messageType] || `Update on your order #${orderData.id.slice(-8)}`;
+    const message = (messages as any)[messageType] || `Update on your order #${orderData.id.slice(-8)}`;
 
     const { error } = await supabase
       .from('user_messages')
@@ -438,9 +438,9 @@ async function simulateOrderWorkflow(order: any, botProfile: any, results: any) 
     .select('user_id, role')
     .in('role', ['shopper', 'driver', 'concierge', 'store_manager']);
 
-  const staffByRole = {};
+  const staffByRole: { [key: string]: string[] } = {};
   if (staffUsers) {
-    staffUsers.forEach(user => {
+    staffUsers.forEach((user: any) => {
       if (!staffByRole[user.role]) staffByRole[user.role] = [];
       staffByRole[user.role].push(user.user_id);
     });
@@ -612,7 +612,7 @@ async function handleErrorFix(errorType: string, context: any) {
     }
   } catch (error) {
     console.error('Fix attempt failed:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
   }
   
   return { success: false, message: 'No fix action available' };
@@ -660,7 +660,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Bot simulation error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

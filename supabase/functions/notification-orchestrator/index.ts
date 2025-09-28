@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     };
 
-    const templates = notificationTemplates[notificationType] || {};
+    const templates = (notificationTemplates as any)[notificationType] || {};
     const notifications = [];
 
     // Handle specific recipient scenarios
@@ -231,7 +231,7 @@ function determinePreferredChannel(role: string, notificationType: string): stri
     'admin': 'email'
   };
   
-  return roleChannelPrefs[role] || 'email';
+  return (roleChannelPrefs as any)[role] || 'email';
 }
 
 async function processNotification(notification: any): Promise<void> {
@@ -279,7 +279,7 @@ async function processNotification(notification: any): Promise<void> {
       .from('order_notifications')
       .update({ 
         status: 'failed', 
-        error_message: error.message 
+        error_message: error instanceof Error ? error.message : 'Unknown error' 
       })
       .eq('order_id', notification.order_id)
       .eq('recipient_identifier', notification.recipient_identifier);
@@ -303,7 +303,7 @@ function mapToValidRecipientType(inputType: string): string {
     'admin': 'admin'
   };
   
-  return typeMapping[inputType] || 'client';
+  return (typeMapping as any)[inputType] || 'client';
 }
 
 serve(handler);

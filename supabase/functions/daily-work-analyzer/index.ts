@@ -99,7 +99,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in daily work analysis:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       success: false,
       timestamp: new Date().toISOString()
     }), {
@@ -114,16 +114,16 @@ async function analyzeWorkWithAI(openAIApiKey: string, data: any) {
 You are a comprehensive work analysis AI. Analyze the following development work data and provide detailed insights:
 
 PROJECTS (${data.projects.length}):
-${data.projects.map(p => `- ${p.name}: ${p.description} (${p.status})`).join('\n')}
+${data.projects.map((p: any) => `- ${p.name}: ${p.description} (${p.status})`).join('\n')}
 
 FEATURES (${data.features.length}):
-${data.features.map(f => `- ${f.name}: ${f.completion_percentage}% complete, ${f.actual_hours}h/${f.estimated_hours}h`).join('\n')}
+${data.features.map((f: any) => `- ${f.name}: ${f.completion_percentage}% complete, ${f.actual_hours}h/${f.estimated_hours}h`).join('\n')}
 
 TASKS (${data.tasks.length}):
-${data.tasks.map(t => `- ${t.title}: ${t.status} (${t.priority} priority)`).join('\n')}
+${data.tasks.map((t: any) => `- ${t.title}: ${t.status} (${t.priority} priority)`).join('\n')}
 
 WORK SESSIONS (${data.workSessions.length}):
-${data.workSessions.map(s => `- ${s.session_type}: ${s.activity_summary || 'Development work'}`).join('\n')}
+${data.workSessions.map((s: any) => `- ${s.session_type}: ${s.activity_summary || 'Development work'}`).join('\n')}
 
 Please provide a comprehensive analysis including:
 1. Overall productivity assessment for ${data.targetDate}
@@ -270,7 +270,7 @@ async function updateWorkCategories(supabase: any, features: any[], analysis: st
   console.log('Updating work categories...');
   
   // Analyze and categorize features based on their content
-  const categories = {};
+  const categories: { [key: string]: any[] } = {};
   
   for (const feature of features) {
     const text = (feature.name + ' ' + feature.description).toLowerCase();
@@ -313,7 +313,7 @@ async function generateProductivityInsights(supabase: any, analysis: string) {
   insights.totalTasks = tasks?.length || 0;
   
   if (tasks?.length > 0) {
-    const completedTasks = tasks.filter(t => t.status === 'done').length;
+    const completedTasks = tasks.filter((t: any) => t.status === 'done').length;
     insights.completionRate = Math.round((completedTasks / tasks.length) * 100);
   }
 

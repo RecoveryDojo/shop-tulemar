@@ -95,7 +95,8 @@ async function processAndUploadImage(
       img.resize(w, h);
     }
 
-    const webp = await img.encodeWEBP(85);
+    // const webp = await img.encodeWEBP(85); // This method doesn't exist
+    const webp = await img.encode(); // Use generic encode method
     const filePath = `${userId}/${Date.now()}-${slugify(productName)}.webp`;
 
     const { error: uploadError } = await supabase.storage
@@ -391,7 +392,6 @@ serve(async (req) => {
       price: product.price,
       category_id: product.category_id,
       unit: product.unit,
-      origin: product.origin,
       image_url: product.image_url,
       stock_quantity: product.stock_quantity,
       errors: product.errors,
@@ -414,7 +414,7 @@ serve(async (req) => {
     };
 
     const learningStats = {
-      auto_fixes_applied: normalizedProducts.filter(p => p.auto_fixes?.length > 0).length,
+      auto_fixes_applied: normalizedProducts.filter(p => p.auto_fixes && p.auto_fixes.length > 0).length,
       high_confidence_suggestions: normalizedProducts.filter(p => (p.confidence_score || 0) > 0.8).length,
       patterns_learned: normalizedProducts.reduce((acc, p) => acc + (p.learned_patterns_applied?.length || 0), 0)
     };

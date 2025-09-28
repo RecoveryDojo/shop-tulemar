@@ -135,7 +135,7 @@ serve(async (req) => {
           inputData: product,
           outputData: null,
           success: false,
-          errorMessage: error.message
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
         });
         
         // Add product with error status
@@ -175,7 +175,7 @@ serve(async (req) => {
     console.error('Error in enhanced AI processor:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -435,7 +435,7 @@ function calculateQualityMetrics(products: EnhancedProduct[]): any {
   ).length;
   metrics.completeness_rate = completeProducts / products.length;
   
-  const enrichedProducts = products.filter(p => p.data_sources?.length > 0).length;
+  const enrichedProducts = products.filter(p => p.data_sources && p.data_sources.length > 0).length;
   metrics.enrichment_rate = enrichedProducts / products.length;
   
   metrics.validation_failures = products.filter(p => 

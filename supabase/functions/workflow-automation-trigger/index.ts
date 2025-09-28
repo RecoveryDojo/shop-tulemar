@@ -71,12 +71,15 @@ serve(async (req) => {
       }
     ];
 
-    // Find applicable rules
-    const applicableRules = automationRules.filter(rule => 
-      rule.enabled && 
-      rule.trigger_status === currentStatus &&
-      await checkConditions(rule.conditions, order)
-    );
+    // Find applicable rules - handle async conditions sequentially
+    const applicableRules = [];
+    for (const rule of automationRules) {
+      if (rule.enabled && 
+          rule.trigger_status === currentStatus &&
+          await checkConditions(rule.conditions, order)) {
+        applicableRules.push(rule);
+      }
+    }
 
     console.log(`Found ${applicableRules.length} applicable automation rules`);
 
@@ -252,7 +255,7 @@ async function sendAutomatedNotifications(orderId: string, triggerStatus: string
       'delivered': 'delivered'
     };
 
-    const notificationType = statusToNotification[triggerStatus] || 'status_update';
+    const notificationType = (statusToNotification as any)[triggerStatus] || 'status_update';
 
     await supabase.functions.invoke('notification-orchestrator', {
       body: {

@@ -92,7 +92,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in enhanced-order-workflow:', error);
     
-    const errorMessage = error.message;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     let status = 400;
     
     if (errorMessage === ERRORS.UNAUTHORIZED) {
@@ -149,7 +149,7 @@ async function advanceOrderStatus(supabase: any, params: ActionParams) {
 
     // Step (c): Validate transition is allowed
     const allowedTransitions = ALLOWED_TRANSITIONS[currentOrder.status as keyof typeof ALLOWED_TRANSITIONS] || [];
-    if (!allowedTransitions.includes(to as any)) {
+    if (!Array.from(allowedTransitions).includes(to as any)) {
       const message = `${ERRORS.ILLEGAL_TRANSITION}: Cannot transition from '${currentOrder.status}' to '${to}'. Allowed: [${allowedTransitions.join(', ')}]`;
       console.error(message);
       throw new Error(message);
@@ -220,12 +220,14 @@ async function advanceOrderStatus(supabase: any, params: ActionParams) {
     await sendStatusNotification(supabase, orderId, to);
 
     // Step (g): Return fresh order data
-    return {
+    return new Response(JSON.stringify({
       success: true,
       order: updatedOrder,
       message: `Order status advanced from ${expectedStatus} to ${to}`,
       transition: { from: expectedStatus, to }
-    };
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
     console.error('Transaction failed:', error);
@@ -399,10 +401,12 @@ async function markItemFound(supabase: any, itemId: string, data: any) {
     throw new Error('Failed to mark item as found');
   }
 
-  return {
+  return new Response(JSON.stringify({
     success: true,
     message: 'Item marked as found'
-  };
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 }
 
 async function requestSubstitution(supabase: any, itemId: string, data: any) {
@@ -427,10 +431,12 @@ async function requestSubstitution(supabase: any, itemId: string, data: any) {
     throw new Error('Failed to request substitution');
   }
 
-  return {
+  return new Response(JSON.stringify({
     success: true,
     message: 'Substitution requested'
-  };
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 }
 
 async function rollbackStatus(supabase: any, orderId: string, targetStatus: string, userId: string) {
@@ -447,9 +453,11 @@ async function rollbackStatus(supabase: any, orderId: string, targetStatus: stri
     throw new Error(error.message || 'Failed to rollback order status');
   }
 
-  return {
+  return new Response(JSON.stringify({
     success: true,
     message: `Order rolled back to ${targetStatus}`,
     result
-  };
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 }
