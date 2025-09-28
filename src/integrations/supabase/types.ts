@@ -707,6 +707,102 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_order_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          event_type: string
+          id: string
+          order_id: string
+          payload: Json | null
+          updated_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          order_id: string
+          payload?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          order_id?: string
+          payload?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      legacy_order_items: {
+        Row: {
+          created_at: string | null
+          found_quantity: number | null
+          id: string
+          order_id: string
+          photo_url: string | null
+          product_id: string
+          quantity: number
+          shopper_notes: string | null
+          shopping_status: string | null
+          substitution_data: Json | null
+          total_price: number
+          unit_price: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          found_quantity?: number | null
+          id?: string
+          order_id: string
+          photo_url?: string | null
+          product_id: string
+          quantity: number
+          shopper_notes?: string | null
+          shopping_status?: string | null
+          substitution_data?: Json | null
+          total_price: number
+          unit_price: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          found_quantity?: number | null
+          id?: string
+          order_id?: string
+          photo_url?: string | null
+          product_id?: string
+          quantity?: number
+          shopper_notes?: string | null
+          shopping_status?: string | null
+          substitution_data?: Json | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_analytics: {
         Row: {
           event_type: string
@@ -946,102 +1042,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_events: {
-        Row: {
-          actor_id: string | null
-          actor_role: string | null
-          created_at: string
-          event_type: string
-          id: string
-          order_id: string
-          payload: Json | null
-          updated_at: string
-        }
-        Insert: {
-          actor_id?: string | null
-          actor_role?: string | null
-          created_at?: string
-          event_type: string
-          id?: string
-          order_id: string
-          payload?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          actor_id?: string | null
-          actor_role?: string | null
-          created_at?: string
-          event_type?: string
-          id?: string
-          order_id?: string
-          payload?: Json | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      order_items: {
-        Row: {
-          created_at: string | null
-          found_quantity: number | null
-          id: string
-          order_id: string
-          photo_url: string | null
-          product_id: string
-          quantity: number
-          shopper_notes: string | null
-          shopping_status: string | null
-          substitution_data: Json | null
-          total_price: number
-          unit_price: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          found_quantity?: number | null
-          id?: string
-          order_id: string
-          photo_url?: string | null
-          product_id: string
-          quantity: number
-          shopper_notes?: string | null
-          shopping_status?: string | null
-          substitution_data?: Json | null
-          total_price: number
-          unit_price: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          found_quantity?: number | null
-          id?: string
-          order_id?: string
-          photo_url?: string | null
-          product_id?: string
-          quantity?: number
-          shopper_notes?: string | null
-          shopping_status?: string | null
-          substitution_data?: Json | null
-          total_price?: number
-          unit_price?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -1927,7 +1927,82 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      order_events: {
+        Row: {
+          actor_role: string | null
+          created_at: string | null
+          data: Json | null
+          event_type: string | null
+          id: string | null
+          order_id: string | null
+        }
+        Insert: {
+          actor_role?: string | null
+          created_at?: string | null
+          data?: Json | null
+          event_type?: string | null
+          id?: string | null
+          order_id?: string | null
+        }
+        Update: {
+          actor_role?: string | null
+          created_at?: string | null
+          data?: Json | null
+          event_type?: string | null
+          id?: string | null
+          order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "new_order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          order_id: string | null
+          qty: number | null
+          qty_picked: number | null
+          sku: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          order_id?: string | null
+          qty?: number | null
+          qty_picked?: number | null
+          sku?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          order_id?: string | null
+          qty?: number | null
+          qty_picked?: number | null
+          sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "new_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_user_role: {
