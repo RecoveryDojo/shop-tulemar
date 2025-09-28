@@ -1935,6 +1935,7 @@ export type Database = {
           event_type: string | null
           id: string | null
           order_id: string | null
+          payload: Json | null
         }
         Insert: {
           actor_role?: string | null
@@ -1943,6 +1944,7 @@ export type Database = {
           event_type?: string | null
           id?: string | null
           order_id?: string | null
+          payload?: Json | null
         }
         Update: {
           actor_role?: string | null
@@ -1951,6 +1953,7 @@ export type Database = {
           event_type?: string | null
           id?: string | null
           order_id?: string | null
+          payload?: Json | null
         }
         Relationships: [
           {
@@ -1965,33 +1968,75 @@ export type Database = {
       order_items: {
         Row: {
           created_at: string | null
+          found_quantity: number | null
           id: string | null
           name: string | null
           notes: string | null
           order_id: string | null
+          photo_url: string | null
+          product_category_id: string | null
+          product_id: string | null
+          product_name: string | null
+          product_price: number | null
+          product_unit: string | null
+          products: Json | null
           qty: number | null
           qty_picked: number | null
+          quantity: number | null
+          shopper_notes: string | null
+          shopping_status: string | null
           sku: string | null
+          substitution_data: Json | null
+          total_price: number | null
+          unit_price: number | null
         }
         Insert: {
           created_at?: string | null
+          found_quantity?: number | null
           id?: string | null
           name?: string | null
           notes?: string | null
           order_id?: string | null
+          photo_url?: string | null
+          product_category_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_unit?: string | null
+          products?: Json | null
           qty?: number | null
           qty_picked?: number | null
+          quantity?: number | null
+          shopper_notes?: string | null
+          shopping_status?: string | null
           sku?: string | null
+          substitution_data?: Json | null
+          total_price?: number | null
+          unit_price?: number | null
         }
         Update: {
           created_at?: string | null
+          found_quantity?: number | null
           id?: string | null
           name?: string | null
           notes?: string | null
           order_id?: string | null
+          photo_url?: string | null
+          product_category_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_unit?: string | null
+          products?: Json | null
           qty?: number | null
           qty_picked?: number | null
+          quantity?: number | null
+          shopper_notes?: string | null
+          shopping_status?: string | null
           sku?: string | null
+          substitution_data?: Json | null
+          total_price?: number | null
+          unit_price?: number | null
         }
         Relationships: [
           {
