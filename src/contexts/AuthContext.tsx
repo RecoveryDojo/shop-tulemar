@@ -48,46 +48,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchCurrentUserContext = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Fetch profile and roles in parallel
+      const [profileResult, rolesResult] = await Promise.allSettled([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('user_roles').select('role').eq('user_id', userId)
+      ]);
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        // Don't throw error, just log it and continue
-        return;
+      // Handle profile result
+      if (profileResult.status === 'fulfilled' && !profileResult.value.error) {
+        setProfile(profileResult.value.data);
+      } else {
+        const error = profileResult.status === 'rejected' 
+          ? profileResult.reason 
+          : profileResult.value.error;
+        
+        toast({
+          title: "Profile Load Error",
+          description: "Could not load user profile. Some features may be limited.",
+          variant: "destructive",
+        });
+        setProfile(null);
       }
 
-      setProfile(data);
-    } catch (error) {
-      console.error('Error in fetchProfile:', error);
-      // Graceful degradation - app continues to work without profile data
-    }
-  };
-
-  const fetchRoles = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error fetching roles:', error);
-        // Set default client role if fetch fails
+      // Handle roles result - default to ['client'] on error
+      if (rolesResult.status === 'fulfilled' && !rolesResult.value.error) {
+        const userRoles = rolesResult.value.data?.map(r => r.role as UserRole) || ['client'];
+        setRoles(userRoles.length > 0 ? userRoles : ['client']);
+      } else {
+        const error = rolesResult.status === 'rejected' 
+          ? rolesResult.reason 
+          : rolesResult.value.error;
+        
+        toast({
+          title: "Roles Load Error", 
+          description: "Could not load user roles. Defaulting to client access.",
+          variant: "destructive",
+        });
         setRoles(['client']);
-        return;
       }
-
-      const userRoles = data?.map(r => r.role as UserRole) || ['client'];
-      setRoles(userRoles.length > 0 ? userRoles : ['client']);
-    } catch (error) {
-      console.error('Error in fetchRoles:', error);
-      // Graceful degradation - default to client role
+    } catch (error: any) {
+      toast({
+        title: "Authentication Error",
+        description: "Failed to load user context. Please try refreshing.",
+        variant: "destructive",
+      });
+      setProfile(null);
       setRoles(['client']);
     }
   };
@@ -102,8 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(() => {
-            fetchProfile(session.user.id);
-            fetchRoles(session.user.id);
+            fetchCurrentUserContext(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -121,8 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         setTimeout(() => {
-          fetchProfile(session.user.id);
-          fetchRoles(session.user.id);
+          fetchCurrentUserContext(session.user.id);
         }, 0);
       }
       
@@ -223,9 +228,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: result.message || "Role assigned successfully",
       });
       
-      // Refresh roles if it's current user
+      // Refresh user context if it's current user
       if (userId === user?.id) {
-        fetchRoles(userId);
+        fetchCurrentUserContext(userId);
       }
 
       return { error: null };
@@ -272,9 +277,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: result.message || "Role removed successfully",
       });
       
-      // Refresh roles if it's current user
+      // Refresh user context if it's current user
       if (userId === user?.id) {
-        fetchRoles(userId);
+        fetchCurrentUserContext(userId);
       }
 
       return { error: null };
@@ -296,22 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async () => {
     if (!user) return;
-    
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    
-    const { data: userRoles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-    
-    if (profileData) {
-      setProfile(profileData);
-      setRoles(userRoles?.map(r => r.role) || []);
-    }
+    await fetchCurrentUserContext(user.id);
   };
 
   const hasCompletedOnboarding = () => {
