@@ -52,6 +52,7 @@ import WorkflowTest from "@/pages/WorkflowTest";
 import Auth from "@/pages/Auth";
 import ProductEdit from "@/pages/ProductEdit";
 import ResetPassword from "@/pages/ResetPassword";
+import DbSmoke from "@/pages/DbSmoke";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -211,6 +212,11 @@ function AppRouter() {
       <Route path="/workflow-documentation" element={
         <AsyncBoundary loadingText="Loading documentation...">
           <LazyWorkflowDocumentation />
+        </AsyncBoundary>
+      } />
+      <Route path="/db-smoke" element={
+        <AsyncBoundary loadingText="Loading smoke test...">
+          <DbSmoke />
         </AsyncBoundary>
       } />
       <Route path="*" element={
