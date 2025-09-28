@@ -18,11 +18,28 @@ export interface ConnectionConfig {
   retryDelay?: number;
 }
 
+// Helper to enforce per-order channel naming
+export const createOrderChannelName = (orderId: string, type: 'orders' | 'items' | 'events'): string => {
+  if (!orderId) throw new Error('Order ID is required for order channels');
+  return `order-${orderId}-${type}`;
+};
+
+// Helper to validate order channel names
+const validateOrderChannelName = (channelName: string): void => {
+  if (channelName.startsWith('order-')) {
+    const pattern = /^order-[a-zA-Z0-9-]+-(orders|items|events)$/;
+    if (!pattern.test(channelName)) {
+      throw new Error(`Invalid order channel name format: ${channelName}. Use createOrderChannelName() helper.`);
+    }
+  }
+};
+
 export class RealtimeConnectionManager {
   private channels: Map<string, RealtimeChannel> = new Map();
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
   private configs: Map<string, ConnectionConfig> = new Map();
+  private channelStatus: Map<string, 'subscribed' | 'pending' | 'disconnected'> = new Map();
   private isOnline: boolean = navigator.onLine;
 
   constructor() {
@@ -65,8 +82,23 @@ export class RealtimeConnectionManager {
   async subscribe(config: ConnectionConfig): Promise<RealtimeChannel> {
     const { channelName, table, event = '*', filter, onMessage, onError, onReconnect } = config;
     
+    // Validate order channel naming
+    validateOrderChannelName(channelName);
+    
     console.log(`[RealtimeManager] Subscribing to ${channelName}`);
+    
+    // Check for idempotent subscription - same config
+    const existingConfig = this.configs.get(channelName);
+    if (existingConfig && this.configsEqual(existingConfig, config)) {
+      const existingChannel = this.channels.get(channelName);
+      if (existingChannel && this.channelStatus.get(channelName) === 'subscribed') {
+        console.log(`[RealtimeManager] Channel ${channelName} already subscribed with same config`);
+        return existingChannel;
+      }
+    }
+
     this.configs.set(channelName, config);
+    this.channelStatus.set(channelName, 'pending');
 
     // Clean up existing channel if it exists
     if (this.channels.has(channelName)) {
@@ -126,15 +158,18 @@ export class RealtimeConnectionManager {
         
         if (status === 'SUBSCRIBED') {
           console.log(`[RealtimeManager] Successfully subscribed to ${channelName}`);
+          this.channelStatus.set(channelName, 'subscribed');
           this.reconnectAttempts.set(channelName, 0);
           onReconnect?.();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`[RealtimeManager] Channel ${channelName} error:`, status);
+          this.channelStatus.set(channelName, 'disconnected');
           this.handleChannelDisconnection(channelName);
           onError?.(new Error(`Channel status: ${status}`));
         } else if (status === 'CLOSED') {
           // Don't treat CLOSED as an error - it's normal during cleanup
           console.log(`[RealtimeManager] Channel ${channelName} closed normally`);
+          this.channelStatus.set(channelName, 'disconnected');
         }
       });
 
@@ -147,12 +182,23 @@ export class RealtimeConnectionManager {
     }
   }
 
+  private configsEqual(config1: ConnectionConfig, config2: ConnectionConfig): boolean {
+    return (
+      config1.channelName === config2.channelName &&
+      config1.table === config2.table &&
+      config1.event === config2.event &&
+      config1.filter === config2.filter
+    );
+  }
+
   private handleChannelDisconnection(channelName: string) {
     const config = this.configs.get(channelName);
     if (!config) return;
 
-    const maxRetries = config.retryAttempts ?? 3;
-    const retryDelay = config.retryDelay ?? 3000; // 3 second backoff as requested
+    this.channelStatus.set(channelName, 'disconnected');
+
+    const maxRetries = config.retryAttempts ?? 5;
+    const baseDelay = config.retryDelay ?? 1000; // 1 second base
     const currentAttempts = this.reconnectAttempts.get(channelName) ?? 0;
 
     if (currentAttempts >= maxRetries) {
@@ -167,8 +213,9 @@ export class RealtimeConnectionManager {
       clearTimeout(existingTimer);
     }
 
-    // Exponential backoff with 3s base: 3s, 9s, 27s
-    const delay = retryDelay * Math.pow(3, currentAttempts);
+    // Exponential backoff with cap at 30 seconds: 1s, 2s, 4s, 8s, 16s, 30s, 30s...
+    const exponentialDelay = baseDelay * Math.pow(2, currentAttempts);
+    const delay = Math.min(exponentialDelay, 30000);
     console.log(`[RealtimeManager] Scheduling reconnect for ${channelName} in ${delay}ms (attempt ${currentAttempts + 1})`);
 
     const timer = setTimeout(async () => {
@@ -180,7 +227,12 @@ export class RealtimeConnectionManager {
       try {
         this.reconnectAttempts.set(channelName, currentAttempts + 1);
         console.log(`[RealtimeManager] Attempting to reconnect ${channelName}`);
-        await this.subscribe(config);
+        const channel = await this.subscribe(config);
+        
+        // Call onReconnect after successful resubscription
+        if (this.channelStatus.get(channelName) === 'subscribed') {
+          config.onReconnect?.();
+        }
       } catch (error) {
         console.error(`[RealtimeManager] Reconnect failed for ${channelName}:`, error);
         this.handleChannelDisconnection(channelName);
@@ -212,9 +264,10 @@ export class RealtimeConnectionManager {
       this.channels.delete(channelName);
     }
 
-    // Clean up tracking
+    // Clean up all tracking
     this.reconnectAttempts.delete(channelName);
     this.configs.delete(channelName);
+    this.channelStatus.delete(channelName);
   }
 
   private async reconnectAllChannels() {
@@ -244,20 +297,8 @@ export class RealtimeConnectionManager {
     }
   }
 
-  getChannelStatus(channelName: string): 'connected' | 'disconnected' | 'reconnecting' | 'unknown' {
-    const channel = this.channels.get(channelName);
-    const hasTimer = this.reconnectTimers.has(channelName);
-    
-    if (!channel) return 'disconnected';
-    if (hasTimer) return 'reconnecting';
-    
-    // Try to determine if channel is actually connected
-    try {
-      // If we can access the channel state, assume it's connected
-      return channel.state === 'joined' ? 'connected' : 'disconnected';
-    } catch {
-      return 'unknown';
-    }
+  getChannelStatus(channelName: string): 'subscribed' | 'pending' | 'disconnected' {
+    return this.channelStatus.get(channelName) ?? 'disconnected';
   }
 
   async cleanup() {
@@ -275,11 +316,33 @@ export class RealtimeConnectionManager {
       await this.unsubscribe(channelName);
     }
 
+    // Clear all tracking
+    this.channelStatus.clear();
+
     // Remove event listeners
     window.removeEventListener('online', this.reconnectAllChannels);
     window.removeEventListener('offline', () => {});
     document.removeEventListener('visibilitychange', this.checkAndReconnectStaleChannels);
     window.removeEventListener('focus', this.checkAndReconnectStaleChannels);
+  }
+
+  // Debug helper - only available when ?debug=1 is in URL
+  getActiveChannels(): Array<{name: string, status: string, config: ConnectionConfig}> {
+    if (!window.location.search.includes('debug=1')) {
+      console.warn('Channel debugging only available with ?debug=1 parameter');
+      return [];
+    }
+    
+    return Array.from(this.configs.entries()).map(([name, config]) => ({
+      name,
+      status: this.getChannelStatus(name),
+      config: {
+        ...config,
+        onMessage: '[Function]',
+        onError: config.onError ? '[Function]' : undefined,
+        onReconnect: config.onReconnect ? '[Function]' : undefined,
+      } as any
+    }));
   }
 }
 
@@ -288,7 +351,7 @@ export const realtimeManager = new RealtimeConnectionManager();
 
 // Hook for React components - optimized with lazy connection
 export const useRealtimeConnection = (config: ConnectionConfig) => {
-  const [status, setStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting' | 'unknown'>('disconnected');
+  const [status, setStatus] = React.useState<'subscribed' | 'pending' | 'disconnected'>('disconnected');
   const [isConnected, setIsConnected] = React.useState(false);
 
   const connect = React.useCallback(async () => {
@@ -298,7 +361,7 @@ export const useRealtimeConnection = (config: ConnectionConfig) => {
       await realtimeManager.subscribe({
         ...config,
         onReconnect: () => {
-          setStatus('connected');
+          setStatus('subscribed');
           setIsConnected(true);
           config.onReconnect?.();
         },
@@ -308,7 +371,7 @@ export const useRealtimeConnection = (config: ConnectionConfig) => {
           config.onError?.(error);
         }
       });
-      setStatus('connected');
+      setStatus('subscribed');
       setIsConnected(true);
     } catch (error) {
       setStatus('disconnected');
