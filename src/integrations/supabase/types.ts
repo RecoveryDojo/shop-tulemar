@@ -874,6 +874,82 @@ export type Database = {
           },
         ]
       }
+      new_order_events: {
+        Row: {
+          actor_role: string
+          created_at: string | null
+          data: Json | null
+          event_type: string
+          id: string
+          order_id: string | null
+        }
+        Insert: {
+          actor_role: string
+          created_at?: string | null
+          data?: Json | null
+          event_type: string
+          id?: string
+          order_id?: string | null
+        }
+        Update: {
+          actor_role?: string
+          created_at?: string | null
+          data?: Json | null
+          event_type?: string
+          id?: string
+          order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "new_order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      new_order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          notes: string | null
+          order_id: string | null
+          qty: number | null
+          qty_picked: number | null
+          sku: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          order_id?: string | null
+          qty?: number | null
+          qty_picked?: number | null
+          sku?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          order_id?: string | null
+          qty?: number | null
+          qty_picked?: number | null
+          sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "new_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_events: {
         Row: {
           actor_id: string | null
@@ -1083,7 +1159,9 @@ export type Database = {
         Row: {
           access_token: string | null
           arrival_date: string | null
+          assigned_concierge_id: string | null
           assigned_shopper_id: string | null
+          client_id: string | null
           created_at: string | null
           customer_email: string
           customer_name: string
@@ -1095,9 +1173,11 @@ export type Database = {
           dietary_restrictions: Json | null
           guest_count: number | null
           id: string
+          notes: string | null
           payment_intent_id: string | null
           payment_status: string | null
           property_address: string | null
+          property_id: string | null
           shopping_completed_at: string | null
           shopping_started_at: string | null
           special_instructions: string | null
@@ -1110,7 +1190,9 @@ export type Database = {
         Insert: {
           access_token?: string | null
           arrival_date?: string | null
+          assigned_concierge_id?: string | null
           assigned_shopper_id?: string | null
+          client_id?: string | null
           created_at?: string | null
           customer_email: string
           customer_name: string
@@ -1122,9 +1204,11 @@ export type Database = {
           dietary_restrictions?: Json | null
           guest_count?: number | null
           id?: string
+          notes?: string | null
           payment_intent_id?: string | null
           payment_status?: string | null
           property_address?: string | null
+          property_id?: string | null
           shopping_completed_at?: string | null
           shopping_started_at?: string | null
           special_instructions?: string | null
@@ -1137,7 +1221,9 @@ export type Database = {
         Update: {
           access_token?: string | null
           arrival_date?: string | null
+          assigned_concierge_id?: string | null
           assigned_shopper_id?: string | null
+          client_id?: string | null
           created_at?: string | null
           customer_email?: string
           customer_name?: string
@@ -1149,9 +1235,11 @@ export type Database = {
           dietary_restrictions?: Json | null
           guest_count?: number | null
           id?: string
+          notes?: string | null
           payment_intent_id?: string | null
           payment_status?: string | null
           property_address?: string | null
+          property_id?: string | null
           shopping_completed_at?: string | null
           shopping_started_at?: string | null
           special_instructions?: string | null
@@ -1161,7 +1249,22 @@ export type Database = {
           total_amount?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_assigned_concierge_id_fkey"
+            columns: ["assigned_concierge_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1932,6 +2035,14 @@ export type Database = {
         | "sysadmin"
         | "store_manager"
         | "shopper"
+      order_status:
+        | "PLACED"
+        | "CLAIMED"
+        | "SHOPPING"
+        | "READY"
+        | "DELIVERED"
+        | "CLOSED"
+        | "CANCELED"
       priority_level: "low" | "medium" | "high" | "critical"
       project_status:
         | "planning"
@@ -2090,6 +2201,15 @@ export const Constants = {
         "sysadmin",
         "store_manager",
         "shopper",
+      ],
+      order_status: [
+        "PLACED",
+        "CLAIMED",
+        "SHOPPING",
+        "READY",
+        "DELIVERED",
+        "CLOSED",
+        "CANCELED",
       ],
       priority_level: ["low", "medium", "high", "critical"],
       project_status: [
