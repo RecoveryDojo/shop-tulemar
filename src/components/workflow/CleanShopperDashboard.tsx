@@ -146,9 +146,7 @@ export function CleanShopperDashboard() {
         orderId: order.id, 
         itemId, 
         qtyPicked: foundQuantity, 
-        expectedStatus: order.status as OrderStatus,
-        notes,
-        photoUrl
+        expectedStatus: order.status as OrderStatus
       });
       
       // Event published by pickItem hook
@@ -181,9 +179,7 @@ export function CleanShopperDashboard() {
       await suggestSub({ 
         orderId: order.id, 
         itemId, 
-        reason, 
-        suggestedProduct, 
-        notes,
+        suggestedSku: reason, 
         expectedStatus: order.status as OrderStatus
       });
       

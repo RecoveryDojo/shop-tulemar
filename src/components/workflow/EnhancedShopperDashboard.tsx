@@ -70,12 +70,9 @@ export function EnhancedShopperDashboard() {
     startShopping,
     pickItem,
     suggestSub,
-    completeShopping,
-    startDelivery,
-    completeDelivery,
-    lastError,
-    clearError
-  } = useEnhancedOrderWorkflow({ optimistic: false, requireExpectedStatus: true });
+    advanceStatus,
+    lastError
+  } = useEnhancedOrderWorkflow();
 
   const { 
     notifications, 
@@ -201,8 +198,7 @@ export function EnhancedShopperDashboard() {
         orderId: activeOrder.id,
         itemId, 
         qtyPicked: quantity, 
-        expectedStatus: activeOrder.status as any,
-        notes
+        expectedStatus: activeOrder.status as any
       });
       
       // INSTRUMENTATION: Log success
@@ -218,13 +214,11 @@ export function EnhancedShopperDashboard() {
 
   const handleRequestSubstitution = async (itemId: string, reason: string) => {
     try {
-      const notes = itemNotes[itemId] || '';
       await suggestSub({ 
         orderId: activeOrder.id,
         itemId, 
-        reason, 
-        expectedStatus: activeOrder.status as any,
-        notes 
+        suggestedSku: reason, 
+        expectedStatus: activeOrder.status as any
       });
       refetchOrders();
     } catch (error) {
@@ -235,7 +229,7 @@ export function EnhancedShopperDashboard() {
   const handleCompleteShopping = async () => {
     if (!activeOrder) return;
     try {
-      await completeShopping(activeOrder.id);
+      await advanceStatus({ orderId: activeOrder.id, to: 'READY', expectedStatus: activeOrder.status as any });
       setActiveOrder(null);
       setActiveTab('delivery');
       refetchOrders();
@@ -246,7 +240,7 @@ export function EnhancedShopperDashboard() {
 
   const handleStartDelivery = async (orderId: string) => {
     try {
-      await startDelivery(orderId);
+      await advanceStatus({ orderId, to: 'DELIVERED', expectedStatus: 'READY' });
       refetchOrders();
     } catch (error) {
       console.error('Failed to start delivery:', error);
@@ -255,7 +249,7 @@ export function EnhancedShopperDashboard() {
 
   const handleCompleteDelivery = async (orderId: string) => {
     try {
-      await completeDelivery(orderId);
+      await advanceStatus({ orderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
       refetchOrders();
     } catch (error) {
       console.error('Failed to complete delivery:', error);
@@ -547,7 +541,7 @@ export function EnhancedShopperDashboard() {
       <ErrorDisplay 
         error={lastError} 
         onRetry={() => window.location.reload()} 
-        onDismiss={clearError} 
+        onDismiss={() => {}} 
       />
 
       {/* Live Protocol Guide */}

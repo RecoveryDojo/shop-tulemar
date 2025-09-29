@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
+import { useToast } from '@/hooks/use-toast';
 
 interface StatusIssue {
   orderId: string;
@@ -20,7 +21,8 @@ export const WorkflowStatusValidator: React.FC = () => {
   const [issues, setIssues] = useState<StatusIssue[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
-  const { rollbackStatus, loading: workflowLoading } = useEnhancedOrderWorkflow();
+  const { loading: workflowLoading } = useEnhancedOrderWorkflow();
+  const { toast } = useToast();
 
   const validateOrderStatuses = async () => {
     setLoading(true);
@@ -136,13 +138,12 @@ export const WorkflowStatusValidator: React.FC = () => {
 
   const fixStatusIssue = async (issue: StatusIssue) => {
     try {
-      // For Jessica's specific issue and similar cases, use rollback
-      if (issue.expectedStatus && issue.expectedStatus !== issue.currentStatus) {
-        await rollbackStatus(issue.orderId, issue.expectedStatus);
-        
-        // Refresh validation after fix
-        setTimeout(validateOrderStatuses, 1000);
-      }
+      // Show toast for now - manual intervention required
+      toast({
+        title: "Manual Fix Required",
+        description: `Please manually correct status for order ${issue.orderId}`,
+        variant: "destructive"
+      });
     } catch (error) {
       console.error('Error fixing status issue:', error);
     }

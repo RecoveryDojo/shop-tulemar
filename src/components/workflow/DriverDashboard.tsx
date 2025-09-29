@@ -48,8 +48,7 @@ export function DriverDashboard() {
   const [deliveryNotes, setDeliveryNotes] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const {
-    startDelivery: enhancedStartDelivery,
-    completeDelivery: enhancedCompleteDelivery
+    advanceStatus
   } = useEnhancedOrderWorkflow();
 
   // Mock stakeholders for communication
@@ -103,7 +102,7 @@ export function DriverDashboard() {
 
   const startDelivery = async (orderId: string) => {
     try {
-      await enhancedStartDelivery(orderId, 'packed');
+      await advanceStatus({ orderId, to: 'DELIVERED', expectedStatus: 'READY' });
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error starting delivery:', error);
@@ -112,7 +111,7 @@ export function DriverDashboard() {
 
   const completeDelivery = async (orderId: string) => {
     try {
-      await enhancedCompleteDelivery(orderId, 'in_transit');
+      await advanceStatus({ orderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
       setCurrentOrder(null);
       setDeliveryNotes(prev => {
         const updated = { ...prev };

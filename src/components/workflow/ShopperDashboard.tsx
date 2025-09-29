@@ -157,8 +157,7 @@ export function ShopperDashboard() {
         orderId: order.id,
         itemId, 
         qtyPicked: 1, 
-        expectedStatus: order.status as any,
-        notes: itemNotes[itemId] || '' 
+        expectedStatus: order.status as any
       });
       fetchAssignedOrders();
     } catch (error) {
@@ -174,9 +173,8 @@ export function ShopperDashboard() {
       await enhancedSuggestSub({ 
         orderId: order.id,
         itemId, 
-        reason,
-        expectedStatus: order.status as any,
-        notes: itemNotes[itemId] || '' 
+        suggestedSku: reason,
+        expectedStatus: order.status as any
       });
       fetchAssignedOrders();
     } catch (error) {

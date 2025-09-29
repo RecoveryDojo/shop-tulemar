@@ -24,9 +24,7 @@ export function WorkflowEndToEndTest() {
   const { 
     acceptOrder,
     startShopping,
-    completeShopping,
-    startDelivery,
-    completeDelivery
+    advanceStatus
   } = useEnhancedOrderWorkflow();
 
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([
@@ -52,7 +50,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await acceptOrder(testOrderId, 'pending');
+          await acceptOrder(testOrderId, 'PLACED');
         }
       }
     },
@@ -64,7 +62,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await startShopping(testOrderId, 'assigned');
+          await startShopping(testOrderId, 'CLAIMED');
         }
       }
     },
@@ -76,7 +74,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await completeShopping(testOrderId, 'shopping');
+          await advanceStatus({ orderId: testOrderId, to: 'READY', expectedStatus: 'SHOPPING' });
         }
       }
     },
@@ -88,7 +86,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await startDelivery(testOrderId, 'packed');
+          await advanceStatus({ orderId: testOrderId, to: 'DELIVERED', expectedStatus: 'READY' });
         }
       }
     },
@@ -100,7 +98,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await completeDelivery(testOrderId, 'in_transit');
+          await advanceStatus({ orderId: testOrderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
         }
       }
     },
