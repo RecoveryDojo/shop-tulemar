@@ -45,6 +45,7 @@ export default function DbSmoke() {
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [addingEvent, setAddingEvent] = useState(false);
   const [showRawResults, setShowRawResults] = useState(false);
   const [lastRunTime, setLastRunTime] = useState<string>('');
   const { toast } = useToast();
@@ -87,9 +88,9 @@ export default function DbSmoke() {
         });
         setOrder(orderData);
 
-        // Test 2: Fetch items for this order from backing table
+        // Test 2: Fetch items for this order from view (backed by new_order_items)
         const { data: itemsData, error: itemsError } = await supabase
-          .from('new_order_items')
+          .from('order_items')
           .select('id, sku, name, qty, qty_picked, notes')
           .eq('order_id', orderData.id);
 
@@ -100,19 +101,26 @@ export default function DbSmoke() {
             message: `Error: ${itemsError.message}`
           });
         } else {
-          const passed = itemsData && itemsData.length >= 3;
+          const coffeeItems = itemsData?.filter(item => item.name?.includes('Coffee')) || [];
+          const milkItems = itemsData?.filter(item => item.name?.includes('Milk')) || [];
+          const bananaItems = itemsData?.filter(item => item.name?.includes('Banana')) || [];
+          const passed = coffeeItems.length > 0 && milkItems.length > 0 && bananaItems.length > 0;
           testResults.push({
             name: 'Order Items Query',
             passed,
-            message: passed ? `Found ${itemsData.length} items (≥3)` : `Found ${itemsData?.length || 0} items (need ≥3)`,
+            message: passed ? `Found Coffee, Milk, Bananas (${itemsData.length} total)` : `Missing items: ${[
+              coffeeItems.length === 0 ? 'Coffee' : '',
+              milkItems.length === 0 ? 'Milk' : '',
+              bananaItems.length === 0 ? 'Bananas' : ''
+            ].filter(Boolean).join(', ')}`,
             data: itemsData
           });
           setItems(itemsData || []);
         }
 
-        // Test 3: Fetch recent events for this order from backing table
+        // Test 3: Fetch recent events for this order from view (backed by new_order_events)
         const { data: eventsData, error: eventsError } = await supabase
-          .from('new_order_events')
+          .from('order_events')
           .select('id, event_type, actor_role, data, created_at')
           .eq('order_id', orderData.id)
           .order('created_at', { ascending: false })
@@ -215,9 +223,69 @@ export default function DbSmoke() {
     setSeeding(false);
   };
 
+  const addTestEvent = async () => {
+    if (!order) {
+      toast({
+        title: "No order found",
+        description: "Please seed demo data first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setAddingEvent(true);
+    try {
+      const { data, error } = await supabase.rpc('rpc_add_test_event', {
+        p_order_id: order.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Test event added",
+        description: "Event added successfully"
+      });
+
+      // Auto-refresh to show the new event
+      await runSmokeTests();
+    } catch (error: any) {
+      toast({
+        title: "Failed to add test event",
+        description: error.message || String(error),
+        variant: "destructive"
+      });
+    }
+    setAddingEvent(false);
+  };
+
+  // Set up realtime subscription for order events
   useEffect(() => {
     runSmokeTests();
-  }, []);
+
+    if (!order) return;
+
+    const channel = supabase
+      .channel('order-events-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'new_order_events',
+          filter: `order_id=eq.${order.id}`
+        },
+        (payload) => {
+          console.log('New event received:', payload);
+          // Refresh the events list
+          runSmokeTests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [order?.id]);
 
   const allTestsPassed = results.length > 0 && results.every(r => r.passed);
   const anyTestsFailed = results.some(r => !r.passed);
@@ -234,19 +302,27 @@ export default function DbSmoke() {
         <div className="flex gap-2">
           <Button 
             onClick={runSmokeTests} 
-            disabled={loading || seeding}
+            disabled={loading || seeding || addingEvent}
             variant="outline"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Running...' : 'Refresh Tests'}
+            {loading ? 'Running...' : 'Refresh Results'}
           </Button>
           <Button 
             onClick={seedDemoData} 
-            disabled={seeding || loading}
+            disabled={seeding || loading || addingEvent}
             variant="secondary"
           >
             <Plus className={`w-4 h-4 mr-2 ${seeding ? 'animate-spin' : ''}`} />
             {seeding ? 'Seeding...' : 'Seed Demo Data'}
+          </Button>
+          <Button 
+            onClick={addTestEvent} 
+            disabled={addingEvent || loading || seeding || !order}
+            variant="default"
+          >
+            <Plus className={`w-4 h-4 mr-2 ${addingEvent ? 'animate-spin' : ''}`} />
+            {addingEvent ? 'Adding...' : 'Add Test Event'}
           </Button>
           {isDebugMode && (
             <Button 
@@ -424,6 +500,25 @@ export default function DbSmoke() {
         </Card>
       )}
 
+      {/* Button Labels */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Controls</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-blue-500" />
+              <span><strong>Refresh Results</strong> → checks database state</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Plus className="w-4 h-4 text-green-500" />
+              <span><strong>Add Test Event</strong> → checks realtime wiring</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Expected Green Checks */}
       <Card>
         <CardHeader>
@@ -437,7 +532,7 @@ export default function DbSmoke() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span>Order Items Query: Should find ≥3 items (Coffee, Milk, Bananas)</span>
+              <span>Order Items Query: Should find Coffee, Milk, and Bananas</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />

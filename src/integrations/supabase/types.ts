@@ -2139,6 +2139,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason?: string; p_target_status: string }
         Returns: Json
       }
+      rpc_add_test_event: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_advance_status: {
         Args: {
           p_actor_role: string
