@@ -160,11 +160,13 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
+        // Use uppercase canonical statuses - no lowercase conversion
         const { error } = await supabase
           .from('orders')
-          .update({ status: to.toLowerCase() })
+          .update({ status: to })
           .eq('id', orderId)
-          .eq('status', expectedStatus.toLowerCase());
+          // Allow both uppercase (canonical) and lowercase (legacy) for expectedStatus check
+          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
         if (error) throw error;
       },
       {
@@ -185,11 +187,11 @@ export const useEnhancedOrderWorkflow = () => {
         const { error } = await supabase
           .from('orders')
           .update({ 
-            status: 'assigned',
+            status: 'CLAIMED', // Use canonical uppercase status
             assigned_shopper_id: (global as any).currentUserId || 'current-user'
           })
           .eq('id', orderId)
-          .eq('status', expectedStatus.toLowerCase());
+          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
         if (error) throw error;
       },
       {
@@ -210,11 +212,11 @@ export const useEnhancedOrderWorkflow = () => {
         const { error } = await supabase
           .from('orders')
           .update({ 
-            status: 'shopping',
+            status: 'SHOPPING', // Use canonical uppercase status
             shopping_started_at: new Date().toISOString()
           })
           .eq('id', orderId)
-          .eq('status', expectedStatus.toLowerCase());
+          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
         if (error) throw error;
       },
       {
