@@ -80,13 +80,14 @@ export default function DbSmoke() {
           message: 'No demo order found for demo_client@tulemar.test'
         });
       } else {
-        const statusOk = orderData.status === 'CLAIMED';
+        // Accept both CLAIMED (canonical) and confirmed (legacy) during migration
+        const statusOk = orderData.status === 'CLAIMED' || orderData.status === 'confirmed';
         testResults.push({
           name: 'Recent Order Query',
           passed: statusOk,
           message: statusOk 
             ? `Found order ${orderData.id.slice(0, 8)} (${orderData.status})` 
-            : `Found order but status is ${orderData.status} (expected CLAIMED)`,
+            : `Found order but status is ${orderData.status} (expected CLAIMED or confirmed)`,
           data: orderData
         });
         setOrder(orderData);
