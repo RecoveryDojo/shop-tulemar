@@ -57,6 +57,9 @@ export const useConciergeDashboard = () => {
 
   const arrivedProperty = async (orderId: string) => {
     try {
+      // Note: 'arrived_property' is not in canonical OrderStatus enum
+      // This is a concierge-specific status. For now, keep direct write.
+      // TODO: Add to canonical workflow or use rpc_advance_status if needed
       const { error } = await supabase
         .from('orders')
         .update({ status: 'arrived_property' })
@@ -98,11 +101,11 @@ export const useConciergeDashboard = () => {
       if (!order) throw new Error('Order not found');
       
       // Only advance if not already DELIVERED
-      if (order.status !== 'delivered') {
+      if (order.status !== 'DELIVERED' && order.status !== 'delivered') {
         await advanceStatus({ 
           orderId, 
           to: 'DELIVERED', 
-          expectedStatus: order.status.toUpperCase() as OrderStatus 
+          expectedStatus: order.status as OrderStatus 
         });
       }
 
