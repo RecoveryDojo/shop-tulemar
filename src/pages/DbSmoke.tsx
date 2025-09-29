@@ -80,10 +80,13 @@ export default function DbSmoke() {
           message: 'No demo order found for demo_client@tulemar.test'
         });
       } else {
+        const statusOk = orderData.status === 'CLAIMED';
         testResults.push({
           name: 'Recent Order Query',
-          passed: true,
-          message: `Found order ${orderData.id.slice(0, 8)} (${orderData.status})`,
+          passed: statusOk,
+          message: statusOk 
+            ? `Found order ${orderData.id.slice(0, 8)} (${orderData.status})` 
+            : `Found order but status is ${orderData.status} (expected CLAIMED)`,
           data: orderData
         });
         setOrder(orderData);
@@ -304,9 +307,10 @@ export default function DbSmoke() {
             onClick={runSmokeTests} 
             disabled={loading || seeding || addingEvent}
             variant="outline"
+            title="Checks database state"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Running...' : 'Refresh Results'}
+            {loading ? 'Running...' : 'Refresh Results → Checks DB State'}
           </Button>
           <Button 
             onClick={seedDemoData} 
@@ -320,9 +324,10 @@ export default function DbSmoke() {
             onClick={addTestEvent} 
             disabled={addingEvent || loading || seeding || !order}
             variant="default"
+            title="Checks realtime wiring"
           >
             <Plus className={`w-4 h-4 mr-2 ${addingEvent ? 'animate-spin' : ''}`} />
-            {addingEvent ? 'Adding...' : 'Add Test Event'}
+            {addingEvent ? 'Adding...' : 'Add Test Event → Checks Realtime'}
           </Button>
           {isDebugMode && (
             <Button 
