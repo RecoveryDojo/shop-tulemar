@@ -1,9 +1,9 @@
-import { CleanShopperDashboard } from '@/components/workflow/CleanShopperDashboard';
+import SimpleShopperDashboard from '@/components/workflow/SimpleShopperDashboard';
 
 export default function ShopperDashboard() {
   return (
     <div className="min-h-screen bg-background">
-      <CleanShopperDashboard />
+      <SimpleShopperDashboard />
     </div>
   );
 }

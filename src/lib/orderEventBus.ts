@@ -189,61 +189,67 @@ class OrderEventBus {
 // Export singleton
 export const orderEventBus = new OrderEventBus();
 
-/**
- * EXAMPLE: How to reconcile from events and when to fallback to fetchSnapshot
- */
 export const reconcileFromEvent = (event: OrderEvent, currentState: any) => {
   console.log(`[reconcileFromEvent] Processing ${event.event_type} for order ${event.order_id}`);
   
   switch (event.event_type) {
-    case 'ITEM_FOUND':
-      // Patch local state - update specific item
-      if (event.data.item_id && event.data.found_quantity !== undefined) {
+    case 'ITEM_PICKED':
+      // Update specific item's qty_picked
+      if (event.data.item_id && event.data.qty_picked !== undefined) {
         const updatedItems = currentState.items.map((item: any) => 
           item.id === event.data.item_id 
-            ? { ...item, found_quantity: event.data.found_quantity, shopping_status: 'found' }
+            ? { ...item, qty_picked: event.data.qty_picked, shopping_status: 'found' }
             : item
         );
         return { ...currentState, items: updatedItems };
       }
-      // Fallback: fetch fresh snapshot if we can't patch cleanly
-      console.log('[reconcileFromEvent] ITEM_FOUND: Invalid data, fetching snapshot');
-      orderEventBus.fetchSnapshot(event.order_id);
-      return currentState;
+      break;
     
-    case 'ITEM_SUBSTITUTED':
-      // Patch local state - handle substitution
-      if (event.data.item_id && event.data.substitution_data) {
+    case 'SUBSTITUTION_SUGGESTED':
+      // Update item with substitution data
+      if (event.data.item_id && event.data.suggested_sku) {
         const updatedItems = currentState.items.map((item: any) => 
           item.id === event.data.item_id 
             ? { 
                 ...item, 
-                substitution_data: event.data.substitution_data,
-                shopping_status: 'substituted' 
+                substitution_data: { suggested_sku: event.data.suggested_sku, status: 'pending' },
+                shopping_status: 'substitution_needed' 
               }
             : item
         );
         return { ...currentState, items: updatedItems };
       }
-      console.log('[reconcileFromEvent] ITEM_SUBSTITUTED: Invalid data, fetching snapshot');
-      orderEventBus.fetchSnapshot(event.order_id);
-      return currentState;
+      break;
+    
+    case 'SUBSTITUTION_DECISION':
+      // Update item with decision
+      if (event.data.item_id && event.data.decision) {
+        const updatedItems = currentState.items.map((item: any) => 
+          item.id === event.data.item_id 
+            ? { 
+                ...item, 
+                substitution_data: { ...item.substitution_data, decision: event.data.decision },
+                shopping_status: event.data.decision === 'accept' ? 'substituted' : 'not_available'
+              }
+            : item
+        );
+        return { ...currentState, items: updatedItems };
+      }
+      break;
     
     case 'STATUS_CHANGED':
-      // Patch local state - update order status
-      if (event.data.new_status) {
+      // Update order status
+      if (event.data.to) {
         return { 
           ...currentState, 
           order: { 
             ...currentState.order, 
-            status: event.data.new_status,
+            status: event.data.to.toLowerCase(),
             updated_at: event.timestamp || new Date().toISOString()
           }
         };
       }
-      console.log('[reconcileFromEvent] STATUS_CHANGED: Invalid data, fetching snapshot');
-      orderEventBus.fetchSnapshot(event.order_id);
-      return currentState;
+      break;
     
     case 'SNAPSHOT_RECONCILED':
       // Complete state replacement from fresh snapshot
@@ -256,4 +262,9 @@ export const reconcileFromEvent = (event: OrderEvent, currentState: any) => {
       orderEventBus.fetchSnapshot(event.order_id);
       return currentState;
   }
+  
+  // Fallback: fetch fresh snapshot if we can't patch cleanly
+  console.log(`[reconcileFromEvent] ${event.event_type}: Invalid data, fetching snapshot`);
+  orderEventBus.fetchSnapshot(event.order_id);
+  return currentState;
 };

@@ -65,12 +65,9 @@ export function CleanShopperDashboard() {
     decideSub,
     acceptOrder,
     startShopping,
-    completeShopping,
-    startDelivery,
-    completeDelivery,
     loading: workflowLoading,
     lastError
-  } = useEnhancedOrderWorkflow({ optimistic: false, requireExpectedStatus: true });
+  } = useEnhancedOrderWorkflow();
 
   const [activeOrder, setActiveOrder] = useState(null);
   const [itemQuantities, setItemQuantities] = useState<{ [key: string]: number }>({});
@@ -307,7 +304,7 @@ export function CleanShopperDashboard() {
               Manage Items
             </Button>
             <Button 
-              onClick={() => completeShopping(order.id, 'shopping')}
+              onClick={() => advanceStatus({ orderId: order.id, to: 'READY', expectedStatus: order.status.toUpperCase() as any })}
               disabled={isProcessing}
               className="bg-green-500 hover:bg-green-600"
             >
