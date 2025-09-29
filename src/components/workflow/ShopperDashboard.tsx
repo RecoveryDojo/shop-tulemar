@@ -18,6 +18,8 @@ import {
   Scan
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchOrderItems } from '@/data/views';
+import type { OrderItemView } from '@/types/db-views';
 import { useEnhancedOrderWorkflow } from "@/hooks/useEnhancedOrderWorkflow";
 
 interface OrderItem {
@@ -90,14 +92,21 @@ export function ShopperDashboard() {
       
       const formattedOrders = ordersData?.map(order => ({
         ...order,
-        items: order.order_items?.map(item => ({
-          id: item.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.total_price,
-          product: item.products
-        })) || []
+        items: order.order_items?.map(item => {
+          const products = (item.products ?? {}) as { name?: string; unit?: string; category_id?: string };
+          return {
+            id: item.id,
+            product_id: item.product_id || '',
+            quantity: item.quantity || item.qty || 0,
+            unit_price: item.unit_price || 0,
+            total_price: item.total_price || 0,
+            product: {
+              name: products.name || item.product_name || 'Unknown Product',
+              unit: products.unit || item.product_unit || 'each',
+              category_id: products.category_id || item.product_category_id || ''
+            }
+          };
+        }) || []
       })) || [];
       
       setOrders(formattedOrders);

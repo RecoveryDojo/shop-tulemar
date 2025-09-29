@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, X, AlertTriangle, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchOrderItems } from '@/data/views';
+import type { OrderItemView } from '@/types/db-views';
 
 interface SubstitutionRequest {
   id: string;
@@ -48,19 +50,22 @@ export function SubstitutionApprovalPanel() {
       if (error) throw error;
 
       const requests: SubstitutionRequest[] = data.map(item => {
-        const substitutionData = item.substitution_data as any;
+        const itemData = item as any;
+        const substitutionData = (itemData.substitution_data ?? {}) as any;
+        const product = (itemData.product ?? {}) as { name?: string };
+        const order = (itemData.order ?? {}) as { customer_name?: string };
         return {
-          id: item.id,
-          order_id: item.order_id,
-          customer_name: item.order?.customer_name || 'Unknown',
-          product_name: item.product?.name || 'Unknown Product',
-          original_product: item.product?.name || 'Unknown',
+          id: itemData.id || '',
+          order_id: itemData.order_id || '',
+          customer_name: order.customer_name || 'Unknown',
+          product_name: product.name || itemData.product_name || 'Unknown Product',
+          original_product: product.name || itemData.product_name || 'Unknown',
           suggested_substitute: substitutionData?.suggestedProduct || 'Alternative product',
           reason: substitutionData?.reason || 'Not available',
-          shopper_notes: item.shopper_notes,
-          photo_url: item.photo_url,
+          shopper_notes: itemData.shopper_notes || '',
+          photo_url: itemData.photo_url || '',
           price_difference: 0, // Would calculate based on substitute price
-          created_at: item.created_at // Use DB timestamp
+          created_at: itemData.created_at || new Date().toISOString()
         };
       });
 

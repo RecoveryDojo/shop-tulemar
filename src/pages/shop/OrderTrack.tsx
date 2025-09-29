@@ -7,6 +7,8 @@ import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { fetchOrderItems } from '@/data/views';
+import type { OrderItemView } from '@/types/db-views';
 
 interface Order {
   id: string;
@@ -81,19 +83,21 @@ const OrderTrack = () => {
 
         setOrder(orderData);
 
-        // Fetch order items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            product:products(name, image_url, unit)
-          `)
-          .eq('order_id', orderData.id);
-
-        if (itemsError) {
+        // Fetch order items using helper
+        try {
+          const itemsData = await fetchOrderItems(orderData.id);
+          const transformedItems = itemsData.map(item => ({
+            ...item,
+            product: {
+              name: item.product_name || item.name || 'Unknown Product',
+              image_url: item.photo_url || '',
+              unit: item.product_unit || 'each'
+            }
+          }));
+          setOrderItems(transformedItems);
+        } catch (itemsError) {
           console.error('Items fetch error:', itemsError);
-        } else {
-          setOrderItems(itemsData || []);
+          setOrderItems([]);
         }
 
         // Fetch workflow logs

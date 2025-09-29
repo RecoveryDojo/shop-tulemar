@@ -96,11 +96,15 @@ export function EnhancedOrderNotificationSystem() {
       const transformedData = data?.map(order => ({
         ...order,
         items_count: order.order_items?.length || 0,
-        order_items: order.order_items?.map(item => ({
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          product_name: item.products?.name || 'Unknown Product'
-        })) || []
+        order_items: order.order_items?.map(item => {
+          const products = (item.products ?? {}) as { name?: string };
+          const itemData = item as any;
+          return {
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            product_name: products.name || itemData.product_name || 'Unknown Product'
+          };
+        }) || []
       })) || [];
 
       setNotifications(transformedData);
@@ -142,11 +146,15 @@ export function EnhancedOrderNotificationSystem() {
       const orderWithItems = {
         ...fullOrder,
         items_count: fullOrder.order_items?.length || 0,
-        order_items: fullOrder.order_items?.map(item => ({
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          product_name: item.products?.name || 'Unknown Product'
-        })) || []
+        order_items: fullOrder.order_items?.map(item => {
+          const products = (item.products ?? {}) as { name?: string };
+          const itemData = item as any;
+          return {
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            product_name: products.name || itemData.product_name || 'Unknown Product'
+          };
+        }) || []
       };
 
       // Update state immediately
