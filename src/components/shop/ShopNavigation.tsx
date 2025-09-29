@@ -54,7 +54,8 @@ export function ShopNavigation() {
   };
 
   const debugItems = isDebugMode ? [
-    { title: "DB Smoke Test", url: "/db-smoke", icon: Bug }
+    { title: "DB Smoke Test", url: "/db-smoke?debug=1", icon: Bug },
+    { title: "Shopper Dashboard (Debug)", url: "/shopper-dashboard?debug=1", icon: ShoppingCart }
   ] : [];
 
   const allNavigationItems = [...navigationItems, ...getRoleSpecificItems(), ...debugItems];

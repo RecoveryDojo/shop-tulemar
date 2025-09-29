@@ -146,6 +146,11 @@ function AppRouter() {
           <LazyShopperDashboard />
         </AsyncBoundary>
       } />
+      <Route path="/shopper-dashboard" element={
+        <AsyncBoundary loadingText="Loading shopper dashboard...">
+          <LazyShopperDashboard />
+        </AsyncBoundary>
+      } />
       <Route path="/customer" element={
         <AsyncBoundary loadingText="Loading customer dashboard...">
           <LazyCustomerDashboard />
