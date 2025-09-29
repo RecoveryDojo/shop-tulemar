@@ -70,11 +70,11 @@ export const useShopperOrders = () => {
           )
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['assigned', 'shopping', 'ready_for_checkout', 'checked_out', 'enroute']);
+        .in('status', ['claimed', 'shopping', 'ready', 'delivered']);
 
       console.log('useShopperOrders: Shopper queue query:', { shopperQueueData, queueError });
 
-      // Fetch available orders (pending, not assigned)
+      // Fetch available orders (placed, not assigned)
       const { data: available, error: availableError } = await supabase
         .from('orders')
         .select(`
@@ -84,7 +84,7 @@ export const useShopperOrders = () => {
             products (name, description, image_url, unit, price)
           )
         `)
-        .eq('status', 'pending')
+        .eq('status', 'placed')
         .is('assigned_shopper_id', null);
 
       console.log('useShopperOrders: Available orders query:', { available, availableError });

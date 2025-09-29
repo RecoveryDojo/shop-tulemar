@@ -265,8 +265,10 @@ export function StaffAssignmentTool() {
         updateData.assigned_concierge_id = staffId;
       }
 
-      // If order was confirmed and we're assigning first staff, move to assigned
-      if (selectedOrderData.status === 'confirmed') {
+      // If order was PLACED and we're assigning first staff, move to CLAIMED
+      if (selectedOrderData.status === 'placed') {
+        updateData.status = 'claimed';
+      } else if (selectedOrderData.status === 'confirmed') {
         updateData.status = 'assigned';
       }
 
@@ -290,7 +292,24 @@ export function StaffAssignmentTool() {
 
       if (assignmentError) throw assignmentError;
 
-      // Publish assignment event
+      // Insert order_events row for persistence
+      const { error: eventError } = await supabase
+        .from('order_events')
+        .insert({
+          order_id: orderId,
+          event_type: 'ASSIGNED',
+          actor_role: 'admin',
+          data: {
+            shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
+            concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
+            role,
+            staff_name: selectedStaff.display_name
+          }
+        });
+
+      if (eventError) throw eventError;
+
+      // Publish assignment event via OrderEventBus
       orderEventBus.publish({
         order_id: orderId,
         event_type: 'ASSIGNED',

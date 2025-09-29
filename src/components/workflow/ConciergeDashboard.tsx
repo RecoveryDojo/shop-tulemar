@@ -102,6 +102,8 @@ export function ConciergeDashboard() {
     conciergeQueue, 
     loading, 
     error,
+    isProcessing,
+    processingAction,
     arrivedProperty,
     startStocking,
     completeStocking,
@@ -389,15 +391,16 @@ export function ConciergeDashboard() {
                     <Badge variant={order.status === 'stocking' ? 'default' : 'secondary'}>
                       {order.status}
                     </Badge>
-                    {order.status === 'delivered' && (
+                    {(order.status === 'delivered' || order.status === 'ready') && (
                       <Button 
                         size="sm" 
                         onClick={(e) => {
                           e.stopPropagation();
                           startStocking(order.id);
                         }}
+                        disabled={isProcessing || processingAction === 'startStocking'}
                       >
-                        Start Stocking
+                        {isProcessing && processingAction === 'startStocking' ? 'Starting...' : 'Start Stocking'}
                       </Button>
                     )}
                   </div>
@@ -573,9 +576,10 @@ export function ConciergeDashboard() {
                     onClick={() => handleCompleteStocking()}
                     className="w-full"
                     size="lg"
+                    disabled={isProcessing || processingAction === 'completeStocking'}
                   >
                     <Star className="h-4 w-4 mr-2" />
-                    Complete & Notify All Stakeholders
+                    {isProcessing && processingAction === 'completeStocking' ? 'Completing...' : 'Complete & Notify All Stakeholders'}
                   </Button>
                 )}
               </CardContent>

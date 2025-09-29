@@ -7,8 +7,9 @@ import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { fetchOrderItems } from '@/data/views';
-import type { OrderItemView } from '@/types/db-views';
+import { fetchOrderItems, fetchOrderEvents } from '@/data/views';
+import { orderEventBus } from '@/lib/orderEventBus';
+import type { OrderItemView, OrderEventView } from '@/types/db-views';
 
 interface Order {
   id: string;
@@ -44,6 +45,14 @@ interface OrderItem {
   };
 }
 
+interface OrderEvent {
+  id: string;
+  event_type: string;
+  actor_role: string;
+  data: any;
+  created_at: string;
+}
+
 interface WorkflowLog {
   id: string;
   phase: string;
@@ -58,6 +67,7 @@ const OrderTrack = () => {
   const token = searchParams.get('token');
   const [order, setOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([]);
   const [workflowLogs, setWorkflowLogs] = useState<WorkflowLog[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -100,6 +110,15 @@ const OrderTrack = () => {
           setOrderItems([]);
         }
 
+        // Fetch order events using helper
+        try {
+          const eventsData = await fetchOrderEvents(orderData.id);
+          setOrderEvents(eventsData);
+        } catch (eventsError) {
+          console.error('Events fetch error:', eventsError);
+          setOrderEvents([]);
+        }
+
         // Fetch workflow logs
         const { data: logsData, error: logsError } = await supabase
           .from('order_workflow_log')
@@ -126,7 +145,40 @@ const OrderTrack = () => {
     };
 
     fetchOrderData();
-  }, [token, toast]);
+
+    // Set up real-time subscription if order exists
+    if (token) {
+      const handleOrderEvent = (event: any) => {
+        console.log('[OrderTrack] Received real-time event:', event);
+        
+        if (event.event_type === 'snapshot_reconciled') {
+          // Refetch all data on reconnect
+          fetchOrderData();
+        } else if ([
+          'ASSIGNED', 'STATUS_CHANGED', 'STOCKING_STARTED', 'STOCKED_IN_UNIT',
+          'ITEM_PICKED', 'SUBSTITUTION_SUGGESTED', 'ITEM_ADDED', 'ITEM_UPDATED'
+        ].includes(event.event_type)) {
+          // Update specific data based on event type
+          if (event.event_type.startsWith('ITEM_')) {
+            // Refetch order items
+            fetchOrderData();
+          } else {
+            // Refetch everything for status changes
+            fetchOrderData();
+          }
+        }
+      };
+
+      // We need the order ID to subscribe, so we'll set this up after order is loaded
+      if (order?.id) {
+        orderEventBus.subscribe(order.id, handleOrderEvent);
+        
+        return () => {
+          orderEventBus.unsubscribe(order.id, handleOrderEvent);
+        };
+      }
+    }
+  }, [token, toast, order?.id]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -339,8 +391,8 @@ const OrderTrack = () => {
           </Card>
         )}
 
-        {/* Activity Log */}
-        {workflowLogs.length > 0 && (
+        {/* Order Events & Activity Log */}
+        {(orderEvents.length > 0 || workflowLogs.length > 0) && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -350,11 +402,42 @@ const OrderTrack = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {workflowLogs.map((log, index) => (
-                  <div key={log.id}>
+                {/* Real-time events */}
+                {orderEvents.map((event) => (
+                  <div key={event.id}>
                     <div className="flex gap-3">
                       <div className="bg-primary/10 p-2 rounded-full">
                         <Clock className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {event.event_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(event.created_at).toLocaleString()}
+                        </p>
+                        {event.data && Object.keys(event.data).length > 0 && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {event.actor_role === 'admin' && event.data.staff_name && 
+                              `Assigned to: ${event.data.staff_name}`}
+                            {event.actor_role === 'shopper' && event.data.item_id && 
+                              `Item processed`}
+                            {event.actor_role === 'concierge' && 
+                              `Stocking ${event.event_type.includes('STARTED') ? 'initiated' : 'completed'}`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Separator className="ml-6 mt-4" />
+                  </div>
+                ))}
+                
+                {/* Legacy workflow logs */}
+                {workflowLogs.map((log, index) => (
+                  <div key={log.id}>
+                    <div className="flex gap-3">
+                      <div className="bg-muted p-2 rounded-full">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">
@@ -368,7 +451,7 @@ const OrderTrack = () => {
                         )}
                       </div>
                     </div>
-                    {index < workflowLogs.length - 1 && <Separator className="ml-6 mt-4" />}
+                    {(index < workflowLogs.length - 1 || orderEvents.length > 0) && <Separator className="ml-6 mt-4" />}
                   </div>
                 ))}
               </div>

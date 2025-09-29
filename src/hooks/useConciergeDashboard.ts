@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { orderEventBus } from '@/lib/orderEventBus';
+import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
+import type { OrderStatus } from '@/hooks/useEnhancedOrderWorkflow';
 
 export interface ConciergeOrder {
   id: string;
@@ -21,7 +23,10 @@ export const useConciergeDashboard = () => {
   const [conciergeQueue, setConciergeQueue] = useState<ConciergeOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const { toast } = useToast();
+  const { advanceStatus } = useEnhancedOrderWorkflow();
 
   const fetchConciergeOrders = async () => {
     try {
@@ -31,8 +36,8 @@ export const useConciergeDashboard = () => {
 
       const { data, error: fetchError } = await supabase
         .from('orders')
-        .select('id, customer_name, customer_email, property_address, total_amount, status')
-        .in('status', ['enroute', 'arrived_property', 'stocking']);
+        .select('id, customer_name, customer_email, property_address, total_amount, status, arrival_date, departure_date, guest_count, assigned_concierge_id')
+        .or('status.in.(delivered,ready),and(assigned_concierge_id.eq.' + user.id + ',status.in.(delivered,ready))');
 
       if (fetchError) throw fetchError;
 
@@ -82,20 +87,42 @@ export const useConciergeDashboard = () => {
   };
 
   const startStocking = async (orderId: string) => {
+    if (isProcessing || processingAction === 'startStocking') return;
+    
+    setIsProcessing(true);
+    setProcessingAction('startStocking');
+    
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'stocking' })
-        .eq('id', orderId);
+      const order = conciergeQueue.find(o => o.id === orderId);
+      if (!order) throw new Error('Order not found');
+      
+      // Only advance if not already DELIVERED
+      if (order.status !== 'delivered') {
+        await advanceStatus({ 
+          orderId, 
+          to: 'DELIVERED', 
+          expectedStatus: order.status.toUpperCase() as OrderStatus 
+        });
+      }
 
-      if (error) throw error;
+      // Insert order_events row
+      const { error: eventError } = await supabase
+        .from('order_events')
+        .insert({
+          order_id: orderId,
+          event_type: 'STOCKING_STARTED',
+          actor_role: 'concierge',
+          data: { status: 'delivered' }
+        });
+
+      if (eventError) throw eventError;
 
       // Publish event
       orderEventBus.publish({
         order_id: orderId,
         event_type: 'STOCKING_STARTED',
         actor_role: 'concierge',
-        data: { status: 'stocking' }
+        data: { status: 'delivered' }
       });
 
       toast({
@@ -104,30 +131,55 @@ export const useConciergeDashboard = () => {
       });
 
       fetchConciergeOrders();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to start stocking",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error('[useConciergeDashboard] startStocking error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to start stocking', variant: "destructive" });
+      }
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const completeStocking = async (orderId: string) => {
+    if (isProcessing || processingAction === 'completeStocking') return;
+    
+    setIsProcessing(true);
+    setProcessingAction('completeStocking');
+    
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'stocked_in_unit' })
-        .eq('id', orderId);
+      const order = conciergeQueue.find(o => o.id === orderId);
+      if (!order) throw new Error('Order not found');
+      
+      await advanceStatus({ 
+        orderId, 
+        to: 'CLOSED', 
+        expectedStatus: 'DELIVERED' 
+      });
 
-      if (error) throw error;
+      // Insert order_events row
+      const { error: eventError } = await supabase
+        .from('order_events')
+        .insert({
+          order_id: orderId,
+          event_type: 'STOCKED_IN_UNIT',
+          actor_role: 'concierge',
+          data: { status: 'closed' }
+        });
+
+      if (eventError) throw eventError;
 
       // Publish event
       orderEventBus.publish({
         order_id: orderId,
         event_type: 'STOCKED_IN_UNIT',
         actor_role: 'concierge',
-        data: { status: 'stocked_in_unit' }
+        data: { status: 'closed' }
       });
 
       toast({
@@ -136,12 +188,18 @@ export const useConciergeDashboard = () => {
       });
 
       fetchConciergeOrders();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to complete stocking",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error('[useConciergeDashboard] completeStocking error:', error);
+      if (error.message?.includes('STALE_WRITE')) {
+        toast({ title: "Order Changed", description: "Order changed in the background. Refreshing…", variant: "destructive" });
+      } else if (error.message?.includes('ILLEGAL_TRANSITION')) {
+        toast({ title: "Invalid Action", description: "That step isn't allowed from the current status.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message || 'Failed to complete stocking', variant: "destructive" });
+      }
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -149,6 +207,8 @@ export const useConciergeDashboard = () => {
     conciergeQueue,
     loading,
     error,
+    isProcessing,
+    processingAction,
     refetchOrders: fetchConciergeOrders,
     arrivedProperty,
     startStocking,
