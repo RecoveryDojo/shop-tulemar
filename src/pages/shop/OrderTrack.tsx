@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Package, Truck, Clock, CheckCircle, User, MessageCircle } from 'lucide-react';
+import { Package, Truck, Clock, CheckCircle, User, MessageCircle, Calendar, ShoppingCart, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ShopLayout } from '@/components/shop/ShopLayout';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { fetchOrderItems, fetchOrderEvents } from '@/data/views';
 import { orderEventBus } from '@/lib/orderEventBus';
+import { getEventMessage, getEventIcon } from '@/lib/notifications';
 import type { OrderItemView, OrderEventView } from '@/types/db-views';
 
 interface Order {
@@ -202,6 +203,142 @@ const OrderTrack = () => {
     return Math.round((completedItems / orderItems.length) * 100);
   };
 
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const eventTime = new Date(dateString);
+    const diffMinutes = Math.floor((now.getTime() - eventTime.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+    return `${Math.floor(diffMinutes / 1440)}d ago`;
+  };
+
+  const groupEventsByDay = (events: OrderEvent[]) => {
+    const groups: { [key: string]: OrderEvent[] } = {};
+    
+    events.forEach(event => {
+      const date = new Date(event.created_at).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(event);
+    });
+    
+    return Object.entries(groups)
+      .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
+  };
+
+  const getEventIconComponent = (eventType: string) => {
+    switch (eventType) {
+      case 'STATUS_CHANGED':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'ASSIGNED':
+        return <User className="w-4 h-4" />;
+      case 'STOCKING_STARTED':
+      case 'STOCKED_IN_UNIT':
+        return <Home className="w-4 h-4" />;
+      case 'ITEM_UPDATED':
+      case 'ITEM_ADDED':
+      case 'ITEM_REMOVED':
+        return <ShoppingCart className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const renderOrderTimeline = () => {
+    // Combine and sort all events
+    const allEvents = [
+      ...orderEvents,
+      ...workflowLogs.map(log => ({
+        id: log.id,
+        event_type: log.action,
+        actor_role: 'legacy',
+        data: { notes: log.notes, new_status: log.new_status },
+        created_at: log.timestamp
+      }))
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    if (allEvents.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No activity yet</p>
+        </div>
+      );
+    }
+
+    const groupedEvents = groupEventsByDay(allEvents);
+
+    return (
+      <div className="space-y-6">
+        {groupedEvents.map(([date, events]) => (
+          <div key={date}>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <h4 className="font-medium text-sm text-muted-foreground">
+                {new Date(date).toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </h4>
+            </div>
+            
+            <div className="space-y-3 ml-6 border-l-2 border-muted pl-4">
+              {events.map((event, index) => (
+                <div key={event.id} className="relative">
+                  <div className="absolute -left-6 mt-2 w-3 h-3 bg-primary rounded-full border-2 border-background"></div>
+                  
+                  <div className="flex items-start justify-between group">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1 rounded-full bg-primary/10 text-primary">
+                          {getEventIconComponent(event.event_type)}
+                        </div>
+                        <p className="font-medium text-sm">
+                          {event.actor_role === 'legacy' ? (
+                            <>
+                              <Badge variant="outline" className="mr-2 text-xs">Legacy</Badge>
+                              {event.event_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </>
+                          ) : (
+                            getEventMessage(event.event_type, event.data)
+                          )}
+                        </p>
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        {getTimeAgo(event.created_at)}
+                      </p>
+                      
+                      {event.data?.notes && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                          {event.data.notes}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-xs text-muted-foreground" title={new Date(event.created_at).toLocaleString()}>
+                        {new Date(event.created_at).toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <ShopLayout>
@@ -391,73 +528,18 @@ const OrderTrack = () => {
           </Card>
         )}
 
-        {/* Order Events & Activity Log */}
-        {(orderEvents.length > 0 || workflowLogs.length > 0) && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Order Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Real-time events */}
-                {orderEvents.map((event) => (
-                  <div key={event.id}>
-                    <div className="flex gap-3">
-                      <div className="bg-primary/10 p-2 rounded-full">
-                        <Clock className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {event.event_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(event.created_at).toLocaleString()}
-                        </p>
-                        {event.data && Object.keys(event.data).length > 0 && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {event.actor_role === 'admin' && event.data.staff_name && 
-                              `Assigned to: ${event.data.staff_name}`}
-                            {event.actor_role === 'shopper' && event.data.item_id && 
-                              `Item processed`}
-                            {event.actor_role === 'concierge' && 
-                              `Stocking ${event.event_type.includes('STARTED') ? 'initiated' : 'completed'}`}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Separator className="ml-6 mt-4" />
-                  </div>
-                ))}
-                
-                {/* Legacy workflow logs */}
-                {workflowLogs.map((log, index) => (
-                  <div key={log.id}>
-                    <div className="flex gap-3">
-                      <div className="bg-muted p-2 rounded-full">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {log.action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </p>
-                        {log.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">{log.notes}</p>
-                        )}
-                      </div>
-                    </div>
-                    {(index < workflowLogs.length - 1 || orderEvents.length > 0) && <Separator className="ml-6 mt-4" />}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Order Timeline */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              Order Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderOrderTimeline()}
+          </CardContent>
+        </Card>
 
         {/* Contact Information */}
         <div className="mt-6 text-center">

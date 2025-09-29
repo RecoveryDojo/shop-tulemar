@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Users, Clock, Package, MapPin, Phone, Mail, CheckCircle2, Wifi, WifiOff } from "lucide-react";
+import { Bell, Users, Clock, Package, MapPin, Phone, Mail, CheckCircle2, Wifi, WifiOff, Filter, Calendar, User, Home, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { realtimeManager } from "@/utils/realtimeConnectionManager";
 import { notificationManager } from "@/utils/notificationManager";
+import { getEventMessage, isCustomerVisible } from "@/lib/notifications";
 
 interface OrderNotification {
   id: string;
@@ -27,10 +28,23 @@ interface OrderNotification {
   }>;
 }
 
+interface OrderEvent {
+  id: string;
+  order_id: string;
+  event_type: string;
+  actor_role: string;
+  data: any;
+  created_at: string;
+}
+
+type FilterType = 'all' | 'customer' | 'internal';
+
 export function EnhancedOrderNotificationSystem() {
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
+  const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const { toast } = useToast();
   const { hasRole } = useAuth();
 
@@ -38,6 +52,7 @@ export function EnhancedOrderNotificationSystem() {
     if (!hasRole('admin') && !hasRole('sysadmin')) return;
 
     fetchOrderNotifications();
+    fetchOrderEvents();
     setupEnhancedRealtimeConnection();
 
     return () => {
@@ -117,6 +132,21 @@ export function EnhancedOrderNotificationSystem() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrderEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('new_order_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setOrderEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching order events:', error);
     }
   };
 
@@ -204,10 +234,10 @@ export function EnhancedOrderNotificationSystem() {
     }
   };
 
-  const getTimeAgo = (dateString: string) => {
+  const getTimeAgoForEvents = (dateString: string) => {
     const now = new Date();
-    const orderTime = new Date(dateString);
-    const diffMinutes = Math.floor((now.getTime() - orderTime.getTime()) / (1000 * 60));
+    const eventTime = new Date(dateString);
+    const diffMinutes = Math.floor((now.getTime() - eventTime.getTime()) / (1000 * 60));
     
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
@@ -241,24 +271,66 @@ export function EnhancedOrderNotificationSystem() {
     return null;
   }
 
+  const getEventIconComponent = (eventType: string) => {
+    switch (eventType) {
+      case 'STATUS_CHANGED':
+        return <CheckCircle2 className="w-4 h-4" />;
+      case 'ASSIGNED':
+        return <User className="w-4 h-4" />;
+      case 'STOCKING_STARTED':
+      case 'STOCKED_IN_UNIT':
+        return <Home className="w-4 h-4" />;
+      case 'ITEM_UPDATED':
+      case 'ITEM_ADDED':
+      case 'ITEM_REMOVED':
+        return <ShoppingCart className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const filteredEvents = orderEvents.filter(event => {
+    switch (activeFilter) {
+      case 'customer':
+        return isCustomerVisible(event.event_type, event.data);
+      case 'internal':
+        return !isCustomerVisible(event.event_type, event.data);
+      default:
+        return true;
+    }
+  });
+
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const eventTime = new Date(dateString);
+    const diffMinutes = Math.floor((now.getTime() - eventTime.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+    return `${Math.floor(diffMinutes / 1440)}d ago`;
+  };
+
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            <CardTitle>Order Notifications</CardTitle>
+    <div className="space-y-6">
+      {/* Order Notifications */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              <CardTitle>Order Notifications</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {getConnectionIcon()}
+              {getConnectionStatus()}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {getConnectionIcon()}
-            {getConnectionStatus()}
-          </div>
-        </div>
-        <CardDescription>
-          Real-time notifications for new orders requiring attention
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+          <CardDescription>
+            Real-time notifications for new orders requiring attention
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -326,7 +398,80 @@ export function EnhancedOrderNotificationSystem() {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Staff Timeline View */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              <CardTitle>Staff Timeline View</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex gap-1">
+                {(['all', 'customer', 'internal'] as FilterType[]).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={activeFilter === filter ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveFilter(filter)}
+                  >
+                    {filter === 'all' ? 'All' : filter === 'customer' ? 'Customer-visible' : 'Internal'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <CardDescription>
+            Timeline of all order events with filtering options
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filteredEvents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No events to display</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredEvents.map((event) => (
+                <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="p-2 rounded-full bg-primary/10 text-primary">
+                    {getEventIconComponent(event.event_type)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-sm">
+                        {getEventMessage(event.event_type, event.data)}
+                      </p>
+                      {isCustomerVisible(event.event_type, event.data) ? (
+                        <Badge variant="default" className="text-xs">Customer-visible</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Internal</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Order #{event.order_id?.slice(0, 8)} • {event.actor_role}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {getTimeAgoForEvents(event.created_at)}
+                    </p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(event.created_at).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

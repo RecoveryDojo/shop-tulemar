@@ -11,8 +11,15 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  recipientId: string;
-  type: 'new_message' | 'message_reaction' | 'message_mention' | 'system_alert';
+  order_id?: string;
+  event_type?: string;
+  actor_role?: string;
+  data?: any;
+  customer_email?: string;
+  customer_name?: string;
+  // Legacy message notification fields
+  recipientId?: string;
+  type?: 'new_message' | 'message_reaction' | 'message_mention' | 'system_alert';
   messageId?: string;
   messageType?: string;
   senderId?: string;
@@ -25,92 +32,148 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { recipientId, type, messageId, messageType, senderId, customData }: NotificationRequest = await req.json();
+    const { 
+      order_id, event_type, actor_role, data, customer_email, customer_name,
+      recipientId, type, messageId, messageType, senderId, customData 
+    }: NotificationRequest = await req.json();
 
-    console.log("Creating notification:", { recipientId, type, messageId });
+    console.log("Creating notification:", { order_id, event_type, type, recipientId });
 
-    // Get recipient's notification preferences
-    const { data: prefs } = await supabase
-      .from('email_preferences')
-      .select('*')
-      .eq('user_id', recipientId)
-      .single();
-
-    // Get sender info if provided
-    let senderInfo = null;
-    if (senderId) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, email')
-        .eq('id', senderId)
-        .single();
-      senderInfo = data;
-    }
-
-    // Create notification content based on type
     let notificationContent = '';
-    let notificationChannel = 'in_app';
+    let notificationChannel = 'email';
+    let notificationType = type || 'order_update';
+    let recipientIdentifier = recipientId || customer_email;
 
-    switch (type) {
-      case 'new_message':
-        notificationContent = `New message from ${senderInfo?.display_name || 'Team Member'}`;
-        if (messageType === 'emergency') {
-          notificationContent = `🚨 URGENT: ${notificationContent}`;
+    // Handle order events
+    if (order_id && event_type) {
+      switch (event_type) {
+        case 'STATUS_CHANGED':
+          if (data?.to === 'READY') {
+            notificationContent = `Hi ${customer_name}, your order is now ready for pickup!`;
+          } else if (data?.to === 'DELIVERED') {
+            notificationContent = `Hi ${customer_name}, your order has been delivered to your unit.`;
+          } else if (data?.to === 'SHOPPING') {
+            notificationContent = `Hi ${customer_name}, your personal shopper has started shopping.`;
+          } else {
+            notificationContent = `Hi ${customer_name}, your order status has been updated.`;
+          }
+          break;
+        case 'ASSIGNED':
+          notificationContent = `Hi ${customer_name}, a personal shopper has been assigned to your order.`;
+          break;
+        case 'STOCKING_STARTED':
+          notificationContent = `Hi ${customer_name}, your groceries are being stocked in your unit.`;
+          break;
+        case 'STOCKED_IN_UNIT':
+          notificationContent = `Hi ${customer_name}, your groceries have been delivered and stocked!`;
+          break;
+        case 'ITEM_UPDATED':
+          if (data?.qty_picked > 0) {
+            notificationContent = `Hi ${customer_name}, ${data.name} has been picked (${data.qty_picked}/${data.qty}).`;
+          } else {
+            notificationContent = `Hi ${customer_name}, an item in your order has been updated.`;
+          }
+          break;
+        default:
+          notificationContent = `Hi ${customer_name}, there's an update on your order.`;
+      }
+      notificationType = 'order_update';
+    } else {
+      // Handle legacy message notifications
+      const { data: prefs } = await supabase
+        .from('email_preferences')
+        .select('*')
+        .eq('user_id', recipientId)
+        .single();
+
+      let senderInfo = null;
+      if (senderId) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('id', senderId)
+          .single();
+        senderInfo = data;
+      }
+
+      notificationChannel = 'in_app';
+      switch (type) {
+        case 'new_message':
+          notificationContent = `New message from ${senderInfo?.display_name || 'Team Member'}`;
+          if (messageType === 'emergency') {
+            notificationContent = `🚨 URGENT: ${notificationContent}`;
+            notificationChannel = 'push';
+          }
+          break;
+        case 'message_reaction':
+          notificationContent = `${senderInfo?.display_name || 'Someone'} reacted to your message`;
+          break;
+        case 'message_mention':
+          notificationContent = `${senderInfo?.display_name || 'Someone'} mentioned you in a message`;
           notificationChannel = 'push';
-        }
-        break;
-      case 'message_reaction':
-        notificationContent = `${senderInfo?.display_name || 'Someone'} reacted to your message`;
-        break;
-      case 'message_mention':
-        notificationContent = `${senderInfo?.display_name || 'Someone'} mentioned you in a message`;
-        notificationChannel = 'push';
-        break;
-      case 'system_alert':
-        notificationContent = customData?.message || 'System notification';
-        notificationChannel = 'push';
-        break;
-      default:
-        notificationContent = 'New notification';
+          break;
+        case 'system_alert':
+          notificationContent = customData?.message || 'System notification';
+          notificationChannel = 'push';
+          break;
+        default:
+          notificationContent = 'New notification';
+      }
     }
 
     // Insert notification into database
     const { data: notification, error: notificationError } = await supabase
       .from('order_notifications')
       .insert({
-        notification_type: type,
-        recipient_type: 'user',
-        recipient_identifier: recipientId,
+        order_id: order_id || null,
+        notification_type: notificationType,
+        recipient_type: 'customer',
+        recipient_identifier: recipientIdentifier,
         channel: notificationChannel,
         message_content: notificationContent,
         metadata: {
+          event_type,
+          actor_role,
+          event_data: data,
           message_id: messageId,
           message_type: messageType,
           sender_id: senderId,
           custom_data: customData,
-          created_via: 'messaging_system'
+          created_via: order_id ? 'order_system' : 'messaging_system'
         }
       })
       .select()
       .single();
+
+    // Also insert into order events if this is an order-related notification
+    if (order_id && event_type) {
+      await supabase
+        .from('new_order_events')
+        .insert({
+          order_id,
+          event_type,
+          actor_role: actor_role || 'system',
+          data: data || {}
+        });
+    }
 
     if (notificationError) {
       console.error("Failed to create notification:", notificationError);
       throw notificationError;
     }
 
-    // Send push notification for urgent messages or mentions
-    if (notificationChannel === 'push' && prefs?.message_notifications) {
+    // Send email notification for order updates
+    if (notificationChannel === 'email' && customer_email) {
       try {
-        // Here you would integrate with a push notification service
-        // For now, we'll log that we would send a push notification
-        console.log("Would send push notification:", {
-          recipient: recipientId,
+        // Here you would integrate with an email service (Resend, etc.)
+        console.log("Would send email notification:", {
+          recipient: customer_email,
+          subject: `Order Update - ${event_type?.replace(/_/g, ' ')}`,
           content: notificationContent,
-          data: { messageId, type }
+          data: { order_id, event_type }
         });
-      } catch (pushError) {
-        console.warn("Push notification failed:", pushError);
+      } catch (emailError) {
+        console.warn("Email notification failed:", emailError);
       }
     }
 
