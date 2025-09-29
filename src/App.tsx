@@ -209,13 +209,13 @@ function AppRouter() {
           <LazyWorkflowTesting />
         </AsyncBoundary>
       } />
-      <Route path="/db-smoke" element={<DbSmoke />} />
       <Route path="/workflow-test" element={<WorkflowTest />} />
       <Route path="/workflow-documentation" element={
         <AsyncBoundary loadingText="Loading documentation...">
           <LazyWorkflowDocumentation />
         </AsyncBoundary>
       } />
+      <Route path="/db-smoke" element={<DbSmoke />} />
       <Route path="*" element={
         <AsyncBoundary loadingText="Loading page...">
           <LazyNotFound />
