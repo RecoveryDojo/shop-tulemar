@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard, Star, Zap, Truck, Users } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Home, Grid, Package, Info, ShoppingCart, Menu, X, Target, LayoutDashboard, Star, Zap, Truck, Users, Bug } from "lucide-react";
+import { NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -30,6 +30,8 @@ export function ShopNavigation() {
   const location = useLocation();
   const { itemCount } = useCart();
   const { user, hasRole } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isDebugMode = searchParams.get('debug') === '1';
 
   // Add role-specific navigation items
   const getRoleSpecificItems = () => {
@@ -51,7 +53,11 @@ export function ShopNavigation() {
     return roleItems;
   };
 
-  const allNavigationItems = [...navigationItems, ...getRoleSpecificItems()];
+  const debugItems = isDebugMode ? [
+    { title: "DB Smoke Test", url: "/db-smoke", icon: Bug }
+  ] : [];
+
+  const allNavigationItems = [...navigationItems, ...getRoleSpecificItems(), ...debugItems];
 
   const isActive = (path: string) => {
     if (path === "/") {

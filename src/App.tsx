@@ -48,11 +48,11 @@ import {
 // Keep critical components as direct imports for immediate loading
 import ShopIndex from "@/pages/shop/ShopIndex";
 import CategoryPage from "@/pages/shop/CategoryPage";
+import DbSmoke from "@/pages/DbSmoke";
 import WorkflowTest from "@/pages/WorkflowTest";
 import Auth from "@/pages/Auth";
 import ProductEdit from "@/pages/ProductEdit";
 import ResetPassword from "@/pages/ResetPassword";
-import DbSmoke from "@/pages/DbSmoke";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -214,11 +214,7 @@ function AppRouter() {
           <LazyWorkflowDocumentation />
         </AsyncBoundary>
       } />
-      <Route path="/db-smoke" element={
-        <AsyncBoundary loadingText="Loading smoke test...">
-          <DbSmoke />
-        </AsyncBoundary>
-      } />
+      <Route path="/db-smoke" element={<DbSmoke />} />
       <Route path="*" element={
         <AsyncBoundary loadingText="Loading page...">
           <LazyNotFound />

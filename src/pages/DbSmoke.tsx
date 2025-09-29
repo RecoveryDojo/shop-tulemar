@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, RefreshCw, Plus } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Plus, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'react-router-dom';
 
 interface Order {
   id: string;
@@ -43,18 +44,24 @@ export default function DbSmoke() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [addingEvent, setAddingEvent] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [showRawResults, setShowRawResults] = useState(false);
+  const [lastRunTime, setLastRunTime] = useState<string>('');
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const isDebugMode = searchParams.get('debug') === '1';
 
   const runSmokeTests = async () => {
     setLoading(true);
+    setLastRunTime(new Date().toLocaleTimeString());
     const testResults: SmokeTestResult[] = [];
 
     try {
-      // Test 1: Fetch most recent order
+      // Test 1: Fetch most recent order for demo_client@tulemar.test
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('id, status, created_at, customer_name, total_amount')
+        .eq('customer_email', 'demo_client@tulemar.test')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -69,7 +76,7 @@ export default function DbSmoke() {
         testResults.push({
           name: 'Recent Order Query',
           passed: false,
-          message: 'No orders found in database'
+          message: 'No demo order found for demo_client@tulemar.test'
         });
       } else {
         testResults.push({
@@ -80,9 +87,9 @@ export default function DbSmoke() {
         });
         setOrder(orderData);
 
-        // Test 2: Fetch items for this order
+        // Test 2: Fetch items for this order from backing table
         const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
+          .from('new_order_items')
           .select('id, sku, name, qty, qty_picked, notes')
           .eq('order_id', orderData.id);
 
@@ -92,29 +99,24 @@ export default function DbSmoke() {
             passed: false,
             message: `Error: ${itemsError.message}`
           });
-        } else if (!itemsData || itemsData.length === 0) {
-          testResults.push({
-            name: 'Order Items Query',
-            passed: false,
-            message: 'No items found for this order'
-          });
         } else {
+          const passed = itemsData && itemsData.length >= 3;
           testResults.push({
             name: 'Order Items Query',
-            passed: true,
-            message: `Found ${itemsData.length} items`,
+            passed,
+            message: passed ? `Found ${itemsData.length} items (≥3)` : `Found ${itemsData?.length || 0} items (need ≥3)`,
             data: itemsData
           });
-          setItems(itemsData);
+          setItems(itemsData || []);
         }
 
-        // Test 3: Fetch recent events for this order
+        // Test 3: Fetch recent events for this order from backing table
         const { data: eventsData, error: eventsError } = await supabase
-          .from('order_events')
+          .from('new_order_events')
           .select('id, event_type, actor_role, data, created_at')
           .eq('order_id', orderData.id)
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         if (eventsError) {
           testResults.push({
@@ -122,20 +124,16 @@ export default function DbSmoke() {
             passed: false,
             message: `Error: ${eventsError.message}`
           });
-        } else if (!eventsData || eventsData.length === 0) {
-          testResults.push({
-            name: 'Order Events Query',
-            passed: false,
-            message: 'No events found for this order'
-          });
         } else {
+          const statusChangedEvents = eventsData?.filter(e => e.event_type === 'STATUS_CHANGED') || [];
+          const passed = statusChangedEvents.length > 0;
           testResults.push({
             name: 'Order Events Query',
-            passed: true,
-            message: `Found ${eventsData.length} events`,
+            passed,
+            message: passed ? `Found ${eventsData?.length || 0} events (${statusChangedEvents.length} STATUS_CHANGED)` : `Found ${eventsData?.length || 0} events (no STATUS_CHANGED)`,
             data: eventsData
           });
-          setEvents(eventsData);
+          setEvents(eventsData || []);
         }
       }
     } catch (error) {
@@ -150,68 +148,71 @@ export default function DbSmoke() {
     setLoading(false);
   };
 
-  const addTestEvent = async () => {
-    if (!order || items.length === 0) {
-      toast({
-        title: "Cannot add event",
-        description: "No order or items found",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setAddingEvent(true);
+  const seedDemoData = async () => {
+    setSeeding(true);
     try {
-      // Update the first item's qty_picked to trigger an ITEM_UPDATED event
-      const firstItem = items[0];
-      const newQtyPicked = (firstItem.qty_picked || 0) + 1;
+      // Insert demo order via views to exercise write-through rules
+      const demoOrderData = {
+        customer_email: 'demo_client@tulemar.test',
+        customer_name: 'Demo Client',
+        customer_phone: '+1-555-DEMO',
+        property_address: '123 Demo Street, Demo City',
+        status: 'PLACED',
+        subtotal: 25.50,
+        tax_amount: 2.04,
+        delivery_fee: 5.00,
+        total_amount: 32.54,
+        special_instructions: 'Demo order for smoke testing'
+      };
 
-      const { error: updateError } = await supabase
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(demoOrderData)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Insert demo items via views 
+      const demoItems = [
+        { order_id: newOrder.id, sku: 'COFFEE-001', name: 'Premium Coffee', qty: 2, notes: 'Ground beans' },
+        { order_id: newOrder.id, sku: 'MILK-001', name: 'Organic Milk', qty: 1, notes: '1 gallon' },
+        { order_id: newOrder.id, sku: 'BANANA-001', name: 'Fresh Bananas', qty: 1, notes: '1 bunch' }
+      ];
+
+      const { error: itemsError } = await supabase
         .from('order_items')
-        .update({ qty_picked: newQtyPicked })
-        .eq('id', firstItem.id);
+        .insert(demoItems);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (itemsError) throw itemsError;
 
-      // Insert an explicit event via the view to test write-through rules
+      // Insert demo events via views
       const { error: eventError } = await supabase
         .from('order_events')
         .insert({
-          order_id: order.id,
-          event_type: 'ITEM_UPDATED',
-          actor_role: 'smoke_test',
-          data: {
-            item_id: firstItem.id,
-            sku: firstItem.sku,
-            name: firstItem.name,
-            qty_picked_from: firstItem.qty_picked || 0,
-            qty_picked_to: newQtyPicked,
-            timestamp: new Date().toISOString(),
-            test: true
-          }
+          order_id: newOrder.id,
+          event_type: 'STATUS_CHANGED',
+          actor_role: 'system',
+          data: { from: null, to: 'PLACED', timestamp: new Date().toISOString() }
         });
 
-      if (eventError) {
-        throw eventError;
-      }
+      if (eventError) throw eventError;
 
       toast({
-        title: "Test event added",
-        description: `Updated ${firstItem.name} qty_picked to ${newQtyPicked}`
+        title: "Demo data seeded",
+        description: `Created order ${newOrder.id.slice(0, 8)} with 3 items`
       });
 
-      // Re-run tests to show the new event
+      // Re-run tests to show the new data
       await runSmokeTests();
     } catch (error) {
       toast({
-        title: "Failed to add event",
+        title: "Failed to seed demo data",
         description: `Error: ${error}`,
         variant: "destructive"
       });
     }
-    setAddingEvent(false);
+    setSeeding(false);
   };
 
   useEffect(() => {
@@ -224,24 +225,39 @@ export default function DbSmoke() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Database Smoke Test</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Database Smoke Test</h1>
+          {lastRunTime && (
+            <p className="text-sm text-muted-foreground mt-1">Last run: {lastRunTime}</p>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button 
             onClick={runSmokeTests} 
-            disabled={loading}
+            disabled={loading || seeding}
             variant="outline"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Tests
+            {loading ? 'Running...' : 'Refresh Tests'}
           </Button>
           <Button 
-            onClick={addTestEvent} 
-            disabled={addingEvent || !order}
+            onClick={seedDemoData} 
+            disabled={seeding || loading}
             variant="secondary"
           >
-            <Plus className={`w-4 h-4 mr-2 ${addingEvent ? 'animate-spin' : ''}`} />
-            Add Test Event
+            <Plus className={`w-4 h-4 mr-2 ${seeding ? 'animate-spin' : ''}`} />
+            {seeding ? 'Seeding...' : 'Seed Demo Data'}
           </Button>
+          {isDebugMode && (
+            <Button 
+              onClick={() => setShowRawResults(!showRawResults)}
+              variant="ghost"
+              size="sm"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              {showRawResults ? 'Hide' : 'Show'} Raw Results
+            </Button>
+          )}
         </div>
       </div>
 
@@ -375,6 +391,39 @@ export default function DbSmoke() {
         </Card>
       )}
 
+      {/* Debug Raw Results */}
+      {isDebugMode && showRawResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Raw Results (Debug)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 text-sm font-mono">
+              <div>
+                <div className="font-semibold">Order ID:</div>
+                <div>{order?.id || 'None'}</div>
+              </div>
+              <div>
+                <div className="font-semibold">Order Status:</div>
+                <div>{order?.status || 'None'}</div>
+              </div>
+              <div>
+                <div className="font-semibold">Item Count:</div>
+                <div>{items.length}</div>
+              </div>
+              <div>
+                <div className="font-semibold">Event Count:</div>
+                <div>{events.length}</div>
+              </div>
+              <div>
+                <div className="font-semibold">STATUS_CHANGED Events:</div>
+                <div>{events.filter(e => e.event_type === 'STATUS_CHANGED').length}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Expected Green Checks */}
       <Card>
         <CardHeader>
@@ -384,15 +433,15 @@ export default function DbSmoke() {
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span>Recent Order Query: Should find demo order with status 'confirmed'</span>
+              <span>Recent Order Query: Should find demo order for demo_client@tulemar.test</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span>Order Items Query: Should find 3 items (Coffee, Milk, Bananas)</span>
+              <span>Order Items Query: Should find ≥3 items (Coffee, Milk, Bananas)</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span>Order Events Query: Should find STATUS_CHANGED events</span>
+              <span>Order Events Query: Should find at least one STATUS_CHANGED event</span>
             </div>
           </div>
         </CardContent>
