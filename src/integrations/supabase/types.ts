@@ -2106,6 +2106,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      is_legal_transition: {
+        Args: { from_status: string; to_status: string }
+        Returns: boolean
+      }
       log_message_event: {
         Args: {
           p_event_type: string
@@ -2133,6 +2137,54 @@ export type Database = {
       }
       rollback_workflow_status: {
         Args: { p_order_id: string; p_reason?: string; p_target_status: string }
+        Returns: Json
+      }
+      rpc_advance_status: {
+        Args: {
+          p_actor_role: string
+          p_expected_status: string
+          p_order_id: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      rpc_assign_shopper: {
+        Args: {
+          p_actor_role: string
+          p_expected_status: string
+          p_order_id: string
+          p_shopper_id: string
+        }
+        Returns: Json
+      }
+      rpc_decide_sub: {
+        Args: {
+          p_actor_role: string
+          p_decision: string
+          p_expected_status: string
+          p_item_id: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      rpc_pick_item: {
+        Args: {
+          p_actor_role: string
+          p_expected_status: string
+          p_item_id: string
+          p_order_id: string
+          p_qty_picked: number
+        }
+        Returns: Json
+      }
+      rpc_suggest_sub: {
+        Args: {
+          p_actor_role: string
+          p_expected_status: string
+          p_item_id: string
+          p_order_id: string
+          p_suggested_sku: string
+        }
         Returns: Json
       }
       validate_workflow_transition: {
