@@ -83,11 +83,13 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        const { error } = await supabase
-          .from('order_items')
-          .update({ qty_picked: qtyPicked, shopping_status: 'found' })
-          .eq('id', itemId)
-          .eq('order_id', orderId);
+        const { data, error } = await supabase.rpc('rpc_pick_item', {
+          p_order_id: orderId,
+          p_item_id: itemId,
+          p_qty_picked: qtyPicked,
+          p_expected_status: expectedStatus,
+          p_actor_role: 'shopper'
+        });
         if (error) throw error;
       },
       {
@@ -105,14 +107,13 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        const { error } = await supabase
-          .from('order_items')
-          .update({ 
-            substitution_data: { suggested_sku: suggestedSku, status: 'pending' },
-            shopping_status: 'substitution_needed'
-          })
-          .eq('id', itemId)
-          .eq('order_id', orderId);
+        const { data, error } = await supabase.rpc('rpc_suggest_sub', {
+          p_order_id: orderId,
+          p_item_id: itemId,
+          p_suggested_sku: suggestedSku,
+          p_expected_status: expectedStatus,
+          p_actor_role: 'shopper'
+        });
         if (error) throw error;
       },
       {
@@ -130,14 +131,13 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        const { error } = await supabase
-          .from('order_items')
-          .update({ 
-            substitution_data: { decision, status: decision === 'accept' ? 'accepted' : 'rejected' },
-            shopping_status: decision === 'accept' ? 'substituted' : 'not_available'
-          })
-          .eq('id', itemId)
-          .eq('order_id', orderId);
+        const { data, error } = await supabase.rpc('rpc_decide_sub', {
+          p_order_id: orderId,
+          p_item_id: itemId,
+          p_decision: decision,
+          p_expected_status: expectedStatus,
+          p_actor_role: 'customer'
+        });
         if (error) throw error;
       },
       {
@@ -160,13 +160,12 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        // Use uppercase canonical statuses - no lowercase conversion
-        const { error } = await supabase
-          .from('orders')
-          .update({ status: to })
-          .eq('id', orderId)
-          // Allow both uppercase (canonical) and lowercase (legacy) for expectedStatus check
-          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
+        const { data, error } = await supabase.rpc('rpc_advance_status', {
+          p_order_id: orderId,
+          p_to: to,
+          p_expected_status: expectedStatus,
+          p_actor_role: 'shopper'
+        });
         if (error) throw error;
       },
       {
@@ -184,14 +183,12 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        const { error } = await supabase
-          .from('orders')
-          .update({ 
-            status: 'CLAIMED', // Use canonical uppercase status
-            assigned_shopper_id: (global as any).currentUserId || 'current-user'
-          })
-          .eq('id', orderId)
-          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
+        const { data, error } = await supabase.rpc('rpc_assign_shopper', {
+          p_order_id: orderId,
+          p_shopper_id: (global as any).currentUserId || null,
+          p_expected_status: expectedStatus,
+          p_actor_role: 'shopper'
+        });
         if (error) throw error;
       },
       {
@@ -209,14 +206,12 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
-        const { error } = await supabase
-          .from('orders')
-          .update({ 
-            status: 'SHOPPING', // Use canonical uppercase status
-            shopping_started_at: new Date().toISOString()
-          })
-          .eq('id', orderId)
-          .or(`status.eq.${expectedStatus},status.eq.${expectedStatus.toLowerCase()}`);
+        const { data, error } = await supabase.rpc('rpc_advance_status', {
+          p_order_id: orderId,
+          p_to: 'SHOPPING',
+          p_expected_status: expectedStatus,
+          p_actor_role: 'shopper'
+        });
         if (error) throw error;
       },
       {

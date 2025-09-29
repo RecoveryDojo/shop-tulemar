@@ -60,6 +60,7 @@ export const useShopperOrders = () => {
       setLoading(true);
 
       // Fetch shopper queue - orders assigned to this shopper in active states
+      // Accept both canonical (CLAIMED, SHOPPING, READY, DELIVERED) and legacy (claimed, shopping, ready, delivered)
       const { data: shopperQueueData, error: queueError } = await supabase
         .from('orders')
         .select(`
@@ -70,11 +71,12 @@ export const useShopperOrders = () => {
           )
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['claimed', 'shopping', 'ready', 'delivered']);
+        .in('status', ['CLAIMED', 'claimed', 'SHOPPING', 'shopping', 'READY', 'ready', 'DELIVERED', 'delivered']);
 
       console.log('useShopperOrders: Shopper queue query:', { shopperQueueData, queueError });
 
       // Fetch available orders (placed, not assigned)
+      // Accept both canonical (PLACED) and legacy (placed, pending, confirmed)
       const { data: available, error: availableError } = await supabase
         .from('orders')
         .select(`
@@ -84,7 +86,7 @@ export const useShopperOrders = () => {
             products (name, description, image_url, unit, price)
           )
         `)
-        .eq('status', 'placed')
+        .in('status', ['PLACED', 'placed', 'pending', 'confirmed'])
         .is('assigned_shopper_id', null);
 
       console.log('useShopperOrders: Available orders query:', { available, availableError });

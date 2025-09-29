@@ -34,10 +34,11 @@ export const useConciergeDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Accept both canonical (READY, DELIVERED) and legacy (ready, delivered)
       const { data, error: fetchError } = await supabase
         .from('orders')
         .select('id, customer_name, customer_email, property_address, total_amount, status, arrival_date, departure_date, guest_count, assigned_concierge_id')
-        .or('status.in.(delivered,ready),and(assigned_concierge_id.eq.' + user.id + ',status.in.(delivered,ready))');
+        .in('status', ['READY', 'ready', 'DELIVERED', 'delivered']);
 
       if (fetchError) throw fetchError;
 
