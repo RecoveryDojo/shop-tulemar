@@ -50,6 +50,16 @@ export default function SimpleShopperDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<string>('');
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
+
+  const openOrder = (order: Order) => {
+    setCurrentOrder(order);
+    // Scroll to top to show the current order section
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast({
+      title: "Order opened",
+      description: `Now viewing order for ${order.customer_name}`
+    });
+  };
   
   // Order event handler
   const handleOrderEvent = (event: any) => {
@@ -399,7 +409,7 @@ export default function SimpleShopperDashboard() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setCurrentOrder(order)}
+                    onClick={() => openOrder(order)}
                   >
                     Open
                   </Button>
