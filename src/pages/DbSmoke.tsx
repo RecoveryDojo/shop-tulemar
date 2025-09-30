@@ -80,8 +80,8 @@ export default function DbSmoke() {
           message: 'No demo order found for demo_client@tulemar.test'
         });
       } else {
-        // Accept both CLAIMED (canonical) and confirmed (legacy) during migration
-        const statusOk = orderData.status === 'CLAIMED' || orderData.status === 'confirmed';
+        // Accept both CLAIMED (canonical) and claimed (current) during migration
+        const statusOk = orderData.status === 'claimed' || orderData.status === 'CLAIMED';
         testResults.push({
           name: 'Recent Order Query',
           passed: statusOk,

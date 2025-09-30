@@ -72,19 +72,19 @@ export function DriverDashboard() {
       const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['packed', 'in_transit', 'delivered']);
+        .in('status', ['ready', 'delivered']);
 
       if (error) throw error;
       setOrders(ordersData || []);
 
-      // Group orders into active route (packed or in_transit)
+      // Group orders into active route (ready or delivered)
       const routeOrders = ordersData?.filter(o => 
-        ['packed', 'in_transit'].includes(o.status)
+        ['ready', 'delivered'].includes(o.status)
       ) || [];
       setActiveRoute(routeOrders);
 
       // Set current order being delivered
-      const currentDelivery = routeOrders.find(o => o.status === 'in_transit');
+      const currentDelivery = routeOrders.find(o => o.status === 'delivered');
       if (currentDelivery) {
         setCurrentOrder(currentDelivery);
       }
@@ -327,7 +327,7 @@ export function DriverDashboard() {
         <CardContent>
           <div className="space-y-3">
             {/* Show newly assigned deliveries that need acceptance */}
-            {orders.filter(o => o.status === 'packed' && !activeRoute.some(ao => ao.id === o.id)).map((order) => (
+            {orders.filter(o => o.status === 'ready' && !activeRoute.some(ao => ao.id === o.id)).map((order) => (
               <div key={order.id} className="p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -396,12 +396,12 @@ export function DriverDashboard() {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                     <Badge variant={order.status === 'in_transit' ? 'default' : 'secondary'}>
+                     <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
                        {order.status.replace('_', ' ')}
                      </Badge>
                     
-                     {order.status === 'packed' && (
-                       <Button 
+                     {order.status === 'ready' && (
+                       <Button
                          size="sm"
                          onClick={() => startDelivery(order.id)}
                          className="bg-blue-600 hover:bg-blue-700"
@@ -415,7 +415,7 @@ export function DriverDashboard() {
               </div>
             ))}
             
-            {activeRoute.length === 0 && orders.filter(o => o.status === 'packed').length === 0 && (
+            {activeRoute.length === 0 && orders.filter(o => o.status === 'ready').length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Truck className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <div>No deliveries scheduled</div>

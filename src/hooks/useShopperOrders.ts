@@ -86,7 +86,7 @@ export const useShopperOrders = () => {
             products (name, description, image_url, unit, price)
           )
         `)
-        .in('status', ['PLACED', 'placed', 'pending', 'confirmed'])
+        .in('status', ['placed'])
         .is('assigned_shopper_id', null);
 
       console.log('useShopperOrders: Available orders query:', { available, availableError });

@@ -69,14 +69,14 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
 
   const getActiveOrdersForRole = (role: string) => {
     return getOrdersForRole(role).filter(order => 
-      !['completed', 'cancelled'].includes(order.status)
+      !['closed', 'canceled'].includes(order.status)
     );
   };
 
   const ShopperDashboard = () => {
     const shopperOrders = getActiveOrdersForRole('shopper');
     const shoppingOrders = shopperOrders.filter(o => o.status === 'shopping');
-    const pendingOrders = shopperOrders.filter(o => ['assigned', 'confirmed'].includes(o.status));
+    const pendingOrders = shopperOrders.filter(o => o.status === 'claimed');
 
     return (
       <div className="space-y-6">
@@ -216,7 +216,7 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
 
   const DriverDashboard = () => {
     const driverOrders = getActiveOrdersForRole('driver');
-    const deliveryOrders = driverOrders.filter(o => o.status === 'out_for_delivery');
+    const deliveryOrders = driverOrders.filter(o => o.status === 'delivered');
     
     return (
       <div className="space-y-6">
@@ -333,7 +333,7 @@ export function RoleBasedDashboard({ orders, assignments, workflowLogs }: RoleBa
 
   const ConciergeDashboard = () => {
     const conciergeOrders = getActiveOrdersForRole('concierge');
-    const stockingOrders = conciergeOrders.filter(o => ['arrived', 'stocking'].includes(o.status));
+    const stockingOrders = conciergeOrders.filter(o => o.status === 'delivered');
     
     return (
       <div className="space-y-6">

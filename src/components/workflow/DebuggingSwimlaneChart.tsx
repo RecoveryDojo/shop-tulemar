@@ -63,16 +63,15 @@ const WORKFLOW_STEPS = [
   {
     phase: 'Order Placement',
     steps: [
-      { lane: 'customer', action: 'Places Order', status: 'pending', icon: ShoppingCart },
-      { lane: 'system', action: 'Order Confirmed', status: 'confirmed', icon: CheckCircle2 },
-      { lane: 'system', action: 'Payment Processed', status: 'paid', icon: CheckCircle2 },
+      { lane: 'customer', action: 'Places Order', status: 'placed', icon: ShoppingCart },
+      { lane: 'system', action: 'Payment Processed', status: 'placed', icon: CheckCircle2 },
     ]
   },
   {
     phase: 'Shopping Assignment',
     steps: [
-      { lane: 'system', action: 'Finds Available Shopper', status: 'confirmed', icon: Bell },
-      { lane: 'shopper', action: 'Accepts Order', status: 'accepted', icon: CheckCircle2 },
+      { lane: 'system', action: 'Finds Available Shopper', status: 'placed', icon: Bell },
+      { lane: 'shopper', action: 'Accepts Order', status: 'claimed', icon: CheckCircle2 },
       { lane: 'shopper', action: 'Starts Shopping', status: 'shopping', icon: ShoppingCart },
     ]
   },
@@ -80,16 +79,17 @@ const WORKFLOW_STEPS = [
     phase: 'Shopping Process',
     steps: [
       { lane: 'shopper', action: 'Gathering Items', status: 'shopping', icon: ShoppingCart },
-      { lane: 'shopper', action: 'Shopping Complete', status: 'shopping_complete', icon: CheckCircle2 },
-      { lane: 'system', action: 'Ready for Delivery', status: 'ready_for_delivery', icon: Bell },
+      { lane: 'shopper', action: 'Shopping Complete', status: 'ready', icon: CheckCircle2 },
+      { lane: 'system', action: 'Ready for Delivery', status: 'ready', icon: Bell },
     ]
   },
   {
     phase: 'Delivery Process',
     steps: [
-      { lane: 'driver', action: 'Picks Up Order', status: 'picked_up', icon: Truck },
-      { lane: 'driver', action: 'Out for Delivery', status: 'out_for_delivery', icon: MapPin },
+      { lane: 'driver', action: 'Picks Up Order', status: 'ready', icon: Truck },
+      { lane: 'driver', action: 'Out for Delivery', status: 'delivered', icon: MapPin },
       { lane: 'driver', action: 'Delivered', status: 'delivered', icon: CheckCircle2 },
+      { lane: 'system', action: 'Order Completed', status: 'closed', icon: CheckCircle2 },
     ]
   }
 ];
@@ -111,7 +111,7 @@ export const DebuggingSwimlaneChart = ({ orders, title = "Workflow Debugging - S
   };
 
   const getStepStatus = (stepStatus: string, orderStatus: string) => {
-    const statusOrder = ['pending', 'confirmed', 'paid', 'accepted', 'shopping', 'shopping_complete', 'ready_for_delivery', 'picked_up', 'out_for_delivery', 'delivered'];
+    const statusOrder = ['placed', 'claimed', 'shopping', 'ready', 'delivered', 'closed'];
     const currentIndex = statusOrder.indexOf(orderStatus);
     const stepIndex = statusOrder.indexOf(stepStatus);
     

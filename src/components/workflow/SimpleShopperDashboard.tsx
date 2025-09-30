@@ -118,7 +118,7 @@ export default function SimpleShopperDashboard() {
           order_items(*)
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['assigned', 'shopping'])
+        .in('status', ['claimed', 'shopping'])
         .order('created_at');
       
       if (error) throw error;
@@ -308,7 +308,7 @@ export default function SimpleShopperDashboard() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              {currentOrder.status === 'assigned' && (
+              {currentOrder.status === 'claimed' && (
                 <Button
                   onClick={() => handleStartShopping(currentOrder)}
                   disabled={isProcessing}

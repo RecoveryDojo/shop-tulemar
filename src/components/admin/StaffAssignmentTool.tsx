@@ -268,8 +268,6 @@ export function StaffAssignmentTool() {
       // If order was PLACED and we're assigning first staff, move to CLAIMED
       if (selectedOrderData.status === 'placed') {
         updateData.status = 'claimed';
-      } else if (selectedOrderData.status === 'confirmed') {
-        updateData.status = 'assigned';
       }
 
       // Update order with assignments

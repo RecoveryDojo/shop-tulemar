@@ -102,7 +102,7 @@ export function EnhancedOrderNotificationSystem() {
             products (name)
           )
         `)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['placed'])
         .order('created_at', { ascending: false })
         .limit(10);
 

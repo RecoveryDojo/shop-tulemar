@@ -245,7 +245,7 @@ export default function WorkflowTesting() {
         const { data: deliveryOrders } = await supabase
           .from('orders')
           .select('id, status, customer_name, property_address')
-          .in('status', ['packed', 'out_for_delivery']);
+          .in('status', ['ready', 'delivered']);
         break;
 
       case 'Notifications':

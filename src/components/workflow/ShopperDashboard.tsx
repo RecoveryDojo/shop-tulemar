@@ -86,7 +86,7 @@ export function ShopperDashboard() {
           )
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['confirmed', 'assigned', 'shopping', 'packed']);
+        .in('status', ['claimed', 'shopping']);
 
       if (error) throw error;
       
@@ -272,8 +272,8 @@ export function ShopperDashboard() {
                     <Badge variant={order.status === 'shopping' ? 'default' : 'secondary'}>
                       {order.status}
                     </Badge>
-                    {order.status === 'confirmed' && (
-                      <Button 
+                        {order.status === 'claimed' && (
+                          <Button
                         size="sm" 
                         onClick={(e) => {
                           e.stopPropagation();

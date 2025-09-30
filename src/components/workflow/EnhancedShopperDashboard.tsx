@@ -308,7 +308,7 @@ export function EnhancedShopperDashboard() {
         id: 3,
         title: "Pack & Complete",
         description: "Organize and pack items",
-        completed: activeOrder.status === 'packed',
+        completed: activeOrder.status === 'ready',
         action: "Pack"
       }
     ];
@@ -643,8 +643,8 @@ export function EnhancedShopperDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="flex items-center space-x-2 mt-2">
-                        {activeOrder.status === 'assigned' && (
-                           <Button 
+                      {activeOrder.status === 'claimed' && (
+                         <Button
                              size="sm"
                              onClick={() => handleStartShopping(activeOrder.id)}
                              className="bg-blue-600 hover:bg-blue-700"

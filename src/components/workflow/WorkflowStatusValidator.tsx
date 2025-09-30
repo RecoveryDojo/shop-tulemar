@@ -49,8 +49,8 @@ export const WorkflowStatusValidator: React.FC = () => {
       const foundIssues: StatusIssue[] = [];
 
       for (const order of orders || []) {
-        // Check for Jessica's specific issue: confirmed → pending → assigned
-        if (order.status === 'pending' && order.assigned_shopper_id) {
+        // Check for Jessica's specific issue: placed → claimed
+        if (order.status === 'placed' && order.assigned_shopper_id) {
           foundIssues.push({
             orderId: order.id,
             customerName: order.customer_name,
@@ -65,8 +65,8 @@ export const WorkflowStatusValidator: React.FC = () => {
         const now = new Date();
         const orderAge = (now.getTime() - new Date(order.created_at).getTime()) / (1000 * 60 * 60); // hours
 
-        // Order stuck in pending for too long
-        if (order.status === 'pending' && orderAge > 24) {
+        // Order stuck in placed for too long
+        if (order.status === 'placed' && orderAge > 24) {
           foundIssues.push({
             orderId: order.id,
             customerName: order.customer_name,
@@ -113,8 +113,8 @@ export const WorkflowStatusValidator: React.FC = () => {
           });
         }
 
-        // Order assigned but no shopper
-        if (order.status === 'assigned' && !order.assigned_shopper_id) {
+        // Order claimed but no shopper
+        if (order.status === 'claimed' && !order.assigned_shopper_id) {
           foundIssues.push({
             orderId: order.id,
             customerName: order.customer_name,

@@ -153,7 +153,7 @@ export function StoreManagerDashboard() {
             status
           )
         `)
-        .in('status', ['confirmed', 'assigned', 'shopping', 'packed'])
+        .in('status', ['claimed', 'shopping', 'ready'])
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -287,13 +287,13 @@ export function StoreManagerDashboard() {
     }
     
     // Suggest next protocol based on current state
-    if (orders.some(o => o.status === 'confirmed')) {
+    if (orders.some(o => o.status === 'placed')) {
       return 'Suggested: Start Order Assignment Protocol';
     }
     if (orders.some(o => o.status === 'shopping')) {
       return 'Suggested: Monitor Shopper Coordination Protocol';
     }
-    if (orders.some(o => o.status === 'packed')) {
+    if (orders.some(o => o.status === 'ready')) {
       return 'Suggested: Review Quality Assurance Protocol';
     }
     
@@ -440,7 +440,7 @@ export function StoreManagerDashboard() {
                           {order.priority}
                         </Badge>
                         <Badge variant="outline">{order.status}</Badge>
-                        {order.status === 'confirmed' && (
+                        {order.status === 'placed' && (
                           <Button
                             size="sm"
                             onClick={() => startProtocol('order_assignment')}
