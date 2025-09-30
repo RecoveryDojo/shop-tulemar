@@ -50,7 +50,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await acceptOrder(testOrderId, 'PLACED');
+          await acceptOrder(testOrderId, 'placed');
         }
       }
     },
@@ -62,7 +62,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await startShopping(testOrderId, 'CLAIMED');
+          await startShopping(testOrderId, 'claimed');
         }
       }
     },
@@ -74,7 +74,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await advanceStatus({ orderId: testOrderId, to: 'READY', expectedStatus: 'SHOPPING' });
+          await advanceStatus({ orderId: testOrderId, to: 'ready', expectedStatus: 'shopping' });
         }
       }
     },
@@ -86,7 +86,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await advanceStatus({ orderId: testOrderId, to: 'DELIVERED', expectedStatus: 'READY' });
+          await advanceStatus({ orderId: testOrderId, to: 'delivered', expectedStatus: 'ready' });
         }
       }
     },
@@ -98,7 +98,7 @@ export function WorkflowEndToEndTest() {
       status: 'pending',
       action: async () => {
         if (testOrderId) {
-          await advanceStatus({ orderId: testOrderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
+          await advanceStatus({ orderId: testOrderId, to: 'closed', expectedStatus: 'delivered' });
         }
       }
     },

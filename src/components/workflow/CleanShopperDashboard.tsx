@@ -300,7 +300,7 @@ export function CleanShopperDashboard() {
               Manage Items
             </Button>
             <Button 
-              onClick={() => advanceStatus({ orderId: order.id, to: 'READY', expectedStatus: order.status.toUpperCase() as any })}
+              onClick={() => advanceStatus({ orderId: order.id, to: 'ready', expectedStatus: order.status as OrderStatus })}
               disabled={isProcessing}
               className="bg-green-500 hover:bg-green-600"
             >

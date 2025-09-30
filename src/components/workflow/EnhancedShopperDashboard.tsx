@@ -38,7 +38,7 @@ import {
   Award
 } from 'lucide-react';
 import { useShopperOrders, ShoppingOrder, OrderItem } from '@/hooks/useShopperOrders';
-import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
+import { useEnhancedOrderWorkflow, OrderStatus } from '@/hooks/useEnhancedOrderWorkflow';
 import { useRealtimeWorkflowUpdates } from '@/hooks/useRealtimeWorkflowUpdates';
 import { useShopperStats } from '@/hooks/useShopperStats';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -229,7 +229,7 @@ export function EnhancedShopperDashboard() {
   const handleCompleteShopping = async () => {
     if (!activeOrder) return;
     try {
-      await advanceStatus({ orderId: activeOrder.id, to: 'READY', expectedStatus: activeOrder.status as any });
+      await advanceStatus({ orderId: activeOrder.id, to: 'ready', expectedStatus: activeOrder.status as OrderStatus });
       setActiveOrder(null);
       setActiveTab('delivery');
       refetchOrders();
@@ -240,7 +240,7 @@ export function EnhancedShopperDashboard() {
 
   const handleStartDelivery = async (orderId: string) => {
     try {
-      await advanceStatus({ orderId, to: 'DELIVERED', expectedStatus: 'READY' });
+      await advanceStatus({ orderId, to: 'delivered', expectedStatus: 'ready' });
       refetchOrders();
     } catch (error) {
       console.error('Failed to start delivery:', error);
@@ -249,7 +249,7 @@ export function EnhancedShopperDashboard() {
 
   const handleCompleteDelivery = async (orderId: string) => {
     try {
-      await advanceStatus({ orderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
+      await advanceStatus({ orderId, to: 'closed', expectedStatus: 'delivered' });
       refetchOrders();
     } catch (error) {
       console.error('Failed to complete delivery:', error);

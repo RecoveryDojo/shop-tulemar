@@ -169,13 +169,13 @@ export default function SimpleShopperDashboard() {
   // Action handlers
   const handleAcceptOrder = (order: Order) => {
     executeAction('Accept', () => 
-      workflow.acceptOrder(order.id, 'PLACED')
+      workflow.acceptOrder(order.id, 'placed')
     );
   };
 
   const handleStartShopping = (order: Order) => {
     executeAction('Start Shopping', () => 
-      workflow.startShopping(order.id, 'CLAIMED')
+      workflow.startShopping(order.id, 'claimed')
     );
   };
 
@@ -187,7 +187,7 @@ export default function SimpleShopperDashboard() {
         orderId: currentOrder.id,
         itemId: item.id,
         qtyPicked,
-        expectedStatus: 'SHOPPING'
+        expectedStatus: 'shopping'
       })
     );
   };
@@ -198,8 +198,8 @@ export default function SimpleShopperDashboard() {
     executeAction('Advance to READY', () => 
       workflow.advanceStatus({
         orderId: currentOrder.id,
-        to: 'READY',
-        expectedStatus: 'SHOPPING'
+        to: 'ready',
+        expectedStatus: 'shopping'
       })
     );
   };

@@ -100,11 +100,11 @@ export const useConciergeDashboard = () => {
       const order = conciergeQueue.find(o => o.id === orderId);
       if (!order) throw new Error('Order not found');
       
-      // Only advance if not already DELIVERED
-      if (order.status !== 'DELIVERED' && order.status !== 'delivered') {
+      // Only advance if not already delivered
+      if (order.status !== 'delivered') {
         await advanceStatus({ 
           orderId, 
-          to: 'DELIVERED', 
+          to: 'delivered', 
           expectedStatus: order.status as OrderStatus 
         });
       }
@@ -162,8 +162,8 @@ export const useConciergeDashboard = () => {
       
       await advanceStatus({ 
         orderId, 
-        to: 'CLOSED', 
-        expectedStatus: 'DELIVERED' 
+        to: 'closed', 
+        expectedStatus: 'delivered' 
       });
 
       // Insert order_events row

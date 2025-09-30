@@ -102,7 +102,7 @@ export function DriverDashboard() {
 
   const startDelivery = async (orderId: string) => {
     try {
-      await advanceStatus({ orderId, to: 'DELIVERED', expectedStatus: 'READY' });
+      await advanceStatus({ orderId, to: 'delivered', expectedStatus: 'ready' });
       fetchDeliveryOrders();
     } catch (error) {
       console.error('Error starting delivery:', error);
@@ -111,7 +111,7 @@ export function DriverDashboard() {
 
   const completeDelivery = async (orderId: string) => {
     try {
-      await advanceStatus({ orderId, to: 'CLOSED', expectedStatus: 'DELIVERED' });
+      await advanceStatus({ orderId, to: 'closed', expectedStatus: 'delivered' });
       setCurrentOrder(null);
       setDeliveryNotes(prev => {
         const updated = { ...prev };

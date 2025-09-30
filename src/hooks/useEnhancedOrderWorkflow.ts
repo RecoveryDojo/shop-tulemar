@@ -9,7 +9,7 @@ export interface WorkflowError {
   retryable: boolean;
 }
 
-export type OrderStatus = 'PLACED' | 'CLAIMED' | 'SHOPPING' | 'READY' | 'DELIVERED' | 'CLOSED' | 'CANCELED';
+export type OrderStatus = 'placed' | 'claimed' | 'shopping' | 'ready' | 'delivered' | 'closed' | 'canceled';
 
 type Guard = { orderId: string; expectedStatus: OrderStatus };
 type ItemPickArgs = Guard & { itemId: string; qtyPicked: number };
@@ -17,15 +17,15 @@ type SubSuggestArgs = Guard & { itemId: string; suggestedSku: string };
 type SubDecisionArgs = Guard & { itemId: string; decision: 'accept' | 'reject' };
 type StatusAdvanceArgs = Guard & { to: OrderStatus };
 
-// Centralized transitions map - single source of truth
+// Centralized transitions map - single source of truth (lowercase)
 const ALLOWED_TRANSITIONS = {
-  "PLACED": ["CLAIMED", "CANCELED"],
-  "CLAIMED": ["SHOPPING", "CANCELED"], 
-  "SHOPPING": ["READY", "CANCELED"],
-  "READY": ["DELIVERED", "CANCELED"],
-  "DELIVERED": ["CLOSED"],
-  "CLOSED": [],
-  "CANCELED": []
+  "placed": ["claimed", "canceled"],
+  "claimed": ["shopping", "canceled"], 
+  "shopping": ["ready", "canceled"],
+  "ready": ["delivered", "canceled"],
+  "delivered": ["closed"],
+  "closed": [],
+  "canceled": []
 };
 
 export const useEnhancedOrderWorkflow = () => {
@@ -87,7 +87,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_qty_picked: qtyPicked,
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_expected_status: expectedStatus,
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -111,7 +111,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_suggested_sku: suggestedSku,
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_expected_status: expectedStatus,
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -135,7 +135,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_decision: decision,
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_expected_status: expectedStatus,
           p_actor_role: 'customer'
         });
         if (error) throw error;
@@ -162,8 +162,8 @@ export const useEnhancedOrderWorkflow = () => {
       async () => {
         const { data, error } = await supabase.rpc('rpc_advance_status', {
           p_order_id: orderId,
-          p_to: to.toUpperCase(),
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_to: to,
+          p_expected_status: expectedStatus,
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -189,7 +189,7 @@ export const useEnhancedOrderWorkflow = () => {
         const { data, error } = await supabase.rpc('rpc_assign_shopper', {
           p_order_id: orderId,
           p_shopper_id: user.id,
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_expected_status: expectedStatus,
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -198,7 +198,7 @@ export const useEnhancedOrderWorkflow = () => {
         order_id: orderId,
         event_type: 'STATUS_CHANGED',
         actor_role: 'shopper',
-        data: { from: expectedStatus, to: 'CLAIMED' }
+        data: { from: expectedStatus, to: 'claimed' }
       },
       "acceptOrder"
     );
@@ -211,8 +211,8 @@ export const useEnhancedOrderWorkflow = () => {
       async () => {
         const { data, error } = await supabase.rpc('rpc_advance_status', {
           p_order_id: orderId,
-          p_to: 'SHOPPING',
-          p_expected_status: expectedStatus.toUpperCase(),
+          p_to: 'shopping',
+          p_expected_status: expectedStatus,
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -221,7 +221,7 @@ export const useEnhancedOrderWorkflow = () => {
         order_id: orderId,
         event_type: 'STATUS_CHANGED',
         actor_role: 'shopper',
-        data: { from: expectedStatus, to: 'SHOPPING' }
+        data: { from: expectedStatus, to: 'shopping' }
       },
       "startShopping"
     );
