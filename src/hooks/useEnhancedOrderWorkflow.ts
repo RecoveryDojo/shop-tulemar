@@ -87,7 +87,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_qty_picked: qtyPicked,
-          p_expected_status: expectedStatus,
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -111,7 +111,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_suggested_sku: suggestedSku,
-          p_expected_status: expectedStatus,
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -135,7 +135,7 @@ export const useEnhancedOrderWorkflow = () => {
           p_order_id: orderId,
           p_item_id: itemId,
           p_decision: decision,
-          p_expected_status: expectedStatus,
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'customer'
         });
         if (error) throw error;
@@ -162,8 +162,8 @@ export const useEnhancedOrderWorkflow = () => {
       async () => {
         const { data, error } = await supabase.rpc('rpc_advance_status', {
           p_order_id: orderId,
-          p_to: to,
-          p_expected_status: expectedStatus,
+          p_to: to.toUpperCase(),
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -183,10 +183,13 @@ export const useEnhancedOrderWorkflow = () => {
     
     await executeGuardedMutation(
       async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+        
         const { data, error } = await supabase.rpc('rpc_assign_shopper', {
           p_order_id: orderId,
-          p_shopper_id: (global as any).currentUserId || null,
-          p_expected_status: expectedStatus,
+          p_shopper_id: user.id,
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'shopper'
         });
         if (error) throw error;
@@ -209,7 +212,7 @@ export const useEnhancedOrderWorkflow = () => {
         const { data, error } = await supabase.rpc('rpc_advance_status', {
           p_order_id: orderId,
           p_to: 'SHOPPING',
-          p_expected_status: expectedStatus,
+          p_expected_status: expectedStatus.toUpperCase(),
           p_actor_role: 'shopper'
         });
         if (error) throw error;
