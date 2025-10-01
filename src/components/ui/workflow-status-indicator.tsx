@@ -10,47 +10,54 @@ interface WorkflowStatusIndicatorProps {
 export function WorkflowStatusIndicator({ status, size = 'md' }: WorkflowStatusIndicatorProps) {
   const getStatusConfig = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
+      case 'placed':
         return {
           icon: Clock,
-          label: 'Pending',
+          label: 'Order Placed',
           variant: 'secondary' as const,
-          color: 'text-yellow-600'
+          color: 'text-blue-600'
         };
-      case 'assigned':
+      case 'claimed':
         return {
           icon: CheckCircle2,
-          label: 'Assigned',
+          label: 'Assigned to Shopper',
           variant: 'default' as const,
-          color: 'text-blue-600'
+          color: 'text-purple-600'
         };
       case 'shopping':
         return {
           icon: Package,
-          label: 'Shopping',
+          label: 'Shopping in Progress',
           variant: 'default' as const,
           color: 'text-orange-600'
         };
-      case 'packed':
+      case 'ready':
         return {
           icon: Package,
-          label: 'Packed',
+          label: 'Ready for Delivery',
           variant: 'default' as const,
           color: 'text-green-600'
         };
-      case 'in_transit':
-        return {
-          icon: Truck,
-          label: 'In Transit',
-          variant: 'default' as const,
-          color: 'text-purple-600'
-        };
       case 'delivered':
         return {
-          icon: CheckCircle2,
+          icon: Truck,
           label: 'Delivered',
           variant: 'default' as const,
-          color: 'text-green-700'
+          color: 'text-emerald-600'
+        };
+      case 'closed':
+        return {
+          icon: CheckCircle2,
+          label: 'Completed',
+          variant: 'default' as const,
+          color: 'text-gray-600'
+        };
+      case 'canceled':
+        return {
+          icon: AlertTriangle,
+          label: 'Canceled',
+          variant: 'destructive' as const,
+          color: 'text-red-600'
         };
       default:
         return {

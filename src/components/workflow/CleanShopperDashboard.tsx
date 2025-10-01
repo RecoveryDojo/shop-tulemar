@@ -267,20 +267,20 @@ export function CleanShopperDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500 text-white';
-      case 'confirmed': return 'bg-blue-500 text-white';
-      case 'assigned': return 'bg-purple-500 text-white';
+      case 'placed': return 'bg-blue-500 text-white';
+      case 'claimed': return 'bg-purple-500 text-white';
       case 'shopping': return 'bg-orange-500 text-white';
-      case 'packed': return 'bg-green-500 text-white';
-      case 'in_transit': return 'bg-indigo-500 text-white';
+      case 'ready': return 'bg-green-500 text-white';
       case 'delivered': return 'bg-emerald-500 text-white';
+      case 'closed': return 'bg-gray-500 text-white';
+      case 'canceled': return 'bg-red-500 text-white';
       default: return 'bg-gray-500 text-white';
     }
   };
 
   const getStatusActions = (order: any) => {
     switch (order.status) {
-      case 'assigned':
+      case 'claimed':
         return (
           <Button 
             onClick={() => handleStartShopping(order.id)}

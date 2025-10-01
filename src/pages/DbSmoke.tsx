@@ -80,14 +80,14 @@ export default function DbSmoke() {
           message: 'No demo order found for demo_client@tulemar.test'
         });
       } else {
-        // Accept both CLAIMED (canonical) and claimed (current) during migration
-        const statusOk = orderData.status === 'claimed' || orderData.status === 'CLAIMED';
+        // Check for canonical lowercase status
+        const statusOk = orderData.status === 'claimed';
         testResults.push({
           name: 'Recent Order Query',
           passed: statusOk,
           message: statusOk 
             ? `Found order ${orderData.id.slice(0, 8)} (${orderData.status})` 
-            : `Found order but status is ${orderData.status} (expected CLAIMED or confirmed)`,
+            : `Found order but status is ${orderData.status} (expected 'claimed')`,
           data: orderData
         });
         setOrder(orderData);
