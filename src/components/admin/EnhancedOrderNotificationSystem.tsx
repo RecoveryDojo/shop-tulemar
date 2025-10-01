@@ -215,7 +215,7 @@ export function EnhancedOrderNotificationSystem() {
     try {
       await supabase
         .from('orders')
-        .update({ status: 'confirmed' })
+        .update({ status: 'placed' })
         .eq('id', orderId);
 
       setNotifications(prev => prev.filter(n => n.id !== orderId));

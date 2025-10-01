@@ -89,7 +89,7 @@ export default function SimpleShopperDashboard() {
           *,
           order_items(*)
         `)
-        .eq('status', 'confirmed')
+        .eq('status', 'placed')
         .is('assigned_shopper_id', null)
         .limit(10);
       
@@ -224,8 +224,8 @@ export default function SimpleShopperDashboard() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'confirmed': return 'default';
-      case 'assigned': return 'secondary';
+      case 'placed': return 'default';
+      case 'claimed': return 'secondary';
       case 'shopping': return 'default';
       case 'ready': return 'default';
       default: return 'outline';

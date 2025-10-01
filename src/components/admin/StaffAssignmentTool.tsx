@@ -257,26 +257,34 @@ export function StaffAssignmentTool() {
       }
 
       // Enhanced assignment with role-specific updates
-      const updateData: any = {};
-      
       if (role === 'shopper') {
-        updateData.assigned_shopper_id = staffId;
+        // Use RPC for shopper assignment (ensures atomic status transition)
+        const { error: rpcError } = await supabase.rpc('rpc_assign_shopper', {
+          p_order_id: orderId,
+          p_shopper_id: staffId,
+          p_expected_status: selectedOrderData.status,
+          p_actor_role: 'admin'
+        });
+
+        if (rpcError) throw rpcError;
       } else if (role === 'concierge') {
-        updateData.assigned_concierge_id = staffId;
+        // For concierge, use direct update (no canonical RPC yet)
+        const updateData: any = {
+          assigned_concierge_id: staffId
+        };
+
+        // If order was PLACED and we're assigning first staff, move to CLAIMED
+        if (selectedOrderData.status === 'placed') {
+          updateData.status = 'claimed';
+        }
+
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update(updateData)
+          .eq('id', orderId);
+
+        if (updateError) throw updateError;
       }
-
-      // If order was PLACED and we're assigning first staff, move to CLAIMED
-      if (selectedOrderData.status === 'placed') {
-        updateData.status = 'claimed';
-      }
-
-      // Update order with assignments
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update(updateData)
-        .eq('id', orderId);
-
-      if (updateError) throw updateError;
 
       // Create stakeholder assignment record
       const { error: assignmentError } = await supabase
@@ -291,18 +299,24 @@ export function StaffAssignmentTool() {
       if (assignmentError) throw assignmentError;
 
       // Insert order_events row for persistence
+      const eventData: any = {
+        role,
+        staff_name: selectedStaff.display_name
+      };
+      
+      if (role === 'shopper') {
+        eventData.shopper_id = staffId;
+      } else if (role === 'concierge') {
+        eventData.concierge_id = staffId;
+      }
+
       const { error: eventError } = await supabase
         .from('order_events')
         .insert({
           order_id: orderId,
           event_type: 'ASSIGNED',
           actor_role: 'admin',
-          data: {
-            shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
-            concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
-            role,
-            staff_name: selectedStaff.display_name
-          }
+          data: eventData
         });
 
       if (eventError) throw eventError;
@@ -312,12 +326,7 @@ export function StaffAssignmentTool() {
         order_id: orderId,
         event_type: 'ASSIGNED',
         actor_role: 'admin',
-        data: {
-          shopper_id: role === 'shopper' ? staffId : updateData.assigned_shopper_id,
-          concierge_id: role === 'concierge' ? staffId : updateData.assigned_concierge_id,
-          role,
-          staff_name: selectedStaff.display_name
-        }
+        data: eventData
       });
 
       // Show detailed success toast

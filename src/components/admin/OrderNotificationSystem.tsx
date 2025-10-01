@@ -119,7 +119,7 @@ export function OrderNotificationSystem() {
       // Update order to show it's been viewed by admin
       await supabase
         .from('orders')
-        .update({ status: 'confirmed' })
+        .update({ status: 'placed' })
         .eq('id', orderId);
 
       // Remove from notifications
