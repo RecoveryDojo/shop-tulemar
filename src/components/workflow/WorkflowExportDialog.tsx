@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Download, Save, FileImage, FileText, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useSavedWorkflows } from '@/hooks/useSavedWorkflows';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -31,7 +30,6 @@ export const WorkflowExportDialog = ({
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [exporting, setExporting] = useState(false);
-  const { saveWorkflow } = useSavedWorkflows();
   const { toast } = useToast();
 
   const addTag = () => {
@@ -149,37 +147,11 @@ export const WorkflowExportDialog = ({
   };
 
   const saveWorkflowToDatabase = async () => {
-    if (!name.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a name for the workflow",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await saveWorkflow({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        workflow_data: workflowData,
-        visual_config: { elementId },
-        order_count: orderCount,
-        phase_distribution: phaseDistribution,
-        metadata: {
-          saved_at: new Date().toISOString(),
-          export_capabilities: ['png', 'jpeg', 'pdf', 'json'],
-        },
-        tags,
-      });
-
-      setOpen(false);
-      setName('');
-      setDescription('');
-      setTags([]);
-    } catch (error) {
-      // Error handled in hook
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Workflow saving feature has been removed",
+      variant: "destructive",
+    });
   };
 
   return (

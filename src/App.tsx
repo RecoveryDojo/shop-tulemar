@@ -26,11 +26,9 @@ import {
   LazyShopOrder,
   LazyShopSearch,
   LazyShopHowItWorks,
-  LazyWorkTracker,
   LazyOrderWorkflowDashboard,
   LazyMainDashboard,
   LazyAdmin,
-  LazyFeatureShowcase,
   LazyShopperDashboard,
   LazyCustomerDashboard,
   LazyConciergeDashboard,
@@ -40,7 +38,6 @@ import {
   LazySystemArchitecture,
   LazyBotTesting,
   LazyWorkflowTesting,
-  LazyWorkflowDocumentation,
   LazySitemap,
   LazyNotFound
 } from './App.lazy';
@@ -131,11 +128,6 @@ function AppRouter() {
         </AsyncBoundary>
       } />
       <Route path="/me" element={<RoleBasedRedirect />} />
-      <Route path="/work-tracker" element={
-        <AsyncBoundary loadingText="Loading work tracker...">
-          <LazyWorkTracker />
-        </AsyncBoundary>
-      } />
       <Route path="/dashboard" element={
         <AsyncBoundary loadingText="Loading dashboard...">
           <LazyMainDashboard />
@@ -194,11 +186,6 @@ function AppRouter() {
         </AsyncBoundary>
       } />
       <Route path="/admin/product/:productId" element={<ProductEdit />} />
-      <Route path="/feature-showcase" element={
-        <AsyncBoundary loadingText="Loading features...">
-          <LazyFeatureShowcase />
-        </AsyncBoundary>
-      } />
       <Route path="/bot-testing" element={
         <AsyncBoundary loadingText="Loading bot testing...">
           <LazyBotTesting />
@@ -210,11 +197,6 @@ function AppRouter() {
         </AsyncBoundary>
       } />
       <Route path="/workflow-test" element={<WorkflowTest />} />
-      <Route path="/workflow-documentation" element={
-        <AsyncBoundary loadingText="Loading documentation...">
-          <LazyWorkflowDocumentation />
-        </AsyncBoundary>
-      } />
       <Route path="/db-smoke" element={<DbSmoke />} />
       <Route path="*" element={
         <AsyncBoundary loadingText="Loading page...">

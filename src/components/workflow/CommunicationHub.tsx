@@ -21,12 +21,9 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamValidation } from '@/hooks/useTeamValidation';
-import { VoiceMessageRecorder } from './VoiceMessageRecorder';
 import { StakeholderNotificationStatus } from './StakeholderNotificationStatus';
-import { MessageTemplates } from './MessageTemplates';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CommunicationHubProps {
@@ -55,113 +52,26 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
   const [activeTab, setActiveTab] = useState('messages');
   const [messageText, setMessageText] = useState('');
   const [selectedStakeholders, setSelectedStakeholders] = useState<string[]>([]);
-  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [notificationProgress, setNotificationProgress] = useState<Record<string, 'sent' | 'delivered' | 'read'>>({});
   
   const { user } = useAuth();
   const { toast } = useToast();
-  const { messages, sendMessage, markAsRead } = useMessages({
-    userId: user?.id,
-    includeArchived: false
-  });
   const { validateTeamMember } = useTeamValidation();
 
   const sendQuickMessage = async (template: typeof QUICK_TEMPLATES[0]) => {
-    if (!orderId) return;
-    
-    try {
-      // Send to selected stakeholders or all if none selected
-      const recipients = selectedStakeholders.length > 0 ? selectedStakeholders : stakeholders.map(s => s.id);
-      
-      // Validate each recipient is a team member
-      for (const recipientId of recipients) {
-        const isTeamMember = await validateTeamMember(recipientId);
-        if (!isTeamMember) {
-          toast({
-            title: "Access Denied",
-            description: `Cannot send message - recipient is not on your team`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      for (const recipientId of recipients) {
-        await sendMessage(
-          recipientId,
-          template.text,
-          `Order ${orderId.slice(-8)} - ${template.category}`,
-          'direct',
-          'normal'
-        );
-      }
-
-      // Update notification status
-      const newProgress: Record<string, 'sent'> = {};
-      recipients.forEach(id => {
-        newProgress[id] = 'sent';
-      });
-      setNotificationProgress(prev => ({ ...prev, ...newProgress }));
-
-      toast({
-        title: "Message Sent",
-        description: `Notification sent to ${recipients.length} team member(s)`,
-      });
-
-      setMessageText('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send message",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Messaging system has been removed from the app",
+      variant: "destructive"
+    });
   };
 
   const sendCustomMessage = async () => {
-    if (!messageText.trim() || !orderId) return;
-    
-    try {
-      const recipients = selectedStakeholders.length > 0 ? selectedStakeholders : stakeholders.map(s => s.id);
-      
-      // Validate each recipient is a team member
-      for (const recipientId of recipients) {
-        const isTeamMember = await validateTeamMember(recipientId);
-        if (!isTeamMember) {
-          toast({
-            title: "Access Denied",
-            description: `Cannot send message - recipient is not on your team`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      for (const recipientId of recipients) {
-        await sendMessage(
-          recipientId,
-          messageText,
-          `Order ${orderId.slice(-8)} - Message`,
-          'direct',
-          'normal'
-        );
-      }
-
-      toast({
-        title: "Message Sent",
-        description: `Custom message sent to ${recipients.length} team member(s)`,
-      });
-
-      setMessageText('');
-    } catch (error) {
-      console.error('Error sending custom message:', error);
-      toast({
-        title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to send message",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Messaging system has been removed from the app",
+      variant: "destructive"
+    });
   };
 
   const handleStartCall = async () => {
@@ -248,7 +158,7 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setShowVoiceRecorder(true)}
+                onClick={() => toast({ title: "Feature Removed", description: "Voice messaging has been removed", variant: "destructive" })}
               >
                 <Mic className="h-4 w-4 mr-2" />
                 Voice Message
@@ -385,26 +295,13 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
           </TabsContent>
 
           <TabsContent value="templates" className="space-y-4">
-            <MessageTemplates 
-              orderPhase={orderPhase}
-              onSelectTemplate={(template) => setMessageText(template)}
-            />
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground">Message templates feature has been removed</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
-
-        {showVoiceRecorder && (
-          <VoiceMessageRecorder
-            onClose={() => setShowVoiceRecorder(false)}
-            onSend={(audioBlob) => {
-              // Handle voice message sending
-              toast({
-                title: "Voice Message Sent",
-                description: "Your voice message has been sent to selected stakeholders",
-              });
-              setShowVoiceRecorder(false);
-            }}
-          />
-        )}
       </CardContent>
     </Card>
   );

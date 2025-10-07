@@ -47,26 +47,7 @@ export const triggerRetroactiveNotifications = async (orderId: string, shopperId
       console.error('Error creating customer notification:', customerNotificationError);
     }
 
-    // 3. Create initial message from shopper to customer
-    const { error: messageError } = await supabase
-      .from('user_messages')
-      .insert({
-        sender_id: shopperId,
-        recipient_id: customerId,
-        subject: 'Your Personal Shopper - Ready to Shop!',
-        content: `Hi Jessica! I'm Scott, your assigned personal shopper for today. I've reviewed your order and I'm ready to start shopping for you. I'll make sure to select the freshest items and will reach out if I need any substitutions. Expected shopping time: 45-60 minutes.`,
-        message_type: 'assignment_introduction',
-        priority: 'normal',
-        metadata: {
-          order_id: orderId,
-          assignment_type: 'shopper',
-          estimated_shopping_time: '45-60 minutes'
-        }
-      });
-
-    if (messageError) {
-      console.error('Error creating message:', messageError);
-    }
+    // 3. Message system has been removed - skipping message creation
 
     // 4. Call notification orchestrator to send actual notifications
     const { error: orchestratorError } = await supabase.functions.invoke('notification-orchestrator', {

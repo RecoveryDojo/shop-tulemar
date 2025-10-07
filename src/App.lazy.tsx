@@ -25,12 +25,9 @@ export const LazyConciergeDashboard = lazy(() => import('./pages/ConciergeDashbo
 // Other pages
 export const LazyAuth = lazy(() => import('./pages/Auth'));
 export const LazyProfile = lazy(() => import('./pages/Profile'));
-export const LazyWorkTracker = lazy(() => import('./pages/WorkTracker'));
 export const LazyBotTesting = lazy(() => import('./pages/BotTesting'));
 export const LazyOrderWorkflowDashboard = lazy(() => import('./pages/OrderWorkflowDashboard'));
 export const LazyWorkflowTesting = lazy(() => import('./pages/WorkflowTesting'));
-export const LazyWorkflowDocumentation = lazy(() => import('./pages/WorkflowDocumentation'));
-export const LazyFeatureShowcase = lazy(() => import('./pages/FeatureShowcase'));
 export const LazyProductionReadiness = lazy(() => import('./pages/ProductionReadiness'));
 export const LazyIntegrationPlan = lazy(() => import('./pages/IntegrationPlan'));
 export const LazySystemArchitecture = lazy(() => import('./pages/SystemArchitecture'));

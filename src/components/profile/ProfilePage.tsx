@@ -23,7 +23,6 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCenter } from './MessageCenter';
 
 interface ProfileData {
   id: string;
@@ -278,9 +277,8 @@ export function ProfilePage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -373,10 +371,6 @@ export function ProfilePage() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="messages">
-          <MessageCenter />
         </TabsContent>
 
         <TabsContent value="notifications">

@@ -61,11 +61,8 @@ export const EnhancedAIManager: React.FC = () => {
     try {
       setLoading(true);
       
-      // Load pattern types
-      const { data: patterns } = await supabase
-        .from('ai_pattern_types')
-        .select('*')
-        .order('category', { ascending: true });
+      // Pattern types table removed - no longer available
+      const patterns: AIPatternType[] = [];
       
       // Load external data sources
       const { data: sources } = await supabase
@@ -111,30 +108,11 @@ export const EnhancedAIManager: React.FC = () => {
   };
 
   const togglePatternType = async (patternId: string, isActive: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('ai_pattern_types')
-        .update({ is_active: isActive })
-        .eq('id', patternId);
-
-      if (error) throw error;
-
-      setPatternTypes(prev => 
-        prev.map(p => p.id === patternId ? { ...p, is_active: isActive } : p)
-      );
-
-      toast({
-        title: "Pattern type updated",
-        description: `${isActive ? 'Enabled' : 'Disabled'} AI pattern learning.`,
-      });
-    } catch (error) {
-      console.error('Error updating pattern type:', error);
-      toast({
-        title: "Update failed",
-        description: "Failed to update pattern type.",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Feature Removed",
+      description: "Pattern types feature has been removed",
+      variant: "destructive",
+    });
   };
 
   const toggleDataSource = async (sourceId: string, isActive: boolean) => {
