@@ -96,10 +96,10 @@ export function EnhancedOrderNotificationSystem() {
         .from('orders')
         .select(`
           *,
-          order_items (
-            quantity,
-            unit_price,
-            products (name)
+          new_order_items (
+            qty,
+            sku,
+            name
           )
         `)
         .in('status', ['placed'])
@@ -110,16 +110,12 @@ export function EnhancedOrderNotificationSystem() {
 
       const transformedData = data?.map(order => ({
         ...order,
-        items_count: order.order_items?.length || 0,
-        order_items: order.order_items?.map(item => {
-          const products = (item.products ?? {}) as { name?: string };
-          const itemData = item as any;
-          return {
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            product_name: products.name || itemData.product_name || 'Unknown Product'
-          };
-        }) || []
+        items_count: order.new_order_items?.length || 0,
+        order_items: order.new_order_items?.map(item => ({
+          quantity: item.qty,
+          unit_price: 0,
+          product_name: item.name || item.sku || 'Unknown Product'
+        })) || []
       })) || [];
 
       setNotifications(transformedData);
@@ -162,10 +158,10 @@ export function EnhancedOrderNotificationSystem() {
         .from('orders')
         .select(`
           *,
-          order_items (
-            quantity,
-            unit_price,
-            products (name)
+          new_order_items (
+            qty,
+            sku,
+            name
           )
         `)
         .eq('id', order.id)
@@ -175,16 +171,12 @@ export function EnhancedOrderNotificationSystem() {
 
       const orderWithItems = {
         ...fullOrder,
-        items_count: fullOrder.order_items?.length || 0,
-        order_items: fullOrder.order_items?.map(item => {
-          const products = (item.products ?? {}) as { name?: string };
-          const itemData = item as any;
-          return {
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            product_name: products.name || itemData.product_name || 'Unknown Product'
-          };
-        }) || []
+        items_count: fullOrder.new_order_items?.length || 0,
+        order_items: fullOrder.new_order_items?.map(item => ({
+          quantity: item.qty,
+          unit_price: 0,
+          product_name: item.name || item.sku || 'Unknown Product'
+        })) || []
       };
 
       // Update state immediately

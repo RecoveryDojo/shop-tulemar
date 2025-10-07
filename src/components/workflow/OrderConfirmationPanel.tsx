@@ -30,24 +30,34 @@ export function OrderConfirmationPanel() {
 
   const fetchPendingOrders = async () => {
     try {
+      // Fetch orders with new_order_items table
       const { data, error } = await supabase
         .from('orders')
         .select(`
           id, customer_name, customer_email, total_amount, 
-          special_instructions, created_at, payment_status,
-          order_items(count)
+          special_instructions, created_at, payment_status
         `)
-        .eq('status', 'pending')
+        .eq('status', 'placed')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformedOrders = data.map(order => ({
-        ...order,
-        items_count: order.order_items?.[0]?.count || 0
-      }));
+      // Get item counts separately
+      const ordersWithCounts = await Promise.all(
+        (data || []).map(async (order) => {
+          const { count } = await supabase
+            .from('new_order_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('order_id', order.id);
+          
+          return {
+            ...order,
+            items_count: count || 0
+          };
+        })
+      );
 
-      setPendingOrders(transformedOrders);
+      setPendingOrders(ordersWithCounts);
     } catch (error) {
       console.error('Error fetching pending orders:', error);
     } finally {
@@ -60,7 +70,7 @@ export function OrderConfirmationPanel() {
       const { error } = await supabase
         .from('orders')
         .update({ 
-          status: 'confirmed'
+          status: 'claimed'
         })
         .eq('id', orderId);
 

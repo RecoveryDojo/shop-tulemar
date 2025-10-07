@@ -109,13 +109,15 @@ export function StaffAssignmentTool() {
       console.log('Fetched profiles:', profiles);
       console.log('Fetched user roles:', userRoles);
 
-      // Filter out fake/bot profiles and transform into staff members
+      // Filter out fake/bot profiles and test-bot.com emails
       const realProfiles = profiles?.filter(profile => {
         const name = profile.display_name?.toLowerCase() || '';
-        // Filter out obvious bot/fake accounts
+        const email = profile.email?.toLowerCase() || '';
+        // Filter out obvious bot/fake accounts and test-bot.com emails
         return !name.includes('bot') && 
                !name.includes('test') && 
                !name.includes('fake') &&
+               !email.includes('test-bot.com') &&
                name.length > 0;
       }) || [];
 
