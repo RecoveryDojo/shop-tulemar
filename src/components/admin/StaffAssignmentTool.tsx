@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Search, UserPlus, Clock, Star, MapPin, Phone, CheckCircle2, AlertCircle, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { orderEventBus } from "@/lib/orderEventBus";
 
 interface StaffMember {
   id: string;
@@ -323,14 +322,8 @@ export function StaffAssignmentTool() {
 
       if (eventError) throw eventError;
 
-      // Publish assignment event via OrderEventBus
-      orderEventBus.publish({
-        order_id: orderId,
-        event_type: 'ASSIGNED',
-        actor_role: 'admin',
-        data: eventData
-      });
-
+      // Event already logged to new_order_events by database
+      
       // Show detailed success toast
       toast({
         title: "Assignment Successful! ✅",

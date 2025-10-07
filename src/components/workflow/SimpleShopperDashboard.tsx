@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
-import { orderEventBus, reconcileFromEvent } from '@/lib/orderEventBus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getStatusLabel, getStatusColor, getStatusBadgeVariant } from '@/lib/orderStatus';
 import { 
   ShoppingCart, 
   Clock, 
@@ -49,35 +49,14 @@ export default function SimpleShopperDashboard() {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<string>('');
-  const [recentEvents, setRecentEvents] = useState<any[]>([]);
 
   const openOrder = (order: Order) => {
     setCurrentOrder(order);
-    // Scroll to top to show the current order section
     window.scrollTo({ top: 0, behavior: 'smooth' });
     toast({
       title: "Order opened",
       description: `Now viewing order for ${order.customer_name}`
     });
-  };
-  
-  // Order event handler
-  const handleOrderEvent = (event: any) => {
-    console.log('[SimpleShopperDashboard] Received event:', event);
-    
-    // Add to recent events for debug
-    setRecentEvents(prev => [event, ...prev.slice(0, 4)]);
-    
-    // Update current order if event matches
-    if (currentOrder && event.order_id === currentOrder.id) {
-      const reconciled = reconcileFromEvent(event, { order: currentOrder, items: currentOrder.items });
-      if (reconciled && reconciled.order) {
-        setCurrentOrder({
-          ...reconciled.order,
-          items: reconciled.items || []
-        });
-      }
-    }
   };
 
   // Load available orders
@@ -137,7 +116,6 @@ export default function SimpleShopperDashboard() {
   // Execute guarded action
   const executeAction = async (action: string, fn: () => Promise<void>) => {
     if (isProcessing) return;
-    
     setIsProcessing(true);
     setProcessingAction(action);
     
@@ -148,13 +126,21 @@ export default function SimpleShopperDashboard() {
       await loadAvailableOrders();
       await loadShopperQueue();
       
-      // Refresh current order snapshot
+      // Refetch current order from database
       if (currentOrder) {
-        const snapshot = await orderEventBus.fetchSnapshot(currentOrder.id);
-        if (snapshot?.order) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items(*)
+          `)
+          .eq('id', currentOrder.id)
+          .single();
+        
+        if (!error && data) {
           setCurrentOrder({
-            ...snapshot.order,
-            items: snapshot.items || []
+            ...data,
+            items: data.order_items || []
           });
         }
       }
@@ -210,27 +196,58 @@ export default function SimpleShopperDashboard() {
     loadShopperQueue();
   }, [user]);
 
+  // Simple realtime subscription for shopper's orders only
   useEffect(() => {
-    if (!currentOrder) return;
+    if (!user) return;
 
-    console.log('[SimpleShopperDashboard] Subscribing to order:', currentOrder.id);
-    orderEventBus.subscribe(currentOrder.id, handleOrderEvent);
+    console.log('[SimpleShopperDashboard] Setting up realtime for shopper:', user.id);
+    
+    const channel = supabase
+      .channel('shopper-dashboard')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `assigned_shopper_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('[SimpleShopperDashboard] Order change detected:', payload);
+        // Refetch lists on any change
+        loadAvailableOrders();
+        loadShopperQueue();
+        
+        // Refetch current order if it matches
+        if (currentOrder && payload.new && 'id' in payload.new && payload.new.id === currentOrder.id) {
+          supabase
+            .from('orders')
+            .select(`*, order_items(*)`)
+            .eq('id', currentOrder.id)
+            .single()
+            .then(({ data }) => {
+              if (data) {
+                setCurrentOrder({
+                  ...data,
+                  items: data.order_items || []
+                });
+              }
+            });
+        }
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `status=eq.placed`
+      }, () => {
+        console.log('[SimpleShopperDashboard] Available order changed');
+        loadAvailableOrders();
+      })
+      .subscribe();
 
     return () => {
-      console.log('[SimpleShopperDashboard] Unsubscribing from order:', currentOrder.id);
-      orderEventBus.unsubscribe(currentOrder.id, handleOrderEvent);
+      console.log('[SimpleShopperDashboard] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
     };
-  }, [currentOrder?.id]);
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'placed': return 'default';
-      case 'claimed': return 'secondary';
-      case 'shopping': return 'default';
-      case 'ready': return 'default';
-      default: return 'outline';
-    }
-  };
+  }, [user?.id, currentOrder?.id]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -451,17 +468,6 @@ export default function SimpleShopperDashboard() {
                 </div>
               </>
             )}
-            
-            <div>
-              <h4 className="font-medium">Recent Events</h4>
-              <div className="space-y-1">
-                {recentEvents.map((event, index) => (
-                  <p key={index} className="text-sm text-muted-foreground">
-                    {event.event_type} - {new Date(event.timestamp).toLocaleTimeString()}
-                  </p>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
       )}

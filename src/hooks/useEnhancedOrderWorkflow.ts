@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { orderEventBus } from '@/lib/orderEventBus';
 
 export interface WorkflowError {
   code: string;
@@ -41,8 +40,9 @@ export const useEnhancedOrderWorkflow = () => {
 
   const mapError = (error: any): string => {
     const code = error?.message?.split(':')[0] || error?.code;
-    if (code === "STALE_WRITE") return "Order changed in the background. Refreshing…";
+    if (code === "STALE_WRITE") return "This order changed in the background. We refreshed your view.";
     if (code === "ILLEGAL_TRANSITION") return "That step isn't allowed from the current status.";
+    if (code === "PERMISSION_DENIED" || code === "P0002") return "You don't have access to perform this action.";
     return "Something went wrong. Please try again.";
   };
 
@@ -57,7 +57,7 @@ export const useEnhancedOrderWorkflow = () => {
       const result = await fn();
       
       toast({ title: `OK: ${successMessage}` });
-      orderEventBus.publish(successEvent);
+      // Event logged by RPC backend to new_order_events
       
       return result;
     } catch (error: any) {

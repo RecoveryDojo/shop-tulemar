@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { fetchOrderItems, fetchOrderEvents } from '@/data/views';
-import { orderEventBus } from '@/lib/orderEventBus';
 import { getEventMessage, getEventIcon } from '@/lib/notifications';
 import type { OrderItemView, OrderEventView } from '@/types/db-views';
 
@@ -147,39 +146,26 @@ const OrderTrack = () => {
 
     fetchOrderData();
 
-    // Set up real-time subscription if order exists
-    if (token) {
-      const handleOrderEvent = (event: any) => {
-        console.log('[OrderTrack] Received real-time event:', event);
-        
-        if (event.event_type === 'snapshot_reconciled') {
-          // Refetch all data on reconnect
+    // Simple realtime subscription for order updates
+    if (token && order?.id) {
+      const channel = supabase
+        .channel(`order-track-${order.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`
+        }, () => {
+          console.log('[OrderTrack] Order updated, refetching');
           fetchOrderData();
-        } else if ([
-          'ASSIGNED', 'STATUS_CHANGED', 'STOCKING_STARTED', 'STOCKED_IN_UNIT',
-          'ITEM_PICKED', 'SUBSTITUTION_SUGGESTED', 'ITEM_ADDED', 'ITEM_UPDATED'
-        ].includes(event.event_type)) {
-          // Update specific data based on event type
-          if (event.event_type.startsWith('ITEM_')) {
-            // Refetch order items
-            fetchOrderData();
-          } else {
-            // Refetch everything for status changes
-            fetchOrderData();
-          }
-        }
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
       };
-
-      // We need the order ID to subscribe, so we'll set this up after order is loaded
-      if (order?.id) {
-        orderEventBus.subscribe(order.id, handleOrderEvent);
-        
-        return () => {
-          orderEventBus.unsubscribe(order.id, handleOrderEvent);
-        };
-      }
     }
-  }, [token, toast, order?.id]);
+  }, [token, order?.id]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {

@@ -134,9 +134,23 @@ export function StoreManagerDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    // Simulate real-time updates
-    const interval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(interval);
+    
+    // Event-driven realtime updates (no polling)
+    const channel = supabase
+      .channel('store-manager-orders')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      }, () => {
+        console.log('[StoreManagerDashboard] Order change detected, refetching');
+        fetchDashboardData();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
