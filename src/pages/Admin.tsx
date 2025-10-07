@@ -16,16 +16,11 @@ import { toast } from '@/hooks/use-toast';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import ProductManager from '@/components/admin/ProductManager';
-import { EnhancedAIManager } from '@/components/admin/EnhancedAIManager';
-import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
-
-import { EnhancedOrderNotificationSystem } from '@/components/admin/EnhancedOrderNotificationSystem';
 import { StaffAssignmentTool } from '@/components/admin/StaffAssignmentTool';
 import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { SimpleRegressionTest } from '@/components/testing/SimpleRegressionTest';
 import { OrderConfirmationPanel } from '@/components/workflow/OrderConfirmationPanel';
 import { SubstitutionApprovalPanel } from '@/components/workflow/SubstitutionApprovalPanel';
-import { WorkflowOverridePanel } from '@/components/workflow/WorkflowOverridePanel';
 
 interface UserWithRoles {
   id: string;
@@ -174,7 +169,14 @@ const Admin = () => {
           </TabsList>
 
           <TabsContent value="orders">
-            <EnhancedOrderNotificationSystem />
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Order notifications simplified for beta. Use Order Confirmation panel instead.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="confirmation">
@@ -190,7 +192,14 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="override">
-            <WorkflowOverridePanel />
+            <Card>
+              <CardHeader>
+                <CardTitle>Workflow Override</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Manual overrides removed for beta. Use RPCs for status transitions.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="inventory">
@@ -198,11 +207,25 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="ai-learning">
-            <EnhancedAIManager />
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Learning System</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">AI learning features deferred to post-beta.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="documentation">
-            <ProductDocumentation />
+            <Card>
+              <CardHeader>
+                <CardTitle>Import Guidelines</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Product documentation deferred to post-beta.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="users">

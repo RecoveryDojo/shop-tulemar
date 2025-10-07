@@ -21,15 +21,10 @@ import {
   Camera,
   Star
 } from "lucide-react";
-import { WorkflowPhaseDetails } from "@/components/workflow/WorkflowPhaseDetails";
 import { OrderStatusTracker } from "@/components/workflow/OrderStatusTracker";
 import { StakeholderCommunications } from "@/components/workflow/StakeholderCommunications";
 import { RoleBasedDashboard } from "@/components/workflow/RoleBasedDashboard";
-import { WorkflowAnalytics } from "@/components/workflow/WorkflowAnalytics";
 import { RealTimeStatusTracker } from "@/components/workflow/RealTimeStatusTracker";
-import { DebuggingSwimlaneChart } from "@/components/workflow/DebuggingSwimlaneChart";
-import { NotificationTester } from "@/components/workflow/NotificationTester";
-import { WorkflowAutomationPanel } from "@/components/workflow/WorkflowAutomationPanel";
 
 interface Order {
   id: string;
@@ -367,11 +362,14 @@ function OrderWorkflowDashboardContent() {
           </TabsList>
 
           <TabsContent value="debug" className="space-y-6">
-            <DebuggingSwimlaneChart 
-              orders={orders}
-              title="🐛 Jessica's Order Debug - Live Workflow State"
-            />
-            <NotificationTester />
+            <Card>
+              <CardHeader>
+                <CardTitle>Debug Tools</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Debug tools simplified for beta. Use browser dev tools and database queries.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
@@ -429,7 +427,27 @@ function OrderWorkflowDashboardContent() {
           </TabsContent>
 
           <TabsContent value="phases">
-            <WorkflowPhaseDetails phases={WORKFLOW_PHASES} orders={orders} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Workflow Phases</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {WORKFLOW_PHASES.map((phase) => {
+                    const Icon = phase.icon;
+                    return (
+                      <div key={phase.id} className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Icon className={`h-5 w-5 text-white p-1 rounded ${phase.color}`} />
+                          <h3 className="font-medium">{phase.title}</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{phase.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="orders">
@@ -459,12 +477,14 @@ function OrderWorkflowDashboardContent() {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <WorkflowAnalytics 
-              orders={orders}
-              assignments={assignments}
-              workflowLogs={workflowLogs}
-              phases={WORKFLOW_PHASES}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Workflow Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Advanced analytics deferred to post-beta. Use Overview tab for basic metrics.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

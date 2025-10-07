@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { orderEventBus, OrderEvent } from '@/lib/orderEventBus';
 
 export interface OrderItem {
   id: string;
@@ -47,7 +45,6 @@ export const useShopperOrders = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const fetchOrders = useCallback(async () => {
     if (!user) {
@@ -56,11 +53,10 @@ export const useShopperOrders = () => {
     }
 
     try {
-      console.log('useShopperOrders: Starting fetch for user:', user.id, user.email);
+      console.log('useShopperOrders: Starting fetch for user:', user.id);
       setLoading(true);
 
-      // Fetch shopper queue - orders assigned to this shopper in active states
-      // Accept both canonical (CLAIMED, SHOPPING, READY, DELIVERED) and legacy (claimed, shopping, ready, delivered)
+      // Fetch shopper queue - orders assigned to this shopper
       const { data: shopperQueueData, error: queueError } = await supabase
         .from('orders')
         .select(`
@@ -71,12 +67,9 @@ export const useShopperOrders = () => {
           )
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['CLAIMED', 'claimed', 'SHOPPING', 'shopping', 'READY', 'ready', 'DELIVERED', 'delivered']);
-
-      console.log('useShopperOrders: Shopper queue query:', { shopperQueueData, queueError });
+        .in('status', ['claimed', 'shopping', 'ready']);
 
       // Fetch available orders (placed, not assigned)
-      // Accept both canonical (PLACED) and legacy (placed, pending, confirmed)
       const { data: available, error: availableError } = await supabase
         .from('orders')
         .select(`
@@ -86,17 +79,14 @@ export const useShopperOrders = () => {
             products (name, description, image_url, unit, price)
           )
         `)
-        .in('status', ['placed'])
+        .eq('status', 'placed')
         .is('assigned_shopper_id', null);
 
-      console.log('useShopperOrders: Available orders query:', { available, availableError });
-
-      // If there's an error, just log it and continue with empty arrays
       if (queueError) {
         console.log('No shopper queue found:', queueError);
       }
       if (availableError) {
-        console.log('No available orders found or permission issue:', availableError);
+        console.log('No available orders found:', availableError);
       }
 
       // Transform the data
@@ -113,18 +103,12 @@ export const useShopperOrders = () => {
       const transformedQueue = transformOrders(shopperQueueData || []);
       const transformedAvailable = transformOrders(available || []);
 
-      console.log('useShopperOrders: Final transformed data:', {
-        queue: transformedQueue.length,
-        available: transformedAvailable.length
-      });
-
       setShopperQueue(transformedQueue);
       setAvailableOrders(transformedAvailable);
 
     } catch (error: any) {
       console.error('Error fetching orders:', error);
       setError(error.message || 'Failed to fetch orders');
-      // Set empty arrays so the UI shows "no orders" messages
       setShopperQueue([]);
       setAvailableOrders([]);
     } finally {
@@ -139,69 +123,25 @@ export const useShopperOrders = () => {
   useEffect(() => {
     fetchOrders();
 
-    // Only set up realtime if we have a user
     if (!user) return;
 
-    // Set up per-order event bus subscriptions for shopper's orders
-    const currentOrders = [...shopperQueue, ...availableOrders];
-    const cleanupFunctions: (() => Promise<void>)[] = [];
-
-    const setupOrderSubscriptions = async () => {
-      for (const order of currentOrders) {
-        try {
-          const handleOrderEvent = (event: OrderEvent) => {
-            console.log(`[useShopperOrders] Received event for order ${order.id}:`, event.event_type);
-            
-            // Handle different event types
-            if (event.event_type === 'snapshot_reconciled') {
-              // Reconcile with canonical data on reconnect
-              console.log(`[useShopperOrders] Reconciling order ${order.id}`);
-              fetchOrders();
-            } else if (
-              event.event_type === 'order_updated' || 
-              event.event_type === 'items_updated' ||
-              event.event_type.includes('status_changed') ||
-              event.event_type === 'ASSIGNED' ||
-              event.event_type === 'ITEM_PICKED' ||
-              event.event_type === 'SUBSTITUTION_SUGGESTED'
-            ) {
-              // Refetch on any data changes
-              console.log(`[useShopperOrders] Order ${order.id} data changed, refetching...`);
-              fetchOrders();
-            }
-          };
-
-          await orderEventBus.subscribe(order.id, handleOrderEvent);
-          
-          // Add cleanup function
-          cleanupFunctions.push(async () => {
-            try {
-              await orderEventBus.unsubscribe(order.id, handleOrderEvent);
-            } catch (error) {
-              console.error(`[useShopperOrders] Cleanup error for order ${order.id}:`, error);
-            }
-          });
-        } catch (error) {
-          console.error(`[useShopperOrders] Failed to subscribe to order ${order.id}:`, error);
-        }
-      }
-    };
-
-    if (currentOrders.length > 0) {
-      setupOrderSubscriptions();
-    }
+    // Simple realtime subscription to orders table
+    const channel = supabase
+      .channel('shopper-orders')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      }, (payload) => {
+        console.log('[useShopperOrders] Order change detected:', payload);
+        fetchOrders();
+      })
+      .subscribe();
 
     return () => {
-      // Clean up all subscriptions
-      cleanupFunctions.forEach(async (cleanup) => {
-        try {
-          await cleanup();
-        } catch (error) {
-          console.error('[useShopperOrders] Cleanup error:', error);
-        }
-      });
+      supabase.removeChannel(channel);
     };
-  }, [user?.id]); // Only depend on user.id to prevent excessive re-subscriptions
+  }, [user?.id, fetchOrders]);
 
   return {
     shopperQueue,

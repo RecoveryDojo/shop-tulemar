@@ -23,7 +23,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamValidation } from '@/hooks/useTeamValidation';
-import { StakeholderNotificationStatus } from './StakeholderNotificationStatus';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CommunicationHubProps {
@@ -246,11 +245,14 @@ export function CommunicationHub({ orderId, orderPhase, stakeholders = [], onClo
           </TabsContent>
 
           <TabsContent value="notifications" className="space-y-4">
-            <StakeholderNotificationStatus 
-              stakeholders={stakeholders}
-              notificationProgress={notificationProgress}
-              onUpdateProgress={setNotificationProgress}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Notification tracking simplified for beta.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="stakeholders" className="space-y-4">
