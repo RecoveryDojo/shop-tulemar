@@ -37,7 +37,8 @@ import {
   ArrowRight,
   CheckCircle,
   Eye,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
@@ -49,6 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface OrderItem {
   id: string;
   product_name: string;
+  product_image?: string;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -171,6 +173,7 @@ export function EnhancedCustomerDashboard() {
     items: orderData.items.map(item => ({
       id: item.id,
       product_name: item.product?.name || 'Unknown Product',
+      product_image: item.product?.image_url,
       quantity: item.quantity,
       unit_price: item.unit_price,
       total_price: item.total_price,
@@ -567,88 +570,158 @@ export function EnhancedCustomerDashboard() {
         </TabsContent>
 
         {/* Items Tab */}
-        <TabsContent value="items" className="space-y-4">
+        <TabsContent value="items" className="space-y-3">
           {order.items.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h4 className="font-medium">{item.product_name}</h4>
-                      <Badge variant={
-                        item.status === 'found' ? 'default' :
-                        item.status === 'substituted' ? 'secondary' :
-                        'outline'
-                      }>
-                        {item.status}
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Quantity: {item.quantity} • Unit Price: {formatCurrency(item.unit_price)}
-                    </p>
-
-                    {item.status === 'substituted' && item.substitution && (
-                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <p className="text-sm font-medium text-yellow-900 mb-1">Substitution Suggested</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm text-yellow-800">
-                              <strong>{item.substitution.product_name}</strong>
-                            </p>
-                            <p className="text-xs text-yellow-700">
-                              Reason: {item.substitution.reason}
-                            </p>
-                            <p className="text-xs text-yellow-600">
-                              Price difference: {item.substitution.price_difference > 0 ? '+' : ''}
-                              {formatCurrency(item.substitution.price_difference)}
-                            </p>
-                          </div>
-                          {item.substitution.image_url && (
-                            <img
-                              src={item.substitution.image_url}
-                              alt="Substitution"
-                              className="w-16 h-16 rounded object-cover ml-3"
-                            />
-                          )}
-                        </div>
-                        <div className="flex space-x-2 mt-3">
-                          <Button
-                            size="sm"
-                            onClick={() => approveSubstitution(item.id)}
-                          >
-                            <ThumbsUp className="h-3 w-3 mr-1" />
-                            Approve
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <ThumbsDown className="h-3 w-3 mr-1" />
-                            Decline
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {item.photo_url && item.status === 'found' && (
-                      <div className="mt-3">
+            <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="p-0">
+                <div className="flex items-start gap-4 p-4">
+                  {/* Product Image */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted">
+                      {item.product_image ? (
                         <img
-                          src={item.photo_url}
-                          alt="Found item"
-                          className="w-24 h-24 rounded object-cover"
+                          src={item.product_image}
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
                         />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Status Icon Overlay */}
+                    {item.status === 'found' && (
+                      <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1 shadow-lg">
+                        <CheckCircle2 className="h-4 w-4 text-white" />
                       </div>
                     )}
                   </div>
-                  
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(item.total_price)}</p>
-                    {item.status === 'found' && (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto mt-1" />
+
+                  {/* Product Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-base mb-1 line-clamp-2">{item.product_name}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge 
+                            variant={
+                              item.status === 'found' ? 'default' :
+                              item.status === 'substituted' ? 'secondary' :
+                              item.status === 'pending' ? 'outline' :
+                              'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {item.status === 'found' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                            {item.status === 'pending' ? 'Shopping' : 
+                             item.status === 'found' ? 'Found' :
+                             item.status === 'substituted' ? 'Substitution' :
+                             'Not Available'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            Qty: {item.quantity}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-lg">{formatCurrency(item.total_price)}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(item.unit_price)} each</p>
+                      </div>
+                    </div>
+
+                    {/* Shopper Notes */}
+                    {item.notes && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-100">
+                        <p className="text-xs text-blue-900">
+                          <span className="font-medium">Note: </span>{item.notes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Substitution Section */}
+                    {item.status === 'substituted' && item.substitution && (
+                      <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-200">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-amber-100 rounded-full p-1.5 flex-shrink-0">
+                            <AlertCircle className="h-4 w-4 text-amber-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-900 mb-1">Substitution Suggested</p>
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-amber-800 mb-1">
+                                  {item.substitution.product_name}
+                                </p>
+                                <p className="text-xs text-amber-700 mb-1">
+                                  {item.substitution.reason}
+                                </p>
+                                <p className="text-xs font-medium text-amber-900">
+                                  Price difference: {item.substitution.price_difference > 0 ? '+' : ''}
+                                  {formatCurrency(item.substitution.price_difference)}
+                                </p>
+                              </div>
+                              {item.substitution.image_url && (
+                                <img
+                                  src={item.substitution.image_url}
+                                  alt="Substitution"
+                                  className="w-16 h-16 rounded-lg object-cover shadow-sm"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                onClick={() => approveSubstitution(item.id)}
+                                className="flex-1"
+                              >
+                                <ThumbsUp className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="flex-1">
+                                <ThumbsDown className="h-3 w-3 mr-1" />
+                                Decline
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Shopper Photo */}
+                    {item.photo_url && item.status === 'found' && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">Shopper's photo:</p>
+                        <img
+                          src={item.photo_url}
+                          alt="Found item"
+                          className="w-32 h-32 rounded-lg object-cover border-2 border-green-200 shadow-sm"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
+
+          {/* Summary Card */}
+          <Card className="bg-muted/30">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Order Progress</p>
+                  <p className="text-lg font-semibold">
+                    {completedItems} of {totalItems} items found
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold">{formatCurrency(order.total)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Chat Tab */}
