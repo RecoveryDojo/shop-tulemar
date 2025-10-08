@@ -128,12 +128,14 @@ serve(async (req) => {
 
     const { error: itemsError } = await supabaseClient
       .from("order_items")
-      .insert(orderItems);
+      .insert(orderItems, { returning: 'minimal' });
 
     if (itemsError) {
       console.error("Order items creation error:", itemsError);
       throw new Error(`Failed to create order items: ${itemsError.message}`);
     }
+
+    console.log('[create-payment] Order items inserted successfully:', { count: orderItems?.length ?? 0 });
 
     // Check if customer exists in Stripe
     let customerId;
