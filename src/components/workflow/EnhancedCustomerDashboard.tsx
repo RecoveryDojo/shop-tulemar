@@ -43,6 +43,7 @@ import { formatCurrency } from '@/lib/currency';
 import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useToast } from '@/hooks/use-toast';
 import { useOrder } from '@/hooks/useOrder';
+import { getStatusColor, getStatusLabel } from '@/lib/orderStatus';
 
 interface OrderItem {
   id: string;
@@ -230,28 +231,6 @@ export function EnhancedCustomerDashboard() {
   const totalItems = order.items.length;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-blue-500';
-      case 'shopping': return 'bg-yellow-500';
-      case 'checked_out': return 'bg-purple-500';
-      case 'out_for_delivery': return 'bg-orange-500';
-      case 'delivered': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'Order Confirmed';
-      case 'shopping': return 'Shopping in Progress';
-      case 'checked_out': return 'Heading to You';
-      case 'out_for_delivery': return 'Out for Delivery';
-      case 'delivered': return 'Delivered';
-      default: return 'Unknown';
-    }
-  };
-
   // Customer guidance based on order status
   const getCustomerProtocol = () => {
     switch (order.status) {
@@ -338,8 +317,8 @@ export function EnhancedCustomerDashboard() {
             <div>
               <h1 className="text-2xl font-bold mb-2">Order #{order.order_number}</h1>
               <div className="flex items-center space-x-3">
-                <Badge className={`${getStatusColor(order.status)} text-white animate-pulse`}>
-                  {getStatusText(order.status)}
+                <Badge className={`${getStatusColor(order.status)} animate-pulse`}>
+                  {getStatusLabel(order.status)}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
                   Expected: {order.estimated_delivery}

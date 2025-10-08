@@ -1,7 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { orderEventBus, OrderEvent, OrderSnapshot } from '@/lib/orderEventBus';
 import { useToast } from '@/hooks/use-toast';
+
+export interface OrderEvent {
+  order_id: string;
+  event_type: string;
+  actor_role?: string;
+  data: any;
+  timestamp?: string;
+}
+
+export interface OrderSnapshot {
+  order: any;
+  items: any[];
+  events: any[];
+}
 
 export interface OrderState {
   id: string;
@@ -46,7 +59,7 @@ export interface OrderItem {
 
 /**
  * Single source of truth for order state across all roles
- * Subscribes to orderEventBus for real-time updates
+ * Subscribes to Supabase realtime for updates
  */
 export const useOrder = (orderId: string) => {
   const [order, setOrder] = useState<OrderState | null>(null);
@@ -61,8 +74,19 @@ export const useOrder = (orderId: string) => {
       setLoading(true);
       setError(null);
 
-      const snapshot = await orderEventBus.fetchSnapshot(orderId);
-      if (snapshot) {
+      const [orderResult, itemsResult, eventsResult] = await Promise.allSettled([
+        supabase.from('orders').select('*').eq('id', orderId).single(),
+        supabase.from('new_order_items').select('*, products(name, description, image_url, unit, price)').eq('order_id', orderId).order('created_at'),
+        supabase.from('new_order_events').select('*').eq('order_id', orderId).order('created_at', { ascending: false }).limit(50)
+      ]);
+
+      const snapshot: OrderSnapshot = {
+        order: orderResult.status === 'fulfilled' && !orderResult.value.error ? orderResult.value.data : null,
+        items: itemsResult.status === 'fulfilled' && !itemsResult.value.error ? itemsResult.value.data || [] : [],
+        events: eventsResult.status === 'fulfilled' && !eventsResult.value.error ? eventsResult.value.data || [] : []
+      };
+
+      if (snapshot.order) {
         const transformedOrder: OrderState = {
           ...snapshot.order,
           items: snapshot.items.map(item => ({
@@ -166,34 +190,47 @@ export const useOrder = (orderId: string) => {
     }
   }, [orderId, toast]);
 
-  // Set up event bus subscription
+  // Set up Supabase realtime subscription
   useEffect(() => {
     if (!orderId) return;
 
-    let isSubscribed = true;
+    // Fetch initial data
+    fetchOrderSnapshot();
 
-    const setupSubscription = async () => {
-      try {
-        // Fetch initial data
-        await fetchOrderSnapshot();
-
-        // Subscribe to real-time events
-        if (isSubscribed) {
-          await orderEventBus.subscribe(orderId, handleOrderEvent);
-        }
-      } catch (error) {
-        console.error('[useOrder] Setup failed:', error);
-        if (isSubscribed) {
-          setError('Failed to connect to order updates');
-        }
-      }
-    };
-
-    setupSubscription();
+    // Subscribe to order updates
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: `id=eq.${orderId}`
+      }, (payload) => {
+        console.log('[useOrder] Order updated:', payload);
+        fetchOrderSnapshot();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'new_order_items',
+        filter: `order_id=eq.${orderId}`
+      }, (payload) => {
+        console.log('[useOrder] Item updated:', payload);
+        fetchOrderSnapshot();
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'new_order_events',
+        filter: `order_id=eq.${orderId}`
+      }, (payload) => {
+        console.log('[useOrder] Event received:', payload);
+        handleOrderEvent(payload.new as OrderEvent);
+      })
+      .subscribe();
 
     return () => {
-      isSubscribed = false;
-      orderEventBus.unsubscribe(orderId, handleOrderEvent);
+      supabase.removeChannel(channel);
     };
   }, [orderId, handleOrderEvent, fetchOrderSnapshot]);
 

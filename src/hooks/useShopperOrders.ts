@@ -125,13 +125,14 @@ export const useShopperOrders = () => {
 
     if (!user) return;
 
-    // Simple realtime subscription to orders table
+    // Scoped realtime subscription - only orders assigned to this shopper
     const channel = supabase
       .channel('shopper-orders')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'orders'
+        table: 'orders',
+        filter: `assigned_shopper_id=eq.${user.id}`
       }, (payload) => {
         console.log('[useShopperOrders] Order change detected:', payload);
         fetchOrders();

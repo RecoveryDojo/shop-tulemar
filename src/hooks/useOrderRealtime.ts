@@ -264,23 +264,3 @@ export const useOrderRealtime = (config: OrderRealtimeConfig) => {
     fetchSnapshot: () => orderId ? fetchOrderSnapshot(orderId) : null
   };
 };
-
-// Legacy broadcast function - now routes through orderEventBus
-export const broadcastOrderEvent = async (orderId: string, eventType: string, data: any) => {
-  if (!orderId) return;
-  
-  console.log(`[OrderRealtime] Broadcasting ${eventType} to order ${orderId}:`, data);
-  
-  try {
-    const { orderEventBus } = await import('@/lib/orderEventBus');
-    orderEventBus.publish({
-      order_id: orderId,
-      event_type: eventType,
-      actor_role: 'system',
-      data: data
-    });
-    console.log(`[OrderRealtime] Successfully broadcasted ${eventType} for order ${orderId}`);
-  } catch (error) {
-    console.error(`[OrderRealtime] Failed to broadcast event for order ${orderId}:`, error);
-  }
-};
