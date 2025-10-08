@@ -17,8 +17,12 @@ serve(async (req) => {
     console.log("Payment creation request received");
 
     // Parse request body
-    const { orderData, items } = await req.json();
+    const { orderData, items, siteOrigin } = await req.json();
     console.log("Order data:", { orderData, itemCount: items?.length });
+    
+    // Determine origin for redirect URLs
+    const origin = siteOrigin || req.headers.get("origin") || "http://localhost:5173";
+    console.log("[create-payment] Using origin:", origin);
 
     if (!orderData || !items || items.length === 0) {
       throw new Error("Missing order data or items");
@@ -191,12 +195,16 @@ serve(async (req) => {
     }
 
     // Create Stripe checkout session
+    const successUrl = `${origin}/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`;
+    const cancelUrl = `${origin}/cart?canceled=true`;
+    console.log("[create-payment] Stripe URLs:", { successUrl, cancelUrl });
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: lineItems,
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/shop/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
-      cancel_url: `${req.headers.get("origin")}/shop/cart?canceled=true`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       payment_intent_data: {
         metadata: {
           order_id: order.id,
@@ -238,10 +246,15 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Payment creation error:", error);
+    console.error("[create-payment] Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Payment creation failed";
+    const errorDetails = error instanceof Error && error.stack ? error.stack : String(error);
+    console.error("[create-payment] Error details:", errorDetails);
+    
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Payment creation failed" 
+        error: errorMessage,
+        details: errorDetails
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -109,7 +109,11 @@ export default function ShopCheckout() {
       
       // Create payment with Stripe
       const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: { orderData, items: orderItems }
+        body: { 
+          orderData, 
+          items: orderItems,
+          siteOrigin: window.location.origin
+        }
       });
 
       if (error) {
