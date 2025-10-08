@@ -48,6 +48,11 @@ export default function ShopCheckout() {
     }
   }, [user, profile]);
 
+  // Debug: track rendering state for checkout
+  useEffect(() => {
+    console.log('[checkout] render state:', { loading, hasUser: !!user, itemsLen: items.length });
+  }, [loading, user, items.length]);
+
   const subtotal = total;
   const deliveryFee = getDeliveryFee(subtotal);
   const tax = subtotal * TAX_RATE;
