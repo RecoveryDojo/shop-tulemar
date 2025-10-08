@@ -44,6 +44,7 @@ import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
 import { useToast } from '@/hooks/use-toast';
 import { useOrder } from '@/hooks/useOrder';
 import { getStatusColor, getStatusLabel } from '@/lib/orderStatus';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OrderItem {
   id: string;
@@ -115,8 +116,30 @@ export function EnhancedCustomerDashboard() {
   const { toast } = useToast();
 
   // Use unified order store with real-time updates  
-  // TODO: Get actual order ID from URL params or user context
-  const { order: orderData, loading: orderLoading } = useOrder(''); // Disable for now to prevent UUID errors
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const { order: orderData, loading: orderLoading } = useOrder(activeOrderId || '');
+
+  // Fetch customer's active orders
+  useEffect(() => {
+    const fetchActiveOrder = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('customer_email', user.email)
+        .in('status', ['placed', 'claimed', 'shopping', 'ready', 'delivered'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (orders && orders.length > 0) {
+        setActiveOrderId(orders[0].id);
+      }
+    };
+
+    fetchActiveOrder();
+  }, []);
 
   // Transform to expected format
   const order: OrderTracking | null = orderData ? {
@@ -225,7 +248,26 @@ export function EnhancedCustomerDashboard() {
     });
   };
 
-  if (orderLoading || !order) return <div>Loading...</div>;
+  if (orderLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  
+  if (!order) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <ShoppingCart className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-2">No Active Orders</h2>
+            <p className="text-muted-foreground mb-6">
+              You don't have any active orders at the moment.
+            </p>
+            <Button onClick={() => window.location.href = '/shop'}>
+              Start Shopping
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const completedItems = order.items.filter(item => item.status === 'found').length;
   const totalItems = order.items.length;
