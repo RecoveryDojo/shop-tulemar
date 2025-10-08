@@ -50,6 +50,7 @@ import WorkflowTest from "@/pages/WorkflowTest";
 import Auth from "@/pages/Auth";
 import ProductEdit from "@/pages/ProductEdit";
 import ResetPassword from "@/pages/ResetPassword";
+import ShopCheckout from "@/pages/shop/ShopCheckout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -97,11 +98,7 @@ function AppRouter() {
           <LazyShopCart />
         </AsyncBoundary>
       } />
-      <Route path="/checkout" element={
-        <AsyncBoundary loadingText="Loading checkout...">
-          <LazyShopCheckout />
-        </AsyncBoundary>
-      } />
+      <Route path="/checkout" element={<ShopCheckout />} />
       <Route path="/order-success" element={
         <AsyncBoundary loadingText="Loading order confirmation...">
           <LazyOrderSuccess />
