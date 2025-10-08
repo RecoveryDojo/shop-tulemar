@@ -77,10 +77,16 @@ export default function ShopCheckout() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (items.length === 0) return;
+    console.log('[checkout] Form submitted, items:', items.length);
+    
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
+      console.log('[checkout] Setting submitting state to true');
       
       // Prepare order data for Stripe
       const orderData = {
@@ -110,7 +116,8 @@ export default function ShopCheckout() {
         totalPrice: item.price * item.quantity
       }));
 
-      console.log("Creating payment session...");
+      console.log("[checkout] Invoking create-payment function...");
+      console.log("[checkout] Order data:", { customerEmail: orderData.customerEmail, total: orderData.totalAmount, itemCount: orderItems.length });
       
       // Create payment with Stripe
       const { data, error } = await supabase.functions.invoke('create-payment', {
@@ -121,17 +128,19 @@ export default function ShopCheckout() {
         }
       });
 
+      console.log("[checkout] Function response:", { hasData: !!data, hasError: !!error });
+
       if (error) {
-        console.error("Payment creation error details:", error);
+        console.error("[checkout] Payment creation error:", error);
         throw new Error(error.message || "Failed to create payment session");
       }
 
       if (!data?.url) {
-        console.error("Payment response data:", data);
-        throw new Error("No payment URL received");
+        console.error("[checkout] No URL in response. Data:", data);
+        throw new Error("No payment URL received from server");
       }
 
-      console.log("Payment session created, redirecting to Stripe...");
+      console.log("[checkout] Payment session created successfully, redirecting to:", data.url);
       
       // Clear cart before redirecting to Stripe
       clearCart();
