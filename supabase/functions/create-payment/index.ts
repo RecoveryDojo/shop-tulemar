@@ -21,7 +21,7 @@ serve(async (req) => {
     console.log("Order data:", { orderData, itemCount: items?.length });
     
     // Determine origin for redirect URLs
-    const origin = siteOrigin || req.headers.get("origin") || "http://localhost:5173";
+    const origin = siteOrigin || req.headers.get("origin") || Deno.env.get("PUBLIC_SITE_URL");
     console.log("[create-payment] Using origin:", origin);
 
     if (!orderData || !items || items.length === 0) {
@@ -124,14 +124,14 @@ serve(async (req) => {
     // Create order items
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
-      product_id: item.productId,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total_price: item.totalPrice
+      sku: String(item.productId),
+      name: item.name,
+      qty: item.quantity,
+      notes: null
     }));
 
     const { error: itemsError } = await supabaseClient
-      .from("order_items")
+      .from("new_order_items")
       .insert(orderItems, { returning: 'minimal' });
 
     if (itemsError) {
@@ -139,7 +139,7 @@ serve(async (req) => {
       throw new Error(`Failed to create order items: ${itemsError.message}`);
     }
 
-    console.log('[create-payment] Order items inserted successfully:', { count: orderItems?.length ?? 0 });
+    console.log('[create-payment] Order items inserted successfully:', { count: orderItems.length });
 
     // Check if customer exists in Stripe
     let customerId;
