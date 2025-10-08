@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Package, Clock, MapPin, Phone, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCart } from '@/contexts/CartContext';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
+  const { clearCart } = useCart();
   const [order, setOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,9 @@ export default function OrderSuccess() {
 
         if (verificationData?.success) {
           setOrder(verificationData.order);
+          
+          // Clear cart after successful payment confirmation
+          clearCart();
           
           // Fetch order items
           const { data: items, error: itemsError } = await supabase

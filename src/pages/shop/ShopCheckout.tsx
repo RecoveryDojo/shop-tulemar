@@ -142,10 +142,7 @@ export default function ShopCheckout() {
 
       console.log("[checkout] Payment session created successfully, redirecting to:", data.url);
       
-      // Clear cart before redirecting to Stripe
-      clearCart();
-      
-      // Redirect to Stripe Checkout
+      // Redirect to Stripe checkout (cart will be cleared after successful payment)
       window.location.href = data.url;
       
     } catch (error) {
