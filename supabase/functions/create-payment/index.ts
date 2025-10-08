@@ -104,7 +104,7 @@ serve(async (req) => {
         tax_amount: orderData.taxAmount,
         delivery_fee: orderData.deliveryFee,
         total_amount: orderData.totalAmount,
-        status: "pending",
+        status: "placed",
         payment_status: "pending"
       })
       .select()
