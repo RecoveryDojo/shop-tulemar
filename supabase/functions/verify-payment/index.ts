@@ -40,26 +40,45 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     console.log("Session status:", session.payment_status);
 
-    // Update order based on payment status
-    let orderStatus = "pending";
-    let paymentStatus = "pending";
+    // Fetch current order to check its state
+    const { data: currentOrder, error: fetchError } = await supabaseClient
+      .from("orders")
+      .select("id, status, payment_status")
+      .eq("id", orderId)
+      .single();
 
-    if (session.payment_status === "paid") {
-      orderStatus = "confirmed";
-      paymentStatus = "paid";
-      console.log("Payment successful for order:", orderId);
-    } else if (session.payment_status === "unpaid") {
-      orderStatus = "cancelled";
-      paymentStatus = "failed";
-      console.log("Payment failed for order:", orderId);
+    if (fetchError || !currentOrder) {
+      throw new Error(`Order not found: ${orderId}`);
     }
 
-    // Update the order in the database
+    // Determine new status based on payment and current state
+    let newStatus = currentOrder.status;
+    let paymentStatus = currentOrder.payment_status;
+
+    if (session.payment_status === "paid") {
+      // Only normalize legacy statuses to "placed"
+      if (currentOrder.status === "confirmed" || 
+          currentOrder.status === "pending" || 
+          !currentOrder.status) {
+        newStatus = "placed";  // Canonical: order is placed and awaiting shopper
+      }
+      // If already in a valid workflow state (claimed/shopping/ready/etc), don't change it
+      paymentStatus = "paid";
+      console.log(`[verify-payment] Payment successful for order: ${orderId}`);
+      
+    } else if (session.payment_status === "unpaid") {
+      newStatus = "canceled";  // Canonical spelling
+      paymentStatus = "failed";
+      console.log(`[verify-payment] Payment failed for order: ${orderId}`);
+    }
+
+    // Update order with normalized status and payment info
     const { data: updatedOrder, error: updateError } = await supabaseClient
       .from("orders")
       .update({
-        status: orderStatus,
+        status: newStatus,
         payment_status: paymentStatus,
+        payment_intent_id: String(session.payment_intent || ""),
         updated_at: new Date().toISOString()
       })
       .eq("id", orderId)
@@ -67,24 +86,31 @@ serve(async (req) => {
       .single();
 
     if (updateError) {
-      console.error("Order update error:", updateError);
+      console.error("[verify-payment] Order update error:", updateError);
       throw new Error(`Failed to update order: ${updateError.message}`);
     }
 
-    // Log the workflow action
+    console.log(`[verify-payment] Order payment recorded`, {
+      orderId,
+      from: currentOrder.status,
+      to: newStatus,
+      session: sessionId
+    });
+
+    // Log the workflow action with accurate state transition
     await supabaseClient
-      .from("order_workflow_log")
+      .from("new_order_events")
       .insert({
         order_id: orderId,
-        phase: "payment",
-        action: session.payment_status === "paid" ? "payment_completed" : "payment_failed",
-        new_status: orderStatus,
-        previous_status: "pending",
-        notes: `Stripe session: ${sessionId}`,
-        metadata: {
-          session_id: sessionId,
+        event_type: session.payment_status === "paid" ? "PAYMENT_CONFIRMED" : "PAYMENT_FAILED",
+        actor_role: "system",
+        data: {
+          stripe_session_id: sessionId,
           payment_intent: session.payment_intent,
-          amount_total: session.amount_total
+          amount_total: session.amount_total,
+          payment_status: session.payment_status,
+          previous_status: currentOrder.status,
+          new_status: newStatus
         }
       });
 
