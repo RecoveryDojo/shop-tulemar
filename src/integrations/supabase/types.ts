@@ -237,6 +237,47 @@ export type Database = {
         }
         Relationships: []
       }
+      concierge_checklist: {
+        Row: {
+          arrived_at_property: boolean
+          freezer_stocked: boolean
+          fridge_stocked: boolean
+          notes: string | null
+          order_id: string
+          pantry_stocked: boolean
+          photo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          arrived_at_property?: boolean
+          freezer_stocked?: boolean
+          fridge_stocked?: boolean
+          notes?: string | null
+          order_id: string
+          pantry_stocked?: boolean
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arrived_at_property?: boolean
+          freezer_stocked?: boolean
+          fridge_stocked?: boolean
+          notes?: string | null
+          order_id?: string
+          pantry_stocked?: boolean
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concierge_checklist_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_preferences: {
         Row: {
           created_at: string

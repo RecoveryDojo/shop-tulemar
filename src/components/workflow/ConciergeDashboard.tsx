@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
@@ -17,7 +21,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
-import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { getStatusLabel, getStatusColor } from '@/lib/orderStatus';
 
 interface ConciergeOrder {
@@ -31,18 +34,29 @@ interface ConciergeOrder {
   status: string;
 }
 
+interface ConciergeChecklist {
+  order_id: string;
+  arrived_at_property: boolean;
+  pantry_stocked: boolean;
+  fridge_stocked: boolean;
+  freezer_stocked: boolean;
+  photo_url: string | null;
+  notes: string | null;
+  updated_at: string;
+}
+
 export function ConciergeDashboard() {
   const [orders, setOrders] = useState<ConciergeOrder[]>([]);
   const [activeOrder, setActiveOrder] = useState<ConciergeOrder | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guestMessage, setGuestMessage] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [checklist, setChecklist] = useState<ConciergeChecklist | null>(null);
+  const [guestMessage, setGuestMessage] = useState("Welcome to your property! Your kitchen has been fully stocked with all your requested items. Everything is ready for your arrival. Have a wonderful stay!");
   const { toast } = useToast();
-  const { advanceStatus, loading: actionLoading } = useEnhancedOrderWorkflow();
 
   useEffect(() => {
     fetchOrders();
     
-    // Simple realtime subscription for ready and delivered orders
     const channel = supabase
       .channel('concierge-ready-and-delivered-orders')
       .on('postgres_changes', {
@@ -59,6 +73,12 @@ export function ConciergeDashboard() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    if (activeOrder) {
+      fetchChecklist(activeOrder.id);
+    }
+  }, [activeOrder]);
 
   const fetchOrders = async () => {
     try {
@@ -82,40 +102,168 @@ export function ConciergeDashboard() {
     }
   };
 
-  const handleCompleteOrder = async () => {
+  const fetchChecklist = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('concierge_checklist')
+        .select('*')
+        .eq('order_id', orderId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setChecklist(data);
+    } catch (error) {
+      console.error('Error fetching checklist:', error);
+    }
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!activeOrder) return;
+    setActionLoading(true);
+
+    try {
+      const { data, error } = await supabase.rpc('rpc_advance_status', {
+        p_order_id: activeOrder.id,
+        p_to: 'delivered',
+        p_expected_status: 'ready',
+        p_actor_role: 'concierge'
+      });
+
+      if (error) throw error;
+
+      // Initialize checklist row
+      await supabase
+        .from('concierge_checklist')
+        .insert({ order_id: activeOrder.id })
+        .select()
+        .maybeSingle();
+
+      toast({
+        title: "Delivery Confirmed",
+        description: "Order marked as delivered. Begin stocking.",
+      });
+
+      fetchOrders();
+      fetchChecklist(activeOrder.id);
+    } catch (error: any) {
+      console.error('Error confirming delivery:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm delivery",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const updateChecklistField = async (field: string, value: any) => {
     if (!activeOrder) return;
 
     try {
-      // Advance to closed status
-      await advanceStatus({ 
-        orderId: activeOrder.id, 
-        to: 'closed', 
-        expectedStatus: 'delivered' 
+      await supabase
+        .from('concierge_checklist')
+        .upsert({
+          order_id: activeOrder.id,
+          [field]: value,
+          updated_at: new Date().toISOString()
+        });
+
+      // Log update event
+      await supabase
+        .from('new_order_events')
+        .insert({
+          order_id: activeOrder.id,
+          event_type: 'CONCIERGE_CHECKLIST_UPDATED',
+          actor_role: 'concierge',
+          data: { field, value }
+        });
+
+      fetchChecklist(activeOrder.id);
+    } catch (error) {
+      console.error('Error updating checklist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update checklist",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendWelcomeAndClose = async () => {
+    if (!activeOrder || !guestMessage.trim()) return;
+    setActionLoading(true);
+
+    try {
+      // 1. Insert guest notification
+      await supabase
+        .from('order_notifications')
+        .insert({
+          order_id: activeOrder.id,
+          notification_type: 'guest_welcome',
+          recipient_type: 'customer',
+          recipient_identifier: activeOrder.customer_email,
+          channel: 'email',
+          status: 'pending',
+          message_content: guestMessage,
+          metadata: { 
+            sent_by: 'concierge',
+            sent_at: new Date().toISOString()
+          }
+        });
+
+      // 2. Log GUEST_NOTIFIED event
+      await supabase
+        .from('new_order_events')
+        .insert({
+          order_id: activeOrder.id,
+          event_type: 'GUEST_NOTIFIED',
+          actor_role: 'concierge',
+          data: { 
+            message: guestMessage,
+            channel: 'email'
+          }
+        });
+
+      // 3. Close order: delivered → closed
+      const { data, error } = await supabase.rpc('rpc_advance_status', {
+        p_order_id: activeOrder.id,
+        p_to: 'closed',
+        p_expected_status: 'delivered',
+        p_actor_role: 'concierge'
       });
 
-      // Send guest welcome notification
-      if (guestMessage.trim()) {
-        await supabase
-          .from('new_order_events')
-          .insert({
-            order_id: activeOrder.id,
-            event_type: 'GUEST_WELCOME_SENT',
-            actor_role: 'concierge',
-            data: { message: guestMessage }
-          });
-      }
+      if (error) throw error;
 
       toast({
         title: "Order Completed",
-        description: `Order marked as closed${guestMessage ? ' and guest notified' : ''}`,
+        description: "Guest notified and order closed successfully",
       });
 
       setActiveOrder(null);
-      setGuestMessage("");
+      setGuestMessage("Welcome to your property! Your kitchen has been fully stocked with all your requested items. Everything is ready for your arrival. Have a wonderful stay!");
+      setChecklist(null);
       fetchOrders();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing order:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to complete order",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
     }
+  };
+
+  const getChecklistProgress = () => {
+    if (!checklist) return 0;
+    return [
+      checklist.arrived_at_property,
+      checklist.pantry_stocked,
+      checklist.fridge_stocked,
+      checklist.freezer_stocked
+    ].filter(Boolean).length;
   };
 
   if (loading) {
@@ -241,59 +389,173 @@ export function ConciergeDashboard() {
           </CardContent>
         </Card>
 
-        {/* Active Order Completion */}
-        {activeOrder && (
+        {/* Step 1: Confirm Delivery (status = ready) */}
+        {activeOrder?.status === 'ready' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5" />
-                Complete Order & Welcome Guest
+                <MapPin className="h-5 w-5" />
+                Step 1: Confirm Delivery Received
               </CardTitle>
+              <CardDescription>
+                Order #{activeOrder.id.slice(0, 8)} for {activeOrder.customer_name}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-medium mb-1">Customer</div>
-                  <div>{activeOrder.customer_name}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-1">Property</div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    {activeOrder.property_address}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-1">Arrival Date</div>
-                  <div>{new Date(activeOrder.arrival_date).toLocaleDateString()}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-1">Guest Count</div>
-                  <div>{activeOrder.guest_count} guests</div>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-medium mb-2">Guest Welcome Message (Optional)</div>
-                <Textarea
-                  placeholder="Welcome message for the guest (e.g., property tips, local recommendations, emergency contacts)"
-                  value={guestMessage}
-                  onChange={(e) => setGuestMessage(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
+              <p className="text-sm text-muted-foreground">
+                Confirm that you've received the delivery items and are ready to begin stocking.
+              </p>
               <Button 
-                onClick={handleCompleteOrder}
+                onClick={handleConfirmDelivery}
                 className="w-full"
                 size="lg"
                 disabled={actionLoading}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                {actionLoading ? 'Completing...' : 'Mark Order as Closed'}
+                {actionLoading ? 'Confirming...' : 'Confirm Delivery Received'}
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Steps 2 & 3: Stocking Checklist and Welcome Guest (status = delivered) */}
+        {activeOrder?.status === 'delivered' && (
+          <>
+            {/* Step 2: Kitchen Stocking Checklist */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Step 2: Kitchen Stocking Checklist
+                </CardTitle>
+                <CardDescription>
+                  Track your stocking progress for {activeOrder.customer_name}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <Checkbox
+                      checked={checklist?.arrived_at_property || false}
+                      onCheckedChange={(checked) => updateChecklistField('arrived_at_property', checked)}
+                    />
+                    <Label className="flex-1 cursor-pointer font-normal">
+                      Arrived at property
+                    </Label>
+                    {checklist?.arrived_at_property && (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <Checkbox
+                      checked={checklist?.pantry_stocked || false}
+                      onCheckedChange={(checked) => updateChecklistField('pantry_stocked', checked)}
+                    />
+                    <Label className="flex-1 cursor-pointer font-normal">
+                      Pantry items stocked (dry goods, spices, etc.)
+                    </Label>
+                    {checklist?.pantry_stocked && (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <Checkbox
+                      checked={checklist?.fridge_stocked || false}
+                      onCheckedChange={(checked) => updateChecklistField('fridge_stocked', checked)}
+                    />
+                    <Label className="flex-1 cursor-pointer font-normal">
+                      Refrigerator items stocked (dairy, produce, etc.)
+                    </Label>
+                    {checklist?.fridge_stocked && (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <Checkbox
+                      checked={checklist?.freezer_stocked || false}
+                      onCheckedChange={(checked) => updateChecklistField('freezer_stocked', checked)}
+                    />
+                    <Label className="flex-1 cursor-pointer font-normal">
+                      Freezer items stocked (frozen goods)
+                    </Label>
+                    {checklist?.freezer_stocked && (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Kitchen Photo (optional)</Label>
+                  <Input
+                    placeholder="Photo URL showing stocked kitchen"
+                    value={checklist?.photo_url || ''}
+                    onChange={(e) => updateChecklistField('photo_url', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Additional Notes</Label>
+                  <Textarea
+                    placeholder="Any special arrangements or notes about the stocking"
+                    value={checklist?.notes || ''}
+                    onChange={(e) => updateChecklistField('notes', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="pt-2 border-t">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">Stocking Progress</span>
+                    <span className="font-medium">
+                      {getChecklistProgress()}/4 completed
+                    </span>
+                  </div>
+                  <Progress value={(getChecklistProgress() / 4) * 100} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Step 3: Welcome Guest & Close Order */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Step 3: Welcome Guest & Close Order
+                </CardTitle>
+                <CardDescription>
+                  Send a welcome message and complete the order
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Send a welcome message to the guest and mark this order as complete.
+                </p>
+
+                <div>
+                  <Label>Welcome Message</Label>
+                  <Textarea
+                    placeholder="Welcome message for the guest..."
+                    value={guestMessage}
+                    onChange={(e) => setGuestMessage(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleSendWelcomeAndClose}
+                  className="w-full"
+                  size="lg"
+                  disabled={actionLoading || !guestMessage.trim()}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {actionLoading ? 'Sending...' : 'Send Welcome & Close Order'}
+                </Button>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
 
