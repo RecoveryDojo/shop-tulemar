@@ -42,14 +42,14 @@ export function ConciergeDashboard() {
   useEffect(() => {
     fetchOrders();
     
-    // Simple realtime subscription for delivered orders
+    // Simple realtime subscription for ready and delivered orders
     const channel = supabase
-      .channel('concierge-orders')
+      .channel('concierge-ready-and-delivered-orders')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'orders',
-        filter: 'status=eq.delivered'
+        filter: 'status=in.(ready,delivered)'
       }, () => {
         fetchOrders();
       })
@@ -65,7 +65,7 @@ export function ConciergeDashboard() {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('status', 'delivered')
+        .in('status', ['ready', 'delivered'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -193,10 +193,10 @@ export function ConciergeDashboard() {
         {/* Order Queue */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Delivered Orders Ready to Close
-            </CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Orders Ready for Delivery & Completion
+              </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -233,8 +233,8 @@ export function ConciergeDashboard() {
               {orders.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <div>No delivered orders</div>
-                  <div className="text-sm">Orders will appear here when delivered</div>
+                  <div>No orders ready for delivery</div>
+                  <div className="text-sm">Orders will appear here when ready or delivered</div>
                 </div>
               )}
             </div>
