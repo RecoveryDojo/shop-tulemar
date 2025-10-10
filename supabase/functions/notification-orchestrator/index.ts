@@ -14,6 +14,12 @@ interface NotificationRequest {
   recipientIdentifier?: string;
   channel?: string;
   metadata?: Record<string, any>;
+  source?: string;
+  idempotencyKey?: string;
+  payload?: {
+    guestMessage?: string;
+    checklist?: any;
+  };
 }
 
 const supabase = createClient(
@@ -27,9 +33,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { orderId, notificationType, phase, recipientType, recipientIdentifier, channel, metadata }: NotificationRequest = await req.json();
+    const { orderId, notificationType, phase, recipientType, recipientIdentifier, channel, metadata, source, idempotencyKey, payload }: NotificationRequest = await req.json();
     
-    console.log(`Processing notification for order ${orderId}, type: ${notificationType}, phase: ${phase}`);
+    console.log(`Processing notification for order ${orderId}, type: ${notificationType}, phase: ${phase}, source: ${source}, idempotencyKey: ${idempotencyKey}`);
 
     // Get order details
     const { data: order, error: orderError } = await supabase
@@ -75,9 +81,11 @@ const handler = async (req: Request): Promise<Response> => {
         concierge: `Order #${order.id.slice(0, 8)} delivered to ${order.property_address}. Please begin kitchen stocking protocol.`
       },
       'stocking_complete': {
-        client: `Perfect! Your kitchen at ${order.property_address} is now fully stocked and ready for your arrival. Welcome!`,
-        admin: `Order #${order.id.slice(0, 8)} completed successfully. Kitchen stocked at ${order.property_address}`,
-        concierge: `Guest kitchen ready: ${order.property_address} - Order #${order.id.slice(0, 8)} stocking complete`
+        client: payload?.guestMessage || `Perfect! Your kitchen at ${order.property_address} is now fully stocked and ready for your arrival. Welcome!`,
+        admin: `Order #${order.id.slice(0, 8)} Completed – Kitchen Stocked\n\nCustomer: ${order.customer_name}\nProperty: ${order.property_address}\nConcierge: ${order.assigned_concierge_id || 'N/A'}\n\nChecklist Status:\n${payload?.checklist ? JSON.stringify(payload.checklist, null, 2) : 'No checklist data'}`,
+        concierge: `Guest kitchen ready: ${order.property_address} - Order #${order.id.slice(0, 8)} stocking complete`,
+        shopper: `Great teamwork! Order #${order.id.slice(0, 8)} completed successfully`,
+        driver: `Delivery complete! Order #${order.id.slice(0, 8)} finished successfully`
       },
       'substitution_needed': {
         client: `We need your approval for a substitution in order #${order.id.slice(0, 8)}. Please check your app to approve or decline.`,
@@ -185,6 +193,35 @@ const handler = async (req: Request): Promise<Response> => {
       await processNotification(notification);
     }
 
+    // Insert GUEST_NOTIFIED and TEAM_NOTIFIED events for stocking_complete
+    if (notificationType === 'stocking_complete') {
+      await supabase
+        .from('new_order_events')
+        .insert([
+          {
+            order_id: orderId,
+            event_type: 'GUEST_NOTIFIED',
+            actor_role: 'system',
+            data: { 
+              source: 'notification_orchestrator',
+              notification_type: notificationType,
+              idempotency_key: idempotencyKey
+            }
+          },
+          {
+            order_id: orderId,
+            event_type: 'TEAM_NOTIFIED',
+            actor_role: 'system',
+            data: { 
+              source: 'notification_orchestrator',
+              notification_type: notificationType,
+              recipients_count: notifications.length,
+              idempotency_key: idempotencyKey
+            }
+          }
+        ]);
+    }
+
     console.log(`Successfully processed ${notifications.length} notifications for order ${orderId}`);
 
     return new Response(
@@ -192,7 +229,8 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, 
         notificationsSent: notifications.length,
         orderId,
-        phase
+        phase,
+        idempotencyKey
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },

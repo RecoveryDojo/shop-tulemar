@@ -161,13 +161,18 @@ export function ConciergeDashboard() {
     if (!activeOrder) return;
 
     try {
-      await supabase
+      const boolValue = value === true;
+      const { error: upsertError } = await supabase
         .from('concierge_checklist')
         .upsert({
           order_id: activeOrder.id,
-          [field]: value,
+          [field]: boolValue,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'order_id'
         });
+
+      if (upsertError) throw upsertError;
 
       // Log update event
       await supabase
@@ -176,10 +181,15 @@ export function ConciergeDashboard() {
           order_id: activeOrder.id,
           event_type: 'CONCIERGE_CHECKLIST_UPDATED',
           actor_role: 'concierge',
-          data: { field, value }
+          data: { field, value: boolValue }
         });
 
       fetchChecklist(activeOrder.id);
+      
+      toast({
+        title: "Updated",
+        description: "Checklist saved",
+      });
     } catch (error) {
       console.error('Error updating checklist:', error);
       toast({
@@ -212,18 +222,29 @@ export function ConciergeDashboard() {
           }
         });
 
-      // 2. Log GUEST_NOTIFIED event
-      await supabase
-        .from('new_order_events')
-        .insert({
-          order_id: activeOrder.id,
-          event_type: 'GUEST_NOTIFIED',
-          actor_role: 'concierge',
-          data: { 
-            message: guestMessage,
-            channel: 'email'
+      // 2. Invoke notification orchestrator
+      const { data: notifResult, error: notifError } = await supabase.functions.invoke('notification-orchestrator', {
+        body: {
+          orderId: activeOrder.id,
+          notificationType: 'stocking_complete',
+          phase: 'completion',
+          source: 'concierge_dashboard',
+          idempotencyKey: `stocking_complete:${activeOrder.id}`,
+          payload: {
+            guestMessage,
+            checklist: checklist ?? null
           }
+        }
+      });
+
+      if (notifError) {
+        console.error('Notification orchestrator error:', notifError);
+        toast({
+          title: "Warning",
+          description: "Order closed but notifications may not have been sent",
+          variant: "destructive",
         });
+      }
 
       // 3. Close order: delivered → closed
       const { data, error } = await supabase.rpc('rpc_advance_status', {
@@ -437,7 +458,7 @@ export function ConciergeDashboard() {
                   <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
                     <Checkbox
                       checked={checklist?.arrived_at_property || false}
-                      onCheckedChange={(checked) => updateChecklistField('arrived_at_property', checked)}
+                      onCheckedChange={(checked) => updateChecklistField('arrived_at_property', checked === true)}
                     />
                     <Label className="flex-1 cursor-pointer font-normal">
                       Arrived at property
@@ -450,7 +471,7 @@ export function ConciergeDashboard() {
                   <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
                     <Checkbox
                       checked={checklist?.pantry_stocked || false}
-                      onCheckedChange={(checked) => updateChecklistField('pantry_stocked', checked)}
+                      onCheckedChange={(checked) => updateChecklistField('pantry_stocked', checked === true)}
                     />
                     <Label className="flex-1 cursor-pointer font-normal">
                       Pantry items stocked (dry goods, spices, etc.)
@@ -463,7 +484,7 @@ export function ConciergeDashboard() {
                   <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
                     <Checkbox
                       checked={checklist?.fridge_stocked || false}
-                      onCheckedChange={(checked) => updateChecklistField('fridge_stocked', checked)}
+                      onCheckedChange={(checked) => updateChecklistField('fridge_stocked', checked === true)}
                     />
                     <Label className="flex-1 cursor-pointer font-normal">
                       Refrigerator items stocked (dairy, produce, etc.)
@@ -476,7 +497,7 @@ export function ConciergeDashboard() {
                   <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
                     <Checkbox
                       checked={checklist?.freezer_stocked || false}
-                      onCheckedChange={(checked) => updateChecklistField('freezer_stocked', checked)}
+                      onCheckedChange={(checked) => updateChecklistField('freezer_stocked', checked === true)}
                     />
                     <Label className="flex-1 cursor-pointer font-normal">
                       Freezer items stocked (frozen goods)
