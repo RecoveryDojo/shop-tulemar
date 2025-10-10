@@ -146,7 +146,19 @@ export function ConciergeDashboard() {
         description: "Order marked as delivered. Begin stocking.",
       });
 
-      fetchOrders();
+      await fetchOrders();
+      
+      // Refresh activeOrder to get updated assigned_concierge_id
+      const { data: refreshedOrder, error: refreshError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', activeOrder.id)
+        .single();
+      
+      if (!refreshError && refreshedOrder) {
+        setActiveOrder(refreshedOrder);
+      }
+      
       fetchChecklist(activeOrder.id);
     } catch (error: any) {
       console.error('Error confirming delivery:', error);
@@ -162,6 +174,12 @@ export function ConciergeDashboard() {
 
   const updateChecklistField = async (field: string, value: any) => {
     if (!activeOrder) return;
+
+    // Guard: only allow updates if assigned to current user
+    if (!activeOrder.assigned_concierge_id || activeOrder.assigned_concierge_id !== currentUserId) {
+      console.warn('Cannot update checklist: not assigned to current user');
+      return;
+    }
 
     try {
       const boolValue = value === true;
@@ -457,7 +475,7 @@ export function ConciergeDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {activeOrder.assigned_concierge_id && activeOrder.assigned_concierge_id !== currentUserId ? (
+                {!activeOrder.assigned_concierge_id || activeOrder.assigned_concierge_id !== currentUserId ? (
                   <div className="p-4 border border-yellow-500/20 bg-yellow-500/10 rounded-lg">
                     <p className="text-sm text-yellow-700 dark:text-yellow-400">
                       <Info className="h-4 w-4 inline mr-2" />
