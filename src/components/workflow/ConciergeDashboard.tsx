@@ -52,11 +52,19 @@ export function ConciergeDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [checklist, setChecklist] = useState<ConciergeChecklist | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [guestMessage, setGuestMessage] = useState("Welcome to your property! Your kitchen has been fully stocked with all your requested items. Everything is ready for your arrival. Have a wonderful stay!");
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchOrders();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+      
+      fetchOrders();
+    };
+    
+    init();
     
     const channel = supabase
       .channel('concierge-ready-and-delivered-orders')
@@ -123,21 +131,7 @@ export function ConciergeDashboard() {
     setActionLoading(true);
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Auto-assign current concierge if not already assigned
-      if (!activeOrder.assigned_concierge_id) {
-        const { error: assignError } = await supabase
-          .from('orders')
-          .update({ assigned_concierge_id: user.id })
-          .eq('id', activeOrder.id);
-
-        if (assignError) throw assignError;
-      }
-
-      // Advance status to delivered
+      // rpc_advance_status will auto-assign concierge and create checklist
       const { data, error } = await supabase.rpc('rpc_advance_status', {
         p_order_id: activeOrder.id,
         p_to: 'delivered',
@@ -146,13 +140,6 @@ export function ConciergeDashboard() {
       });
 
       if (error) throw error;
-
-      // Initialize checklist row
-      await supabase
-        .from('concierge_checklist')
-        .insert({ order_id: activeOrder.id })
-        .select()
-        .maybeSingle();
 
       toast({
         title: "Delivery Confirmed",
@@ -470,6 +457,15 @@ export function ConciergeDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {activeOrder.assigned_concierge_id && activeOrder.assigned_concierge_id !== currentUserId ? (
+                  <div className="p-4 border border-yellow-500/20 bg-yellow-500/10 rounded-lg">
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                      <Info className="h-4 w-4 inline mr-2" />
+                      Not assigned to you yet.
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
                     <Checkbox
@@ -552,6 +548,8 @@ export function ConciergeDashboard() {
                   </div>
                   <Progress value={(getChecklistProgress() / 4) * 100} />
                 </div>
+                </>
+                )}
               </CardContent>
             </Card>
 
