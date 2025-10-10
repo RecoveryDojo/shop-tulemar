@@ -32,6 +32,7 @@ interface ConciergeOrder {
   guest_count: number;
   total_amount: number;
   status: string;
+  assigned_concierge_id: string | null;
 }
 
 interface ConciergeChecklist {
@@ -122,6 +123,21 @@ export function ConciergeDashboard() {
     setActionLoading(true);
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Auto-assign current concierge if not already assigned
+      if (!activeOrder.assigned_concierge_id) {
+        const { error: assignError } = await supabase
+          .from('orders')
+          .update({ assigned_concierge_id: user.id })
+          .eq('id', activeOrder.id);
+
+        if (assignError) throw assignError;
+      }
+
+      // Advance status to delivered
       const { data, error } = await supabase.rpc('rpc_advance_status', {
         p_order_id: activeOrder.id,
         p_to: 'delivered',
