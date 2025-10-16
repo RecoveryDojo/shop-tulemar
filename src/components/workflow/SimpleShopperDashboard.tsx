@@ -3,16 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getStatusLabel, getStatusColor, getStatusBadgeVariant } from '@/lib/orderStatus';
+import { getStatusBadgeVariant } from '@/lib/orderStatus';
+import { MobileProductCard } from './MobileProductCard';
 import { 
   ShoppingCart, 
   Clock, 
-  CheckCircle2, 
   Package,
   RefreshCw,
   Info
@@ -26,6 +25,11 @@ interface OrderItem {
   qty_picked: number;
   notes?: string;
   shopping_status?: string;
+  product?: {
+    name: string;
+    image_url?: string;
+    unit?: string;
+  };
 }
 
 interface Order {
@@ -85,16 +89,16 @@ export default function SimpleShopperDashboard() {
     }
   };
 
-  // Load shopper queue
+  // Load shopper queue with product images
   const loadShopperQueue = async () => {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
+      const { data: orders, error } = await supabase
         .from('orders')
         .select(`
           *,
-          order_items(*)
+          order_items:new_order_items(*)
         `)
         .eq('assigned_shopper_id', user.id)
         .in('status', ['claimed', 'shopping'])
@@ -102,9 +106,25 @@ export default function SimpleShopperDashboard() {
       
       if (error) throw error;
       
-      const formattedOrders = (data || []).map(order => ({
-        ...order,
-        items: order.order_items || []
+      // Fetch products separately and join
+      const formattedOrders = await Promise.all((orders || []).map(async (order) => {
+        const itemsWithProducts = await Promise.all(order.order_items.map(async (item: any) => {
+          if (item.sku) {
+            const { data: product } = await supabase
+              .from('products')
+              .select('name, image_url, unit')
+              .eq('id', item.sku)
+              .single();
+            
+            return { ...item, product };
+          }
+          return item;
+        }));
+        
+        return {
+          ...order,
+          items: itemsWithProducts
+        };
       }));
       
       setShopperQueue(formattedOrders);
@@ -126,21 +146,35 @@ export default function SimpleShopperDashboard() {
       await loadAvailableOrders();
       await loadShopperQueue();
       
-      // Refetch current order from database
+      // Refetch current order from database with product images
       if (currentOrder) {
         const { data, error } = await supabase
           .from('orders')
           .select(`
             *,
-            order_items(*)
+            order_items:new_order_items(*)
           `)
           .eq('id', currentOrder.id)
           .single();
         
         if (!error && data) {
+          // Fetch products separately
+          const itemsWithProducts = await Promise.all(data.order_items.map(async (item: any) => {
+            if (item.sku) {
+              const { data: product } = await supabase
+                .from('products')
+                .select('name, image_url, unit')
+                .eq('id', item.sku)
+                .single();
+              
+              return { ...item, product };
+            }
+            return item;
+          }));
+          
           setCurrentOrder({
             ...data,
-            items: data.order_items || []
+            items: itemsWithProducts
           });
         }
       }
@@ -215,18 +249,35 @@ export default function SimpleShopperDashboard() {
         loadAvailableOrders();
         loadShopperQueue();
         
-        // Refetch current order if it matches
+        // Refetch current order if it matches with product images
         if (currentOrder && payload.new && 'id' in payload.new && payload.new.id === currentOrder.id) {
           supabase
             .from('orders')
-            .select(`*, order_items(*)`)
+            .select(`
+              *, 
+              order_items:new_order_items(*)
+            `)
             .eq('id', currentOrder.id)
             .single()
-            .then(({ data }) => {
+            .then(async ({ data }) => {
               if (data) {
+                // Fetch products separately
+                const itemsWithProducts = await Promise.all(data.order_items.map(async (item: any) => {
+                  if (item.sku) {
+                    const { data: product } = await supabase
+                      .from('products')
+                      .select('name, image_url, unit')
+                      .eq('id', item.sku)
+                      .single();
+                    
+                    return { ...item, product };
+                  }
+                  return item;
+                }));
+                
                 setCurrentOrder({
                   ...data,
-                  items: data.order_items || []
+                  items: itemsWithProducts
                 });
               }
             });
@@ -250,115 +301,90 @@ export default function SimpleShopperDashboard() {
   }, [user?.id, currentOrder?.id]);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Shopper Dashboard (Guarded)</h1>
-          <p className="text-muted-foreground">
-            Fully reliable workflow with realtime updates
-          </p>
+    <div className="min-h-screen bg-background pb-20">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-background border-b">
+        <div className="container mx-auto p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold">Shopper Dashboard</h1>
+              {currentOrder && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Shopping for {currentOrder.customer_name}
+                </p>
+              )}
+            </div>
+            {currentOrder && (
+              <Badge variant={getStatusBadgeVariant(currentOrder.status)} className="text-sm">
+                {currentOrder.status.toUpperCase()}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Current Order */}
-      {currentOrder && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5" />
-                Current Order: {currentOrder.customer_name}
-              </CardTitle>
-              <Badge variant={getStatusBadgeVariant(currentOrder.status)}>
-                {currentOrder.status.toUpperCase()}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Order Items */}
-            <div className="space-y-2">
-              <h4 className="font-medium">Items to Shop</h4>
+      <div className="container mx-auto p-4 md:p-6 space-y-6">
+        {/* Current Order - Mobile-First Product Cards */}
+        {currentOrder && (
+          <div className="space-y-4">
+            {/* Start Shopping Action */}
+            {currentOrder.status === 'claimed' && (
+              <Button
+                onClick={() => handleStartShopping(currentOrder)}
+                disabled={isProcessing}
+                className="w-full h-14 text-lg touch-manipulation"
+                size="lg"
+              >
+                {isProcessing && processingAction === 'Start Shopping' ? (
+                  <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                )}
+                Start Shopping
+              </Button>
+            )}
+
+            {/* Product Cards */}
+            <div className="space-y-4">
               {currentOrder.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 border rounded">
-                  <div className="flex-1">
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Qty: {item.qty} | Picked: {item.qty_picked || 0}
-                    </p>
-                    {item.shopping_status && (
-                      <Badge variant="outline" className="mt-1">
-                        {item.shopping_status}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      max={item.qty}
-                      defaultValue={item.qty_picked || 0}
-                      className="w-20"
-                      onChange={(e) => {
-                        const qty = parseInt(e.target.value) || 0;
-                        if (qty !== (item.qty_picked || 0)) {
-                          handlePickItem(item, qty);
-                        }
-                      }}
-                      disabled={isProcessing && processingAction === 'Pick Item'}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => handlePickItem(item, item.qty)}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing && processingAction === 'Pick Item' ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                <MobileProductCard
+                  key={item.id}
+                  name={item.product?.name || item.name}
+                  imageUrl={item.product?.image_url}
+                  quantity={item.qty}
+                  pickedQuantity={item.qty_picked || 0}
+                  unit={item.product?.unit}
+                  shoppingStatus={item.shopping_status}
+                  onQuantityChange={(qty) => handlePickItem(item, qty)}
+                  onMarkFound={() => handlePickItem(item, item.qty)}
+                  disabled={isProcessing}
+                />
               ))}
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2">
-              {currentOrder.status === 'claimed' && (
-                <Button
-                  onClick={() => handleStartShopping(currentOrder)}
-                  disabled={isProcessing}
-                >
-                  {isProcessing && processingAction === 'Start Shopping' ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                  )}
-                  Start Shopping
-                </Button>
-              )}
-              
-              {currentOrder.status === 'shopping' && (
+            {/* Complete Order - Sticky Bottom */}
+            {currentOrder.status === 'shopping' && (
+              <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t shadow-lg md:relative md:shadow-none">
                 <Button
                   onClick={handleAdvanceToReady}
                   disabled={isProcessing}
+                  className="w-full h-16 text-lg touch-manipulation"
+                  size="lg"
                 >
                   {isProcessing && processingAction === 'Advance to READY' ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    <RefreshCw className="w-6 h-6 animate-spin mr-2" />
                   ) : (
-                    <Package className="w-4 h-4 mr-2" />
+                    <Package className="w-6 h-6 mr-2" />
                   )}
-                  Mark Ready
+                  Complete Order & Pack Items
                 </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Available Orders */}
-      <Card>
+        {/* Available Orders */}
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
@@ -471,6 +497,7 @@ export default function SimpleShopperDashboard() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
