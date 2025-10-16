@@ -205,10 +205,13 @@ export function StaffAssignmentTool() {
             .select('id,user_id,role,status,accepted_at')
             .eq('order_id', order.id);
 
-          const { data: items } = await supabase
-            .from('order_items')
-            .select('id')
-            .eq('order_id', order.id);
+          // Count items from both tables using count-only queries for efficiency
+          const [orderItemsCount, newOrderItemsCount] = await Promise.all([
+            supabase.from('order_items').select('id', { count: 'exact', head: true }).eq('order_id', order.id),
+            supabase.from('new_order_items').select('id', { count: 'exact', head: true }).eq('order_id', order.id)
+          ]);
+
+          const totalItems = (orderItemsCount.count || 0) + (newOrderItemsCount.count || 0);
 
           return {
             id: order.id,
@@ -216,7 +219,7 @@ export function StaffAssignmentTool() {
             total_amount: order.total_amount,
             status: order.status,
             created_at: order.created_at,
-            items_count: items?.length || 0,
+            items_count: totalItems,
             assigned_stakeholders: assignments?.map((sa: any) => ({
               role: sa.role,
               user_id: sa.user_id,
@@ -285,6 +288,47 @@ export function StaffAssignmentTool() {
           .eq('id', orderId);
 
         if (updateError) throw updateError;
+
+        // Insert concierge assignment audit event
+        const { error: eventError } = await supabase
+          .from('new_order_events')
+          .insert({
+            order_id: orderId,
+            event_type: 'CONCIERGE_ASSIGNED',
+            actor_role: 'admin',
+            data: { concierge_id: staffId, concierge_name: selectedStaff.display_name }
+          });
+
+        if (eventError) {
+          console.error('Failed to insert concierge event:', eventError);
+        }
+
+        // Only send notification if order is ready or delivered (when concierge can actually work on it)
+        if (selectedOrderData.status === 'ready' || selectedOrderData.status === 'delivered') {
+          try {
+            await supabase.functions.invoke('notification-orchestrator', {
+              body: {
+                orderId,
+                notificationType: 'concierge_assigned',
+                recipientId: staffId,
+                metadata: {
+                  customer_name: selectedOrderData.customer_name,
+                  order_status: selectedOrderData.status
+                }
+              }
+            });
+          } catch (notifError) {
+            console.error('Failed to send concierge notification:', notifError);
+            // Don't fail the assignment if notification fails
+          }
+        } else {
+          // Show info toast explaining when concierge will be notified
+          toast({
+            title: "Concierge Assigned",
+            description: `${selectedStaff.display_name} will be notified when the order reaches 'ready' status`,
+            variant: "default",
+          });
+        }
       }
 
       // Create stakeholder assignment record
@@ -478,7 +522,7 @@ export function StaffAssignmentTool() {
                 {(() => {
                   const order = orders.find(o => o.id === selectedOrder);
                   return order ? (
-                    <div>
+                       <div>
                       <h4 className="font-medium mb-2">Current Assignments for {order.customer_name}</h4>
                       <div className="flex flex-wrap gap-2">
                         {order.assigned_stakeholders.length > 0 ? (
@@ -490,6 +534,10 @@ export function StaffAssignmentTool() {
                         ) : (
                           <span className="text-sm text-muted-foreground">No staff assigned yet</span>
                         )}
+                      </div>
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                        <strong>Note:</strong> Concierge Dashboard shows orders when they're 'ready' or 'delivered'. 
+                        Current status: <Badge variant="outline" className="ml-1">{order.status}</Badge>
                       </div>
                     </div>
                   ) : null;

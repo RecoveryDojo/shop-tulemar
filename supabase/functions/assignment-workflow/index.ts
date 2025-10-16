@@ -84,21 +84,14 @@ serve(async (req) => {
         });
     }
 
-    // Update order status and assigned shopper if it's a shopper assignment
-    let orderUpdateData: any = {};
+    // Shopper assignments must be handled by rpc_assign_shopper RPC, not this edge function
+    // This edge function is for non-shopper assignments only (concierge, driver, etc.)
     if (role === 'shopper') {
-      orderUpdateData = {
-        assigned_shopper_id: staffId,
-        status: 'assigned'
-      };
+      throw new Error('Shopper assignments must be handled via rpc_assign_shopper RPC function, not via this edge function');
     }
 
-    if (Object.keys(orderUpdateData).length > 0) {
-      await supabase
-        .from('orders')
-        .update(orderUpdateData)
-        .eq('id', orderId);
-    }
+    // For non-shopper roles, we only update the assignment field (not status)
+    // Status transitions are handled by canonical RPC functions only
 
     // Log workflow action
     await supabase
