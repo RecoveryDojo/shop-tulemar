@@ -313,23 +313,19 @@ export function EnhancedCustomerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-green-500/5">
-      {/* Clean Header */}
-      <div className="bg-primary p-4 border-b">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
-            My Dashboard
-          </Button>
-          
-          <div className="flex flex-col items-center">
-            <UserProfileMenu />
-          </div>
-          
-          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
-            <MapPin className="h-4 w-4 mr-2" />
-            Track
-          </Button>
-        </div>
-      </div>
+      {/* Clean Header Bar */}
+      <header className="h-16 flex items-center justify-between border-b border-border bg-primary/90 backdrop-blur sticky top-0 z-50 px-6">
+        <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+          My Dashboard
+        </Button>
+        
+        <UserProfileMenu />
+        
+        <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20" onClick={() => setShowDeliveryMap(!showDeliveryMap)}>
+          <MapPin className="h-4 w-4 mr-2" />
+          Track
+        </Button>
+      </header>
       
       <div className="max-w-4xl mx-auto p-4 space-y-6">
       {/* Customer Guidance Protocol */}
