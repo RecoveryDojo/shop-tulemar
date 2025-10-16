@@ -312,7 +312,26 @@ export function EnhancedCustomerDashboard() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-green-500/5">
+      {/* Clean Header */}
+      <div className="bg-primary p-4 border-b">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+            My Dashboard
+          </Button>
+          
+          <div className="flex flex-col items-center">
+            <UserProfileMenu />
+          </div>
+          
+          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+            <MapPin className="h-4 w-4 mr-2" />
+            Track
+          </Button>
+        </div>
+      </div>
+      
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
       {/* Customer Guidance Protocol */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-blue-50">
         <CardContent className="p-4">
@@ -849,6 +868,7 @@ export function EnhancedCustomerDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

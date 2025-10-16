@@ -321,62 +321,19 @@ export function ConciergeDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-blue-500/5">
-      {/* Branded Dashboard Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 text-white">
-        <div className="border-b border-white/20 bg-black/10">
-          <div className="max-w-6xl mx-auto px-6 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
-                  <ShoppingCart className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-bold text-lg text-white">Tulemar Shop</h1>
-                  <p className="text-xs text-white/80">Premium Grocery Delivery</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <NotificationDropdown userRole="concierge" onViewAll={() => {}} />
-                <UserProfileMenu />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
-                >
-                  <Info className="h-4 w-4 mr-2" />
-                  Guide
-                </Button>
-              </div>
-            </div>
+      {/* Clean Header */}
+      <div className="bg-primary p-4 border-b">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+            My Dashboard
+          </Button>
+          
+          <div className="flex flex-col items-center">
+            <UserProfileMenu />
           </div>
+          
+          <NotificationDropdown userRole="concierge" onViewAll={() => {}} />
         </div>
-
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-3 rounded-lg backdrop-blur-sm">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">Concierge Dashboard</h1>
-                  <p className="text-white/80 text-lg">Finalize deliveries and welcome guests</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-white">
-                <Home className="h-5 w-5" />
-                <span className="font-bold text-lg">{orders.length}</span>
-                <span className="text-sm text-white/80">Properties</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-4 bg-gradient-to-b from-transparent to-background/20"></div>
       </div>
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">

@@ -329,26 +329,18 @@ export function StoreManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-purple-500/5">
-      {/* Branded Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-lg">
-              <Store className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Store Manager Dashboard</h1>
-              <p className="text-white/80">Coordinate operations, manage shoppers, and ensure quality service</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Badge variant="outline" className="flex items-center gap-2 bg-white/10 text-white border-white/30">
-              <Zap className="h-4 w-4" />
-              Live Store Operations
-            </Badge>
-            <NotificationDropdown userRole="store_manager" onViewAll={() => {}} />
+      {/* Clean Header */}
+      <div className="bg-primary p-4 border-b">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+            My Dashboard
+          </Button>
+          
+          <div className="flex flex-col items-center">
             <UserProfileMenu />
           </div>
+          
+          <NotificationDropdown userRole="store_manager" onViewAll={() => {}} />
         </div>
       </div>
       

@@ -138,22 +138,18 @@ export function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-green-500/5">
-      {/* Branded Header */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-lg">
-              <Truck className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Driver Dashboard</h1>
-              <p className="text-white/80">Deliver orders to rental properties</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <NotificationDropdown userRole="driver" onViewAll={() => {}} />
+      {/* Clean Header */}
+      <div className="bg-primary p-4 border-b">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+            My Dashboard
+          </Button>
+          
+          <div className="flex flex-col items-center">
             <UserProfileMenu />
           </div>
+          
+          <NotificationDropdown userRole="driver" onViewAll={() => {}} />
         </div>
       </div>
       
