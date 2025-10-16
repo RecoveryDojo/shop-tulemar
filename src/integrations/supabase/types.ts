@@ -1168,6 +1168,18 @@ export type Database = {
       }
     }
     Functions: {
+      admin_is_admin: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      admin_order_item_counts: {
+        Args: { p_order_id: string }
+        Returns: {
+          new_order_items_count: number
+          order_items_count: number
+          total: number
+        }[]
+      }
       assign_user_role: {
         Args: {
           target_role: Database["public"]["Enums"]["app_role"]

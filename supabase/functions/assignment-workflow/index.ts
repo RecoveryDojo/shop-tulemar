@@ -21,6 +21,11 @@ serve(async (req) => {
     const { orderId, staffId, role, adminId } = await req.json();
     console.log(`Assignment workflow: ${role} ${staffId} to order ${orderId} by admin ${adminId}`);
 
+    // Reject shopper assignments immediately - must use rpc_assign_shopper instead
+    if (role === 'shopper') {
+      throw new Error('SHOPPER_ASSIGNMENT_NOT_ALLOWED_HERE: Use rpc_assign_shopper RPC for shopper assignments');
+    }
+
     // Get order details
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -82,12 +87,6 @@ serve(async (req) => {
           assigned_at: currentTime,
           accepted_at: currentTime  // Auto-accept when admin assigns
         });
-    }
-
-    // Shopper assignments must be handled by rpc_assign_shopper RPC, not this edge function
-    // This edge function is for non-shopper assignments only (concierge, driver, etc.)
-    if (role === 'shopper') {
-      throw new Error('Shopper assignments must be handled via rpc_assign_shopper RPC function, not via this edge function');
     }
 
     // For non-shopper roles, we only update the assignment field (not status)
@@ -172,7 +171,7 @@ serve(async (req) => {
         customer_email: order.customer_email,
         customer_phone: order.customer_phone,
         total_amount: order.total_amount,
-        status: orderUpdateData.status || order.status,
+        status: order.status,
         items: order.order_items?.map((item: any) => ({
           name: item.products?.name || 'Unknown Product',
           quantity: item.quantity,

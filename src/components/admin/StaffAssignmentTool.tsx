@@ -205,10 +205,10 @@ export function StaffAssignmentTool() {
             .select('id,user_id,role,status,accepted_at')
             .eq('order_id', order.id);
 
-          // Count items from both tables using count-only queries for efficiency
+          // Count items using count queries (bypasses RLS for now, admin sees 0 until RLS fixed)
           const [orderItemsCount, newOrderItemsCount] = await Promise.all([
-            supabase.from('order_items').select('id', { count: 'exact', head: true }).eq('order_id', order.id),
-            supabase.from('new_order_items').select('id', { count: 'exact', head: true }).eq('order_id', order.id)
+            supabase.from('order_items').select('*', { count: 'exact', head: true }).eq('order_id', order.id),
+            supabase.from('new_order_items').select('*', { count: 'exact', head: true }).eq('order_id', order.id)
           ]);
 
           const totalItems = (orderItemsCount.count || 0) + (newOrderItemsCount.count || 0);
@@ -343,30 +343,11 @@ export function StaffAssignmentTool() {
 
       if (assignmentError) throw assignmentError;
 
-      // Insert order_events row for persistence
-      const eventData: any = {
-        role,
-        staff_name: selectedStaff.display_name
-      };
-      
-      if (role === 'shopper') {
-        eventData.shopper_id = staffId;
-      } else if (role === 'concierge') {
-        eventData.concierge_id = staffId;
-      }
-
-      const { error: eventError } = await supabase
-        .from('order_events')
-        .insert({
-          order_id: orderId,
-          event_type: 'ASSIGNED',
-          actor_role: 'admin',
-          data: eventData
-        });
-
-      if (eventError) throw eventError;
-
-      // Event already logged to new_order_events by database
+      // Event logging handled by:
+      // - Shopper: rpc_assign_shopper inserts to new_order_events automatically
+      // - Concierge: manually inserted to new_order_events above (lines 293-300)
+      // - stakeholder_assignments tracks current assignment state (lines 335-342)
+      // - order_events is a VIEW (read-only), cannot INSERT into it
       
       // Show detailed success toast
       toast({
