@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getStatusBadgeVariant } from '@/lib/orderStatus';
 import { MobileProductCard } from './MobileProductCard';
+import { UserProfileMenu } from '@/components/ui/UserProfileMenu';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { 
   ShoppingCart, 
   Clock, 
@@ -321,29 +323,41 @@ export default function SimpleShopperDashboard() {
   }, [user?.id, currentOrder?.id]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="container mx-auto p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold">Shopper Dashboard</h1>
-              {currentOrder && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Shopping for {currentOrder.customer_name}
-                </p>
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-blue-500/5">
+      {/* Branded Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg">
+              <ShoppingCart className="h-8 w-8" />
             </div>
-            {currentOrder && (
-              <Badge variant={getStatusBadgeVariant(currentOrder.status)} className="text-sm">
-                {currentOrder.status.toUpperCase()}
-              </Badge>
-            )}
+            <div>
+              <h1 className="text-3xl font-bold">Shopper Dashboard</h1>
+              <p className="text-white/80">Personal shopping & order fulfillment</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationDropdown userRole="shopper" onViewAll={() => {}} />
+            <UserProfileMenu />
           </div>
         </div>
       </div>
+      
+      <div className="max-w-6xl mx-auto p-6 pb-20">
+      {/* Sticky Order Info */}
+      {currentOrder && (
+        <div className="sticky top-0 z-10 bg-background border-b mb-4 -mx-6 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Shopping for {currentOrder.customer_name}
+            </p>
+            <Badge variant={getStatusBadgeVariant(currentOrder.status)} className="text-sm">
+              {currentOrder.status.toUpperCase()}
+            </Badge>
+          </div>
+        </div>
+      )}
 
-      <div className="container mx-auto p-4 md:p-6 space-y-6">
         {/* Current Order - Mobile-First Product Cards */}
         {currentOrder && (
           <div className="space-y-4">

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { 
   Store, 
   Users, 
@@ -326,23 +328,31 @@ export function StoreManagerDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <Store className="h-8 w-8 text-primary" />
-            Store Manager Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Coordinate operations, manage shoppers, and ensure quality service
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-purple-500/5">
+      {/* Branded Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg">
+              <Store className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Store Manager Dashboard</h1>
+              <p className="text-white/80">Coordinate operations, manage shoppers, and ensure quality service</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" className="flex items-center gap-2 bg-white/10 text-white border-white/30">
+              <Zap className="h-4 w-4" />
+              Live Store Operations
+            </Badge>
+            <NotificationDropdown userRole="store_manager" onViewAll={() => {}} />
+            <UserProfileMenu />
+          </div>
         </div>
-        <Badge variant="outline" className="flex items-center gap-2">
-          <Zap className="h-4 w-4" />
-          Live Store Operations
-        </Badge>
       </div>
+      
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
 
       {/* Current Protocol Guide */}
       <Card className="border-primary/20 bg-primary/5">
@@ -783,6 +793,7 @@ export function StoreManagerDashboard() {
         stakeholders={mockStakeholders}
         unreadCount={3}
       />
+      </div>
     </div>
   );
 }

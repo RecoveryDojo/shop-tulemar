@@ -143,16 +143,27 @@ const Admin = () => {
 
   return (
     <ProtectedRoute requiredRoles={['admin', 'sysadmin']}>
-      <div className="container mx-auto py-8 px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-8 w-8 text-primary" />
-            Admin Panel
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Manage users, roles, AI-powered inventory management, and system settings
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-red-500/5">
+        {/* Branded Header */}
+        <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white p-6 border-b">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-lg">
+                <Shield className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Admin Panel</h1>
+                <p className="text-white/80">Manage users, roles, AI-powered inventory management, and system settings</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <NotificationDropdown userRole="admin" onViewAll={() => {}} />
+              <UserProfileMenu />
+            </div>
+          </div>
         </div>
+        
+        <div className="container mx-auto py-8 px-4">
 
         <Tabs defaultValue="orders" className="space-y-6">
           <TabsList>
@@ -387,6 +398,7 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
         </div>
+      </div>
     </ProtectedRoute>
   );
 };
