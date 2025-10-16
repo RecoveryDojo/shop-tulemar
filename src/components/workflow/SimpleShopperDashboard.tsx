@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +15,11 @@ import {
   Clock, 
   Package,
   RefreshCw,
-  Info
+  Info,
+  CheckCircle2,
+  MapPin,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 interface OrderItem {
@@ -35,6 +40,11 @@ interface OrderItem {
 interface Order {
   id: string;
   customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  property_address?: string;
+  special_instructions?: string;
+  shopping_completed_at?: string;
   status: string;
   total_amount: number;
   items: OrderItem[];
@@ -53,6 +63,7 @@ export default function SimpleShopperDashboard() {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('active');
 
   const openOrder = (order: Order) => {
     setCurrentOrder(order);
@@ -101,7 +112,7 @@ export default function SimpleShopperDashboard() {
           order_items:new_order_items(*)
         `)
         .eq('assigned_shopper_id', user.id)
-        .in('status', ['claimed', 'shopping'])
+        .in('status', ['claimed', 'shopping', 'ready'])
         .order('created_at');
       
       if (error) throw error;
@@ -212,16 +223,25 @@ export default function SimpleShopperDashboard() {
     );
   };
 
-  const handleAdvanceToReady = () => {
+  const handleAdvanceToReady = async () => {
     if (!currentOrder) return;
     
-    executeAction('Advance to READY', () => 
+    await executeAction('Advance to READY', () => 
       workflow.advanceStatus({
         orderId: currentOrder.id,
         to: 'ready',
         expectedStatus: 'shopping'
       })
     );
+    
+    // Close current order and switch to completed tab
+    setCurrentOrder(null);
+    setActiveTab('completed');
+    
+    toast({
+      title: "Order completed!",
+      description: "Order has been packed and is ready for delivery",
+    });
   };
 
   // Effects
@@ -423,7 +443,7 @@ export default function SimpleShopperDashboard() {
         </CardContent>
       </Card>
 
-      {/* Shopper Queue */}
+      {/* Shopper Queue with Tabs */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -432,34 +452,108 @@ export default function SimpleShopperDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {shopperQueue.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No orders in your queue
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {shopperQueue.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <p className="font-medium">{order.customer_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      ${order.total_amount} • {order.items.length} items
-                    </p>
-                    <Badge variant={getStatusBadgeVariant(order.status)} className="mt-1">
-                      {order.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openOrder(order)}
-                  >
-                    Open
-                  </Button>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full">
+              <TabsTrigger value="active" className="flex-1">
+                Active ({shopperQueue.filter(o => ['claimed', 'shopping'].includes(o.status)).length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex-1">
+                Completed ({shopperQueue.filter(o => o.status === 'ready').length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="active" className="mt-4">
+              {shopperQueue.filter(o => ['claimed', 'shopping'].includes(o.status)).length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No active orders
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {shopperQueue.filter(o => ['claimed', 'shopping'].includes(o.status)).map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <p className="font-medium">{order.customer_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          ${order.total_amount} • {order.items.length} items
+                        </p>
+                        <Badge variant={getStatusBadgeVariant(order.status)} className="mt-1">
+                          {order.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openOrder(order)}
+                      >
+                        Open
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+            </TabsContent>
+            
+            <TabsContent value="completed" className="mt-4">
+              {shopperQueue.filter(o => o.status === 'ready').length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No completed orders
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {shopperQueue.filter(o => o.status === 'ready').map((order) => (
+                    <Card key={order.id} className="border-2 border-green-500/20 bg-green-500/5">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                            <div>
+                              <h4 className="font-semibold">{order.customer_name}</h4>
+                              <Badge variant="outline" className="mt-1 border-green-600 text-green-600">
+                                READY FOR DELIVERY
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="font-semibold">${order.total_amount}</p>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm">
+                          {order.customer_phone && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="w-4 h-4" />
+                              <span>{order.customer_phone}</span>
+                            </div>
+                          )}
+                          {order.customer_email && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="w-4 h-4" />
+                              <span>{order.customer_email}</span>
+                            </div>
+                          )}
+                          {order.property_address && (
+                            <div className="flex items-start gap-2 text-muted-foreground">
+                              <MapPin className="w-4 h-4 mt-0.5" />
+                              <span>{order.property_address}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {order.special_instructions && (
+                          <div className="pt-2 border-t">
+                            <p className="text-xs text-muted-foreground font-medium">Special Instructions:</p>
+                            <p className="text-sm mt-1">{order.special_instructions}</p>
+                          </div>
+                        )}
+                        
+                        <div className="pt-2 border-t text-sm text-muted-foreground">
+                          {order.items.length} items • Completed {order.shopping_completed_at ? new Date(order.shopping_completed_at).toLocaleString() : 'recently'}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
