@@ -205,13 +205,17 @@ export function StaffAssignmentTool() {
             .select('id,user_id,role,status,accepted_at')
             .eq('order_id', order.id);
 
-          // Count items using count queries (bypasses RLS for now, admin sees 0 until RLS fixed)
-          const [orderItemsCount, newOrderItemsCount] = await Promise.all([
-            supabase.from('order_items').select('*', { count: 'exact', head: true }).eq('order_id', order.id),
-            supabase.from('new_order_items').select('*', { count: 'exact', head: true }).eq('order_id', order.id)
-          ]);
-
-          const totalItems = (orderItemsCount.count || 0) + (newOrderItemsCount.count || 0);
+          // Count items using SECURITY DEFINER RPC (admin-only) to bypass RLS safely
+          let totalItems = 0;
+          try {
+            const { data: counts, error: countsError } = await supabase
+              .rpc('admin_order_item_counts', { p_order_id: order.id });
+            if (countsError) throw countsError;
+            totalItems = counts?.[0]?.total ?? 0;
+          } catch (err) {
+            console.warn('Item count RPC failed for order', order.id, err);
+            totalItems = 0; // Fallback on error
+          }
 
           return {
             id: order.id,
