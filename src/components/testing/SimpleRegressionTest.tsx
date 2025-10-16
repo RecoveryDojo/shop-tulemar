@@ -35,7 +35,7 @@ export function SimpleRegressionTest() {
     const { data: orders, error } = await supabase
       .from('orders')
       .select('id')
-      .eq('status', 'confirmed')
+      .eq('status', 'placed')
       .limit(1);
     
     if (orders && orders.length > 0) {
@@ -44,11 +44,11 @@ export function SimpleRegressionTest() {
   };
 
   const testCases = [
-    { action: 'accept_order', orderId: realOrderId, expectedStatus: 'confirmed' },
-    { action: 'start_shopping', orderId: realOrderId, expectedStatus: 'assigned' },
+    { action: 'accept_order', orderId: realOrderId, expectedStatus: 'placed' },
+    { action: 'start_shopping', orderId: realOrderId, expectedStatus: 'claimed' },
     { action: 'complete_shopping', orderId: realOrderId, expectedStatus: 'shopping' },
-    { action: 'start_delivery', orderId: realOrderId, expectedStatus: 'packed' },
-    { action: 'complete_delivery', orderId: realOrderId, expectedStatus: 'in_transit' }
+    { action: 'start_delivery', orderId: realOrderId, expectedStatus: 'ready' },
+    { action: 'complete_delivery', orderId: realOrderId, expectedStatus: 'delivered' }
   ];
 
   const runSingleTest = async (testCase: typeof testCases[0]): Promise<TestResult> => {
@@ -130,7 +130,7 @@ export function SimpleRegressionTest() {
     if (!realOrderId) {
       toast({
         title: "No Test Orders",
-        description: "No confirmed orders found for testing. Create some orders first.",
+        description: "No placed orders found for testing. Create some orders first.",
         variant: "destructive"
       });
       setIsRunning(false);
@@ -195,7 +195,7 @@ export function SimpleRegressionTest() {
             </div>
             {!realOrderId && (
               <div className="text-sm text-red-600">
-                No confirmed orders found. Create some orders first for testing.
+                No placed orders found. Create some orders first for testing.
               </div>
             )}
           </div>

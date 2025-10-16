@@ -75,7 +75,7 @@ export const useOrders = () => {
           tax_amount: taxAmount,
           delivery_fee: deliveryFee,
           total_amount: totalAmount,
-          status: 'pending',
+          status: 'placed',
           payment_status: 'pending'
         })
         .select()

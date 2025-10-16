@@ -61,41 +61,32 @@ interface OrderStatusTrackerProps {
 }
 
 const STATUS_ICONS = {
-  pending: Clock,
-  confirmed: CheckCircle2,
-  assigned: Users,
+  placed: Clock,
+  claimed: Users,
   shopping: ShoppingCart,
-  packed: Package,
-  out_for_delivery: Truck,
-  arrived: MapPin,
-  stocking: Home,
-  completed: CheckCircle2,
-  cancelled: Clock
+  ready: Package,
+  delivered: Truck,
+  closed: CheckCircle2,
+  canceled: Clock
 };
 
 const STATUS_COLORS = {
-  pending: 'bg-gray-500',
-  confirmed: 'bg-blue-500',
-  assigned: 'bg-indigo-500',
+  placed: 'bg-blue-500',
+  claimed: 'bg-indigo-500',
   shopping: 'bg-purple-500',
-  packed: 'bg-orange-500',
-  out_for_delivery: 'bg-yellow-500',
-  arrived: 'bg-teal-500',
-  stocking: 'bg-green-500',
-  completed: 'bg-emerald-600',
-  cancelled: 'bg-red-500'
+  ready: 'bg-orange-500',
+  delivered: 'bg-green-500',
+  closed: 'bg-emerald-600',
+  canceled: 'bg-red-500'
 };
 
 const WORKFLOW_STEPS = [
-  { status: 'pending', label: 'Pending', step: 1 },
-  { status: 'confirmed', label: 'Confirmed', step: 2 },
-  { status: 'assigned', label: 'Assigned', step: 3 },
-  { status: 'shopping', label: 'Shopping', step: 4 },
-  { status: 'packed', label: 'Packed', step: 5 },
-  { status: 'out_for_delivery', label: 'Delivery', step: 6 },
-  { status: 'arrived', label: 'Arrived', step: 7 },
-  { status: 'stocking', label: 'Stocking', step: 8 },
-  { status: 'completed', label: 'Completed', step: 9 }
+  { status: 'placed', label: 'Order Placed', step: 1 },
+  { status: 'claimed', label: 'Assigned to Shopper', step: 2 },
+  { status: 'shopping', label: 'Shopping in Progress', step: 3 },
+  { status: 'ready', label: 'Ready for Delivery', step: 4 },
+  { status: 'delivered', label: 'Delivered', step: 5 },
+  { status: 'closed', label: 'Completed', step: 6 }
 ];
 
 export function OrderStatusTracker({ 

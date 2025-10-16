@@ -8,12 +8,12 @@ export const testWorkflowWithRealOrders = async () => {
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'confirmed')
+      .eq('status', 'placed')
       .limit(1);
     
     if (ordersError) throw ordersError;
     if (!orders || orders.length === 0) {
-      console.log('❌ No confirmed orders found for testing');
+      console.log('❌ No placed orders found for testing');
       return;
     }
     
@@ -95,7 +95,7 @@ export const createTestOrder = async () => {
         tax_amount: product.price * 0.1,
         delivery_fee: 5.00,
         total_amount: product.price * 1.1 + 5.00,
-        status: 'confirmed',
+        status: 'placed',
         payment_status: 'paid'
       })
       .select()

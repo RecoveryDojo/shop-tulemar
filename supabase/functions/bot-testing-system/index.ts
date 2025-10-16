@@ -347,7 +347,7 @@ async function createOrder(user: any, orderData: any) {
         tax_amount: orderData.estimated_total * 0.1,
         delivery_fee: 15.00,
         total_amount: orderData.estimated_total * 1.1 + 15.00,
-        status: 'pending',
+        status: 'placed',
         payment_status: 'pending',
         special_instructions: orderData.special_instructions
       })
@@ -422,14 +422,12 @@ async function sendBotMessage(senderId: string, recipientId: string, messageType
 
 async function simulateOrderWorkflow(order: any, botProfile: any, results: any) {
   const steps = [
-    { status: 'confirmed', delay: 1000, action: 'Order confirmed and payment processed', messageType: 'order_confirmation' },
-    { status: 'assigned', delay: 2000, action: 'Assigned to personal shopper', messageType: 'assignment_notification' },
+    { status: 'placed', delay: 1000, action: 'Order placed and payment processed', messageType: 'order_confirmation' },
+    { status: 'claimed', delay: 2000, action: 'Assigned to personal shopper', messageType: 'assignment_notification' },
     { status: 'shopping', delay: 5000, action: 'Shopping in progress', messageType: 'shopping_update' },
-    { status: 'purchased', delay: 8000, action: 'Items purchased and being prepared', messageType: 'purchase_complete' },
-    { status: 'ready_for_delivery', delay: 3000, action: 'Ready for delivery pickup', messageType: 'ready_for_pickup' },
-    { status: 'out_for_delivery', delay: 2000, action: 'Out for delivery', messageType: 'delivery_update' },
+    { status: 'ready', delay: 8000, action: 'Items ready for delivery', messageType: 'purchase_complete' },
     { status: 'delivered', delay: 10000, action: 'Delivered to property', messageType: 'delivery_confirmation' },
-    { status: 'completed', delay: 1000, action: 'Order completed successfully', messageType: 'order_complete' }
+    { status: 'closed', delay: 1000, action: 'Order completed successfully', messageType: 'order_complete' }
   ];
 
   // Get all staff bot users for messaging
