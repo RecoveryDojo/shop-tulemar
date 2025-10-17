@@ -146,7 +146,7 @@ const Admin = () => {
     <ProtectedRoute requiredRoles={['admin', 'sysadmin']}>
       <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-red-500/5">
         {/* Header - matches ShopNavigation */}
-        <header className="h-16 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 px-4">
+        <header className="h-16 flex items-center justify-between border-b border-border bg-white sticky top-0 z-50 px-4">
           {/* Logo */}
           <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="bg-gradient-tropical p-2 rounded-lg">
