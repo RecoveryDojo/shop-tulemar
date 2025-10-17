@@ -23,6 +23,7 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 interface OrderItem {
   id: string;
@@ -324,15 +325,27 @@ export default function SimpleShopperDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-blue-500/5">
-      {/* Clean Header Bar */}
-      <header className="h-16 flex items-center justify-between border-b border-border bg-primary/90 backdrop-blur sticky top-0 z-50 px-6">
-        <Button variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
-          My Dashboard
-        </Button>
-        
-        <UserProfileMenu />
-        
-        <NotificationDropdown userRole="shopper" onViewAll={() => {}} />
+      {/* Header - matches ShopNavigation */}
+      <header className="h-16 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 px-4">
+        {/* Logo */}
+        <NavLink to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="bg-gradient-tropical p-2 rounded-lg">
+            <ShoppingCart className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="font-bold text-xl text-foreground">Tulemar Shop</h1>
+            <p className="text-sm text-muted-foreground hidden sm:block">Grocery Delivery</p>
+          </div>
+        </NavLink>
+
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" asChild>
+            <NavLink to="/me">My Dashboard</NavLink>
+          </Button>
+          <UserProfileMenu />
+          <NotificationDropdown userRole="shopper" />
+        </div>
       </header>
       
       <div className="max-w-6xl mx-auto p-6 pb-20">
