@@ -26,7 +26,7 @@ const DocViewer = () => {
         setError(null);
         
         // Import the markdown file dynamically
-        const response = await fetch(`/${docPath}`);
+        const response = await fetch(`/docs/${docPath}`);
         
         if (!response.ok) {
           throw new Error("Document not found");
