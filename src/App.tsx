@@ -51,6 +51,8 @@ import Auth from "@/pages/Auth";
 import ProductEdit from "@/pages/ProductEdit";
 import ResetPassword from "@/pages/ResetPassword";
 import ShopCheckout from "@/pages/shop/ShopCheckout";
+import DocViewer from "@/pages/DocViewer";
+import DocsIndex from "@/pages/DocsIndex";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -195,6 +197,8 @@ function AppRouter() {
       } />
       <Route path="/workflow-test" element={<WorkflowTest />} />
       <Route path="/db-smoke" element={<DbSmoke />} />
+      <Route path="/docs" element={<DocsIndex />} />
+      <Route path="/docs/*" element={<DocViewer />} />
       <Route path="*" element={
         <AsyncBoundary loadingText="Loading page...">
           <LazyNotFound />
