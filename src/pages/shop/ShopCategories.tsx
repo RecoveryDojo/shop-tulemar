@@ -92,15 +92,17 @@ export default function ShopCategories() {
                 return (
                   <Card key={category.id} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale group">
                     <CardHeader className="text-center">
-                      <div className={`bg-gradient-to-r ${color} p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        {typeof IconComponent === 'string' ? (
-                          <span className="text-3xl">{IconComponent}</span>
-                        ) : IconComponent ? (
-                          <IconComponent className="h-10 w-10 text-white" />
-                        ) : (
-                          <span className="text-3xl">{category.icon}</span>
-                        )}
-                      </div>
+                      <Link to={`/category/${category.id}`} className="inline-block">
+                        <div className={`bg-gradient-to-r ${color} p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 cursor-pointer`}>
+                          {typeof IconComponent === 'string' ? (
+                            <span className="text-3xl">{IconComponent}</span>
+                          ) : IconComponent ? (
+                            <IconComponent className="h-10 w-10 text-white" />
+                          ) : (
+                            <span className="text-3xl">{category.icon}</span>
+                          )}
+                        </div>
+                      </Link>
                       <CardTitle className="text-xl">{category.name}</CardTitle>
                       <CardDescription className="text-base">
                         {category.description}
