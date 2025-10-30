@@ -123,18 +123,6 @@ export default function ShopOrder() {
                   
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="dietaryRestrictions">Dietary Restrictions</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                        {['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 'Kosher', 'Halal', 'Keto'].map((diet) => (
-                          <div key={diet} className="flex items-center space-x-2">
-                            <Checkbox id={diet} />
-                            <Label htmlFor={diet} className="text-sm">{diet}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
                       <Label htmlFor="groceryList">Specific Items Needed</Label>
                       <Textarea 
                         id="groceryList" 

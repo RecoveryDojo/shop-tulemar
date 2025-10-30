@@ -65,14 +65,6 @@ export default function ShopCheckout() {
     }));
   };
 
-  const handleDietaryRestriction = (restriction: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      dietary_restrictions: checked
-        ? [...prev.dietary_restrictions, restriction]
-        : prev.dietary_restrictions.filter(r => r !== restriction)
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,26 +317,6 @@ export default function ShopCheckout() {
                   </CardContent>
                 </Card>
 
-                {/* Dietary Restrictions */}
-                <Card className="border-border">
-                  <CardHeader>
-                    <CardTitle className="text-foreground">Dietary Restrictions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut Allergies', 'Shellfish Allergies'].map((restriction) => (
-                        <div key={restriction} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={restriction}
-                            checked={formData.dietary_restrictions.includes(restriction)}
-                            onCheckedChange={(checked) => handleDietaryRestriction(restriction, checked as boolean)}
-                          />
-                          <Label htmlFor={restriction} className="text-sm">{restriction}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Special Instructions */}
                 <Card className="border-border">
