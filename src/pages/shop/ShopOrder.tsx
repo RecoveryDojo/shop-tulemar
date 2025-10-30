@@ -89,31 +89,10 @@ export default function ShopOrder() {
                       <Input id="property" placeholder="Property name or address" />
                     </div>
                     
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="arrivalDate">Arrival Date</Label>
-                        <Input id="arrivalDate" type="date" />
-                      </div>
-                      <div>
-                        <Label htmlFor="departureDate">Departure Date</Label>
-                        <Input id="departureDate" type="date" />
-                      </div>
-                      <div>
-                        <Label htmlFor="guests">Number of Guests</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select guests" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1-2">1-2 guests</SelectItem>
-                            <SelectItem value="3-4">3-4 guests</SelectItem>
-                            <SelectItem value="5-6">5-6 guests</SelectItem>
-                            <SelectItem value="7-8">7-8 guests</SelectItem>
-                            <SelectItem value="9+">9+ guests</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                <div>
+                  <Label htmlFor="arrivalDate">Arrival Date</Label>
+                  <Input id="arrivalDate" type="date" />
+                </div>
                   </div>
                 </div>
 
