@@ -174,8 +174,16 @@ export default function OrderSuccess() {
                 <CardContent>
                   <div className="space-y-4">
                     {orderItems.map((item: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
-                        <div className="flex-1">
+                      <div key={index} className="flex items-start gap-4 py-3 border-b border-border last:border-b-0">
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={item.products?.image_url || '/placeholder.svg'} 
+                            alt={item.products?.name || 'Product'}
+                            className="w-16 h-16 object-cover rounded-md border border-border"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-foreground">{item.products?.name || 'Product'}</h4>
                           <p className="text-sm text-muted-foreground">
                             {item.quantity} × ${item.unit_price.toFixed(2)}
@@ -185,7 +193,7 @@ export default function OrderSuccess() {
                             <p className="text-xs text-primary">From: {item.products.origin}</p>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="flex-shrink-0 text-right">
                           <span className="font-medium text-foreground">
                             ${item.total_price.toFixed(2)}
                           </span>
