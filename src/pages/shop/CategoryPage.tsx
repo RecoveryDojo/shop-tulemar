@@ -17,7 +17,7 @@ export default function CategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const { products, categories, loading, categoryLoading, fetchProductsByCategory } = useProducts({ includeTest: false });
+  const { products, categories, loading, categoryLoading, fetchProductsByCategory } = useProducts({ includeTest: false, autoLoad: false });
   const { itemCount } = useCart();
 
   // Debounce search input

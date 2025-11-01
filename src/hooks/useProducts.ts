@@ -26,7 +26,7 @@ export interface Category {
   created_at?: string;
 }
 
-export const useProducts = (options?: { includeTest?: boolean }) => {
+export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolean }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +171,11 @@ export const useProducts = (options?: { includeTest?: boolean }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchCategories(), fetchAllProducts()]);
+      await fetchCategories();
+      // Only auto-load products if autoLoad is not explicitly set to false
+      if (options?.autoLoad !== false) {
+        await fetchAllProducts();
+      }
       setLoading(false);
     };
 
