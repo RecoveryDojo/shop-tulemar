@@ -13,5 +13,36 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: {
+    fetch: (input, init) => {
+      try {
+        const rawUrl = typeof input === 'string' ? input : (input as URL).toString();
+        const cb = `cb=${Date.now()}`;
+        const urlWithBuster = rawUrl.includes('?') ? `${rawUrl}&${cb}` : `${rawUrl}?${cb}`;
+        return fetch(urlWithBuster, {
+          ...init,
+          cache: 'no-store',
+          headers: {
+            ...(init?.headers || {}),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        });
+      } catch {
+        // Fallback without URL manipulation
+        return fetch(input as RequestInfo, {
+          ...init,
+          cache: 'no-store',
+          headers: {
+            ...(init?.headers || {}),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        });
+      }
+    },
+  },
 });
