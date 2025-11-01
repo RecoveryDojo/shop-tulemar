@@ -20,7 +20,7 @@ export type Database = {
           admin_user_id: string
           details: Json | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           target_user_id: string | null
           timestamp: string
           user_agent: string | null
@@ -30,7 +30,7 @@ export type Database = {
           admin_user_id: string
           details?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           target_user_id?: string | null
           timestamp?: string
           user_agent?: string | null
@@ -40,7 +40,7 @@ export type Database = {
           admin_user_id?: string
           details?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           target_user_id?: string | null
           timestamp?: string
           user_agent?: string | null
@@ -1168,10 +1168,7 @@ export type Database = {
       }
     }
     Functions: {
-      admin_is_admin: {
-        Args: { p_user: string }
-        Returns: boolean
-      }
+      admin_is_admin: { Args: { p_user: string }; Returns: boolean }
       admin_order_item_counts: {
         Args: { p_order_id: string }
         Returns: {
@@ -1188,7 +1185,7 @@ export type Database = {
         Returns: Json
       }
       check_workflow_integrity: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           issue_description: string
           issue_type: string
@@ -1197,10 +1194,7 @@ export type Database = {
           suggested_fix: string
         }[]
       }
-      cleanup_old_typing_indicators: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       generate_daily_summary: {
         Args: { summary_date: string; summary_user_id: string }
         Returns: string
@@ -1217,14 +1211,8 @@ export type Database = {
           usage_count: number
         }[]
       }
-      get_current_user_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_order_by_token: {
-        Args: { order_token: string }
-        Returns: Json
-      }
+      get_current_user_email: { Args: never; Returns: string }
+      get_order_by_token: { Args: { order_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1232,10 +1220,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin_or_sysadmin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      is_admin_or_sysadmin: { Args: { _user_id: string }; Returns: boolean }
       is_legal_transition: {
         Args: { from_status: string; to_status: string }
         Returns: boolean
@@ -1269,10 +1254,7 @@ export type Database = {
         Args: { p_order_id: string; p_reason?: string; p_target_status: string }
         Returns: Json
       }
-      rpc_add_test_event: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
+      rpc_add_test_event: { Args: { p_order_id: string }; Returns: Json }
       rpc_advance_status: {
         Args: {
           p_actor_role: string
