@@ -13,7 +13,7 @@ import { useCart } from '@/contexts/CartContext';
 export default function ShopSearch() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
-  const { searchProducts, categories, products, searchLoading } = useProducts();
+  const { searchProducts, categories, products, searchLoading } = useProducts({ autoLoad: false });
   const { itemCount } = useCart();
 
   const handleSearch = useCallback(async () => {

@@ -54,6 +54,34 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     }
   };
 
+  const getCategoryProductCounts = async (): Promise<Record<string, number>> => {
+    try {
+      let query = supabase
+        .from('products')
+        .select('category_id')
+        .eq('is_active', true);
+
+      if (!options?.includeTest) {
+        query = query.eq('is_test_product', false);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      // Count products per category
+      const counts: Record<string, number> = {};
+      (data || []).forEach(product => {
+        counts[product.category_id] = (counts[product.category_id] || 0) + 1;
+      });
+      
+      return counts;
+    } catch (error) {
+      console.error('Error fetching category counts:', error);
+      return {};
+    }
+  };
+
   const fetchProducts = async (categoryId?: string) => {
     try {
       // Set appropriate loading state
@@ -71,6 +99,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
       }
 
       if (categoryId) {
+        console.log('[useProducts] Fetching products for category:', categoryId);
         query = query.eq('category_id', categoryId);
       }
 
@@ -174,6 +203,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
       await fetchCategories();
       // Only auto-load products if autoLoad is not explicitly set to false
       if (options?.autoLoad !== false) {
+        console.log('[useProducts] Auto-loading all products. Consider autoLoad: false if not needed.');
         await fetchAllProducts();
       }
       setLoading(false);
@@ -193,6 +223,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     searchProducts,
     getProductById,
     getCategoryById,
+    getCategoryProductCounts,
     refetch: async () => {
       setLoading(true);
       await Promise.all([fetchCategories(), fetchAllProducts()]);

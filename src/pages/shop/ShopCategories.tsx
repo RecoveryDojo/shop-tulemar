@@ -5,9 +5,25 @@ import { Coffee, Apple, Fish, Beef, ShoppingBag, Wine, Baby, Leaf } from "lucide
 import { Link } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
 
 export default function ShopCategories() {
-  const { categories: dbCategories, products, loading } = useProducts();
+  const { categories: dbCategories, loading, getCategoryProductCounts } = useProducts({ autoLoad: false });
+  const [productCounts, setProductCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      setCountsLoading(true);
+      const counts = await getCategoryProductCounts();
+      setProductCounts(counts);
+      setCountsLoading(false);
+    };
+    
+    if (!loading) {
+      loadCounts();
+    }
+  }, [loading, getCategoryProductCounts]);
 
   // Icon mapping for categories
   const iconMap: Record<string, any> = {
@@ -37,13 +53,13 @@ export default function ShopCategories() {
 
   // Get product count for each category
   const getProductCount = (categoryId: string) => {
-    const count = products.filter(p => p.category_id === categoryId).length;
+    const count = productCounts[categoryId] || 0;
     return count === 0 ? "No items" : count === 1 ? "1 item" : `${count} items`;
   };
 
   // Filter out categories with no products
   const categoriesWithProducts = dbCategories.filter(category => {
-    const productCount = products.filter(p => p.category_id === category.id).length;
+    const productCount = productCounts[category.id] || 0;
     return productCount > 0;
   });
 
@@ -67,7 +83,7 @@ export default function ShopCategories() {
       {/* Categories Grid */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
-          {loading ? (
+          {(loading || countsLoading) ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i} className="border-0 shadow-elegant">

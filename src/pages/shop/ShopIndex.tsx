@@ -10,7 +10,7 @@ import groceryBasket from "@/assets/grocery-basket.jpg";
 import deliveryTruck from "@/assets/delivery-truck.jpg";
 
 export default function ShopIndex() {
-  const { categories } = useProducts();
+  const { categories } = useProducts({ autoLoad: false });
   
   const features = [
     {
