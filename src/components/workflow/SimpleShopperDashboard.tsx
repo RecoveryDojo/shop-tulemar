@@ -24,6 +24,7 @@ import {
   Mail
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { OrderMessaging } from '@/components/workflow/OrderMessaging';
 
 interface OrderItem {
   id: string;
@@ -420,6 +421,15 @@ export default function SimpleShopperDashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Messaging for Current Order */}
+        {currentOrder && (
+          <OrderMessaging
+            orderId={currentOrder.id}
+            userRole="shopper"
+            userName={user?.email}
+          />
         )}
 
         {/* Available Orders */}

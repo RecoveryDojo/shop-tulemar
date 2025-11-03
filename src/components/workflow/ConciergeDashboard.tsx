@@ -20,6 +20,8 @@ import {
   Info
 } from "lucide-react";
 import { NavLink } from 'react-router-dom';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { OrderMessaging } from '@/components/workflow/OrderMessaging';
 import { supabase } from "@/integrations/supabase/client";
 import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 import { getStatusLabel, getStatusColor } from '@/lib/orderStatus';
