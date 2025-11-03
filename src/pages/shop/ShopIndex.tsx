@@ -39,13 +39,13 @@ export default function ShopIndex() {
   };
 
   const colorMap: Record<string, string> = {
-    'beverages': 'from-amber-500 to-orange-600',
-    'produce': 'from-green-500 to-emerald-600',
-    'pantry': 'from-blue-500 to-indigo-600',
-    'dairy': 'from-yellow-400 to-amber-500',
-    'meat-seafood': 'from-red-500 to-pink-600',
-    'alcohol': 'from-purple-500 to-violet-600',
-    'baby-kids': 'from-pink-400 to-rose-500',
+    'beverages': 'from-amber-400 via-orange-500 to-orange-600',
+    'produce': 'from-emerald-400 via-green-500 to-green-600',
+    'pantry': 'from-blue-400 via-indigo-500 to-indigo-600',
+    'dairy': 'from-yellow-300 via-amber-400 to-amber-500',
+    'meat-seafood': 'from-rose-400 via-red-500 to-red-600',
+    'alcohol': 'from-purple-400 via-violet-500 to-violet-600',
+    'baby-kids': 'from-pink-300 via-pink-400 to-rose-500',
   };
 
   const getIcon = (categoryId: string) => {
@@ -140,51 +140,63 @@ export default function ShopIndex() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {categoriesLoading || countsLoading ? (
               // Loading skeletons
               Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="border-0 shadow-elegant">
-                  <CardHeader>
-                    <Skeleton className="h-16 w-16 rounded-full mx-auto mb-4" />
-                    <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
-                    <Skeleton className="h-4 w-1/2 mx-auto" />
+                <Card key={index} className="border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <Skeleton className="h-24 w-24 rounded-2xl mx-auto mb-6" />
+                    <Skeleton className="h-7 w-3/4 mx-auto mb-3" />
+                    <Skeleton className="h-5 w-1/2 mx-auto" />
                   </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-10 w-full" />
+                  <CardContent className="pt-0">
+                    <Skeleton className="h-12 w-full rounded-lg" />
                   </CardContent>
                 </Card>
               ))
             ) : categoriesWithProducts.length > 0 ? (
-              categoriesWithProducts.map((category) => {
+              categoriesWithProducts.map((category, index) => {
                 const IconComponent = getIcon(category.id);
                 const isEmoji = typeof IconComponent === 'string';
                 
                 return (
                   <Card 
                     key={category.id} 
-                    className="group hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20"
+                    className="group relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 animate-fade-in"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <CardHeader>
-                      <div className={`inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r ${getColor(category.id)} mx-auto mb-4`}>
+                    {/* Gradient background overlay on hover */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${getColor(category.id)} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+                    
+                    <CardHeader className="relative pb-4 pt-8">
+                      <div className={`inline-flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br ${getColor(category.id)} mx-auto mb-6 shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300`}>
                         {isEmoji ? (
-                          <span className="text-3xl">{IconComponent}</span>
+                          <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{IconComponent}</span>
                         ) : (
-                          <IconComponent className="h-8 w-8 text-white" />
+                          <IconComponent className="h-12 w-12 text-white group-hover:scale-110 transition-transform duration-300" />
                         )}
                       </div>
-                      <CardTitle className="text-xl text-center">{category.name}</CardTitle>
+                      <CardTitle className="text-2xl text-center font-bold mb-2 group-hover:text-primary transition-colors">
+                        {category.name}
+                      </CardTitle>
                       {category.description && (
-                        <CardDescription className="text-center">{category.description}</CardDescription>
+                        <CardDescription className="text-center text-base line-clamp-2">
+                          {category.description}
+                        </CardDescription>
                       )}
-                      <p className="text-sm text-muted-foreground text-center mt-2">
+                      <p className="text-sm font-medium text-muted-foreground text-center mt-3 flex items-center justify-center gap-2">
+                        <Package className="h-4 w-4" />
                         {getProductCount(category.id)}
                       </p>
                     </CardHeader>
-                    <CardContent>
-                      <Button asChild className="w-full group-hover:bg-primary group-hover:text-primary-foreground">
+                    <CardContent className="relative pt-0 pb-6">
+                      <Button 
+                        asChild 
+                        className={`w-full h-12 text-base font-semibold bg-gradient-to-r ${getColor(category.id)} hover:shadow-lg hover:scale-105 transition-all duration-300 text-white border-0`}
+                      >
                         <Link to={`/category/${category.id}`}>
-                          Browse
+                          Browse {category.name}
                         </Link>
                       </Button>
                     </CardContent>
