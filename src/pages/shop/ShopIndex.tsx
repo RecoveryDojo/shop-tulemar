@@ -48,12 +48,12 @@ export default function ShopIndex() {
 
   const getProductCount = (categoryId: string) => {
     const count = productCounts[categoryId] || 0;
+    if (count === 0) return 'Coming soon';
     return count === 1 ? '1 product' : `${count} products`;
   };
 
-  const categoriesWithProducts = categories.filter(cat => 
-    (productCounts[cat.id] || 0) > 0
-  );
+  // Show all active categories, regardless of product count
+  const categoriesWithProducts = categories;
   
   const features = [
     {
