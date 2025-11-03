@@ -16,10 +16,8 @@ import {
   ShoppingCart
 } from "lucide-react";
 import { NavLink } from 'react-router-dom';
-import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { OrderMessaging } from '@/components/workflow/OrderMessaging';
 import { supabase } from "@/integrations/supabase/client";
-import { FloatingCommunicationWidget } from './FloatingCommunicationWidget';
 import { useEnhancedOrderWorkflow } from '@/hooks/useEnhancedOrderWorkflow';
 import { getStatusLabel, getStatusColor } from '@/lib/orderStatus';
 
@@ -317,13 +315,6 @@ export function DriverDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <FloatingCommunicationWidget
-        orderId={currentOrder?.id}
-        orderPhase="delivery"
-        stakeholders={[]}
-        unreadCount={0}
-      />
     </div>
   );
 }
