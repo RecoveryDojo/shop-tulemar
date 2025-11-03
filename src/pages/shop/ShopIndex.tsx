@@ -36,7 +36,9 @@ export default function ShopIndex() {
     'beer-wine-spirits': 'from-purple-600 via-violet-500 to-purple-400',
     'baby-family': 'from-pink-500 via-rose-400 to-pink-300',
     'dairy-eggs': 'from-blue-400 via-sky-300 to-blue-200',
-    'meat-poultry': 'from-rose-500 via-red-500 to-pink-500'
+    'meat-poultry': 'from-rose-500 via-red-500 to-pink-500',
+    'snacks-pantry': 'from-yellow-500 via-amber-400 to-orange-400',
+    'prepared-meals-sides': 'from-orange-500 via-red-400 to-rose-500'
   };
 
   const getColor = (categoryId: string) => {
