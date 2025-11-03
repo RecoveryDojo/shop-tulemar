@@ -17,7 +17,7 @@ import BulkInventoryManager from './BulkInventoryManager';
 import TestProductManager from './TestProductManager';
 
 const ProductManager = () => {
-  const { products, categories, loading, refetch } = useProducts({ includeTest: true });
+  const { products, categories, loading, refetch, updateProductCategory } = useProducts({ includeTest: true });
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const [newProduct, setNewProduct] = useState({
@@ -117,12 +117,13 @@ const ProductManager = () => {
 
       if (error) throw error;
 
+      // Optimistically update local state instead of refetching
+      updateProductCategory(productId, newCategoryId);
+
       toast({
         title: "Category updated",
         description: "Product category has been changed successfully.",
       });
-
-      refetch();
     } catch (error: any) {
       toast({
         title: "Update failed",

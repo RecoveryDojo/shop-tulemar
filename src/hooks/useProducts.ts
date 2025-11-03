@@ -197,6 +197,12 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     return categories.find(cat => cat.id === categoryId);
   };
 
+  const updateProductCategory = (productId: string, categoryId: string) => {
+    setProducts(prev => 
+      prev.map(p => p.id === productId ? { ...p, category_id: categoryId } : p)
+    );
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -224,6 +230,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     getProductById,
     getCategoryById,
     getCategoryProductCounts,
+    updateProductCategory,
     refetch: async () => {
       setLoading(true);
       await Promise.all([fetchCategories(), fetchAllProducts()]);
