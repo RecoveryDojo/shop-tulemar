@@ -54,7 +54,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     }
   };
 
-  const getCategoryProductCounts = async (): Promise<Record<string, number>> => {
+  const getCategoryProductCounts = useCallback(async (): Promise<Record<string, number>> => {
     try {
       let query = supabase
         .from('products')
@@ -80,9 +80,9 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
       console.error('Error fetching category counts:', error);
       return {};
     }
-  };
+  }, [options?.includeTest]);
 
-  const fetchProducts = async (categoryId?: string) => {
+  const fetchProducts = useCallback(async (categoryId?: string) => {
     try {
       // Set appropriate loading state
       if (categoryId) {
@@ -124,7 +124,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
         setCategoryLoading(false);
       }
     }
-  };
+  }, [options?.includeTest, toast]);
 
   const fetchAllProducts = useCallback(async () => {
     setLoading(true);
@@ -133,7 +133,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchProducts]);
 
   const fetchProductsByCategory = useCallback(async (categoryId: string) => {
     setCategoryLoading(true);
@@ -144,7 +144,7 @@ export const useProducts = (options?: { includeTest?: boolean; autoLoad?: boolea
     } finally {
       setCategoryLoading(false);
     }
-  }, []);
+  }, [fetchProducts, products.length]);
 
   const searchProducts = async (query: string) => {
     setSearchLoading(true);
