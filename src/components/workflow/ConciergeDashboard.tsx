@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfileMenu } from "@/components/ui/UserProfileMenu";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
@@ -17,7 +18,9 @@ import {
   MapPin,
   Users,
   ShoppingCart,
-  Info
+  Info,
+  Clock,
+  History
 } from "lucide-react";
 import { NavLink } from 'react-router-dom';
 import { OrderMessaging } from '@/components/workflow/OrderMessaging';
@@ -34,6 +37,7 @@ interface ConciergeOrder {
   total_amount: number;
   status: string;
   assigned_concierge_id: string | null;
+  updated_at: string;
 }
 
 interface ConciergeChecklist {
@@ -47,9 +51,20 @@ interface ConciergeChecklist {
   updated_at: string;
 }
 
+interface OrderEvent {
+  id: string;
+  event_type: string;
+  actor_role: string;
+  data: any;
+  created_at: string;
+}
+
 export function ConciergeDashboard() {
   const [orders, setOrders] = useState<ConciergeOrder[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<ConciergeOrder[]>([]);
   const [activeOrder, setActiveOrder] = useState<ConciergeOrder | null>(null);
+  const [selectedCompletedOrder, setSelectedCompletedOrder] = useState<ConciergeOrder | null>(null);
+  const [orderEvents, setOrderEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [checklist, setChecklist] = useState<ConciergeChecklist | null>(null);
@@ -63,6 +78,7 @@ export function ConciergeDashboard() {
       if (user) setCurrentUserId(user.id);
       
       fetchOrders();
+      fetchCompletedOrders();
     };
     
     init();
@@ -73,9 +89,10 @@ export function ConciergeDashboard() {
         event: '*',
         schema: 'public',
         table: 'orders',
-        filter: 'status=in.(ready,delivered)'
+        filter: 'status=in.(ready,delivered,closed)'
       }, () => {
         fetchOrders();
+        fetchCompletedOrders();
       })
       .subscribe();
 
@@ -109,6 +126,36 @@ export function ConciergeDashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompletedOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('status', 'closed')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setCompletedOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching completed orders:', error);
+    }
+  };
+
+  const fetchOrderEvents = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('new_order_events')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setOrderEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching order events:', error);
     }
   };
 
@@ -346,8 +393,15 @@ export function ConciergeDashboard() {
       </header>
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Order Queue */}
-        <Card>
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active">Active Orders</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-6">
+            {/* Order Queue */}
+            <Card>
           <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
@@ -576,6 +630,119 @@ export function ConciergeDashboard() {
             </Card>
           </>
         )}
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-6">
+            {/* Completed Orders List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Completed Deliveries
+                </CardTitle>
+                <CardDescription>
+                  View past orders with full audit trail
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {completedOrders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedCompletedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedCompletedOrder(order);
+                        fetchOrderEvents(order.id);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{order.customer_name}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            <MapPin className="h-3 w-3" />
+                            {order.property_address}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-4 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Completed: {new Date(order.updated_at).toLocaleString()}
+                            </span>
+                            <span>${order.total_amount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-600 text-white">
+                          Completed
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {completedOrders.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <div>No completed deliveries yet</div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Audit Trail for Selected Order */}
+            {selectedCompletedOrder && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Audit Trail - Order #{selectedCompletedOrder.id.slice(0, 8)}
+                  </CardTitle>
+                  <CardDescription>
+                    Complete timeline for {selectedCompletedOrder.customer_name}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {orderEvents.map((event, index) => (
+                      <div key={event.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className="w-3 h-3 rounded-full bg-primary" />
+                          {index < orderEvents.length - 1 && (
+                            <div className="w-0.5 h-full bg-border mt-2" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-medium">
+                              {event.event_type.replace(/_/g, ' ')}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(event.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Actor: {event.actor_role}
+                          </div>
+                          {event.data && Object.keys(event.data).length > 0 && (
+                            <div className="mt-2 text-xs bg-muted p-2 rounded">
+                              <pre className="whitespace-pre-wrap">
+                                {JSON.stringify(event.data, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {orderEvents.length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground">
+                        No events recorded for this order
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
