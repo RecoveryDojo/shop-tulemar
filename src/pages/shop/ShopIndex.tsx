@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple, Utensils, Beer, Baby, Package } from "lucide-react";
+import { ShoppingCart, Clock, MapPin, Leaf, Package } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProducts } from '@/hooks/useProducts';
 import { useEffect, useState } from 'react';
@@ -27,34 +27,20 @@ export default function ShopIndex() {
     loadCounts();
   }, [categories, getCategoryProductCounts]);
 
-  // Icon and color mapping for categories
-  const iconMap: Record<string, any> = {
-    'beverages': Coffee,
-    'produce': Apple,
-    'pantry': Package,
-    'dairy': '🥛',
-    'meat-seafood': Utensils,
-    'alcohol': Beer,
-    'baby-kids': Baby,
-  };
-
+  // Color mapping for categories
   const colorMap: Record<string, string> = {
-    'beverages': 'from-amber-400 via-orange-500 to-orange-600',
-    'produce': 'from-emerald-400 via-green-500 to-green-600',
-    'pantry': 'from-blue-400 via-indigo-500 to-indigo-600',
-    'dairy': 'from-yellow-300 via-amber-400 to-amber-500',
-    'meat-seafood': 'from-rose-400 via-red-500 to-red-600',
-    'alcohol': 'from-purple-400 via-violet-500 to-violet-600',
-    'baby-kids': 'from-pink-300 via-pink-400 to-rose-500',
-  };
-
-  const getIcon = (categoryId: string) => {
-    const icon = iconMap[categoryId];
-    return icon || ShoppingCart;
+    'coffee-beverages': 'from-amber-600 via-orange-500 to-yellow-500',
+    'fresh-produce': 'from-emerald-600 via-green-500 to-lime-500',
+    'bakery-grains': 'from-amber-700 via-yellow-600 to-amber-500',
+    'prepared-meals': 'from-orange-600 via-red-500 to-pink-500',
+    'beer-wine-spirits': 'from-purple-600 via-violet-500 to-purple-400',
+    'baby-family': 'from-pink-500 via-rose-400 to-pink-300',
+    'dairy-eggs': 'from-blue-400 via-sky-300 to-blue-200',
+    'meat-poultry': 'from-rose-500 via-red-500 to-pink-500'
   };
 
   const getColor = (categoryId: string) => {
-    return colorMap[categoryId] || 'from-gray-500 to-gray-600';
+    return colorMap[categoryId] || 'from-primary via-primary-light to-primary-glow';
   };
 
   const getProductCount = (categoryId: string) => {
@@ -157,9 +143,6 @@ export default function ShopIndex() {
               ))
             ) : categoriesWithProducts.length > 0 ? (
               categoriesWithProducts.map((category, index) => {
-                const IconComponent = getIcon(category.id);
-                const isEmoji = typeof IconComponent === 'string';
-                
                 return (
                   <Card 
                     key={category.id} 
@@ -171,11 +154,7 @@ export default function ShopIndex() {
                     
                     <CardHeader className="relative pb-4 pt-8">
                       <div className={`inline-flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br ${getColor(category.id)} mx-auto mb-6 shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300`}>
-                        {isEmoji ? (
-                          <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{IconComponent}</span>
-                        ) : (
-                          <IconComponent className="h-12 w-12 text-white group-hover:scale-110 transition-transform duration-300" />
-                        )}
+                        <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{category.icon}</span>
                       </div>
                       <CardTitle className="text-2xl text-center font-bold mb-2 group-hover:text-primary transition-colors">
                         {category.name}
