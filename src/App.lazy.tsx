@@ -3,7 +3,6 @@ import { lazy } from 'react';
 // Lazy load pages for code splitting
 export const LazyHomepage = lazy(() => import('./pages/Homepage'));
 export const LazyShopIndex = lazy(() => import('./pages/shop/ShopIndex'));
-export const LazyShopCategories = lazy(() => import('./pages/shop/ShopCategories'));
 export const LazyCategoryPage = lazy(() => import('./pages/shop/CategoryPage'));
 export const LazyShopCart = lazy(() => import('./pages/shop/ShopCart'));
 export const LazyShopCheckout = lazy(() => import('./pages/shop/ShopCheckout'));

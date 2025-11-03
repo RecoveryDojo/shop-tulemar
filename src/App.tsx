@@ -1,5 +1,5 @@
 import { useEffect, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,7 +18,6 @@ import { addResourceHints } from "@/utils/performance";
 // Lazy load non-critical pages for better performance
 import { 
   LazyHomepage,
-  LazyShopCategories,
   LazyShopCart,
   LazyShopCheckout,
   LazyOrderSuccess,
@@ -89,11 +88,7 @@ function AppRouter() {
           <LazyHomepage />
         </AsyncBoundary>
       } />
-      <Route path="/categories" element={
-        <AsyncBoundary loadingText="Loading categories...">
-          <LazyShopCategories />
-        </AsyncBoundary>
-      } />
+      <Route path="/categories" element={<Navigate to="/" replace />} />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
       <Route path="/cart" element={
         <AsyncBoundary loadingText="Loading cart...">

@@ -168,7 +168,7 @@ export default function ShopOrder() {
                   ))}
                 </div>
                 <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                  <Link to="/categories">Browse All Categories</Link>
+                  <Link to="/">Browse All Categories</Link>
                 </Button>
               </CardContent>
             </Card>

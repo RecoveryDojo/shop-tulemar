@@ -104,7 +104,7 @@ export default function ShopSearch() {
                   <p className="text-muted-foreground mb-6">
                     We couldn't find any products matching "{searchQuery}". Try different keywords or browse our categories.
                   </p>
-                  <Link to="/categories">
+                  <Link to="/">
                     <Button className="bg-gradient-tropical hover:opacity-90 text-white">
                       Browse All Categories
                     </Button>

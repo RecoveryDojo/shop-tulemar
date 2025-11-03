@@ -3,14 +3,68 @@ import { ShopLayout } from "@/components/shop/ShopLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LazyImage } from "@/components/ui/lazy-image";
-import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ShoppingCart, Clock, MapPin, Leaf, Coffee, Apple, Utensils, Beer, Baby, Package } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProducts } from '@/hooks/useProducts';
-import groceryBasket from "@/assets/grocery-basket.jpg";
+import { useEffect, useState } from 'react';
 import deliveryTruck from "@/assets/delivery-truck.jpg";
 
 export default function ShopIndex() {
-  const { categories } = useProducts({ autoLoad: false });
+  const { categories, loading: categoriesLoading, getCategoryProductCounts } = useProducts({ autoLoad: false });
+  const [productCounts, setProductCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (categories.length > 0) {
+        setCountsLoading(true);
+        const counts = await getCategoryProductCounts();
+        setProductCounts(counts);
+        setCountsLoading(false);
+      }
+    };
+    loadCounts();
+  }, [categories, getCategoryProductCounts]);
+
+  // Icon and color mapping for categories
+  const iconMap: Record<string, any> = {
+    'beverages': Coffee,
+    'produce': Apple,
+    'pantry': Package,
+    'dairy': '🥛',
+    'meat-seafood': Utensils,
+    'alcohol': Beer,
+    'baby-kids': Baby,
+  };
+
+  const colorMap: Record<string, string> = {
+    'beverages': 'from-amber-500 to-orange-600',
+    'produce': 'from-green-500 to-emerald-600',
+    'pantry': 'from-blue-500 to-indigo-600',
+    'dairy': 'from-yellow-400 to-amber-500',
+    'meat-seafood': 'from-red-500 to-pink-600',
+    'alcohol': 'from-purple-500 to-violet-600',
+    'baby-kids': 'from-pink-400 to-rose-500',
+  };
+
+  const getIcon = (categoryId: string) => {
+    const icon = iconMap[categoryId];
+    return icon || ShoppingCart;
+  };
+
+  const getColor = (categoryId: string) => {
+    return colorMap[categoryId] || 'from-gray-500 to-gray-600';
+  };
+
+  const getProductCount = (categoryId: string) => {
+    const count = productCounts[categoryId] || 0;
+    return count === 1 ? '1 product' : `${count} products`;
+  };
+
+  const categoriesWithProducts = categories.filter(cat => 
+    (productCounts[cat.id] || 0) > 0
+  );
   
   const features = [
     {
@@ -35,23 +89,6 @@ export default function ShopIndex() {
     }
   ];
 
-  const categoryPreviews = [
-    {
-      icon: Coffee,
-      name: "Coffee & Beverages",
-      items: "Premium Costa Rican coffee, teas, juices"
-    },
-    {
-      icon: Apple,
-      name: "Fresh Produce",
-      items: "Tropical fruits, vegetables, herbs"
-    },
-    {
-      icon: ShoppingCart,
-      name: "Pantry Essentials",
-      items: "Rice, beans, cooking oils, spices"
-    }
-  ];
 
   return (
     <ShopLayout>
@@ -91,7 +128,7 @@ export default function ShopIndex() {
         </div>
       </section>
 
-      {/* Categories Preview */}
+      {/* Categories Section */}
       <section className="py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
@@ -103,28 +140,62 @@ export default function ShopIndex() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            {categoryPreviews.map((category, index) => (
-              <Card key={index} className="border-0 shadow-elegant hover:shadow-glow transition-all duration-300 hover-scale">
-                <CardHeader className="text-center">
-                  <div className="bg-gradient-tropical p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <category.icon className="h-8 w-8 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">{category.name}</CardTitle>
-                  <CardDescription className="text-base">
-                    {category.items}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="text-center">
-            <Link to="/categories">
-              <Button className="bg-gradient-tropical hover:opacity-90 text-white" size="lg">
-                Browse All Categories
-              </Button>
-            </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categoriesLoading || countsLoading ? (
+              // Loading skeletons
+              Array.from({ length: 6 }).map((_, index) => (
+                <Card key={index} className="border-0 shadow-elegant">
+                  <CardHeader>
+                    <Skeleton className="h-16 w-16 rounded-full mx-auto mb-4" />
+                    <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-1/2 mx-auto" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-10 w-full" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : categoriesWithProducts.length > 0 ? (
+              categoriesWithProducts.map((category) => {
+                const IconComponent = getIcon(category.id);
+                const isEmoji = typeof IconComponent === 'string';
+                
+                return (
+                  <Card 
+                    key={category.id} 
+                    className="group hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20"
+                  >
+                    <CardHeader>
+                      <div className={`inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r ${getColor(category.id)} mx-auto mb-4`}>
+                        {isEmoji ? (
+                          <span className="text-3xl">{IconComponent}</span>
+                        ) : (
+                          <IconComponent className="h-8 w-8 text-white" />
+                        )}
+                      </div>
+                      <CardTitle className="text-xl text-center">{category.name}</CardTitle>
+                      {category.description && (
+                        <CardDescription className="text-center">{category.description}</CardDescription>
+                      )}
+                      <p className="text-sm text-muted-foreground text-center mt-2">
+                        {getProductCount(category.id)}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Button asChild className="w-full group-hover:bg-primary group-hover:text-primary-foreground">
+                        <Link to={`/category/${category.id}`}>
+                          Browse
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No categories available at the moment.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -197,20 +268,11 @@ export default function ShopIndex() {
             Your vacation starts the moment you arrive.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/categories">
+            <Link to="/order">
               <Button 
                 variant="secondary" 
                 size="lg"
                 className="bg-white text-primary hover:bg-white/90"
-              >
-                Browse Categories
-              </Button>
-            </Link>
-            <Link to="/order">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="border-white text-white hover:bg-white hover:text-primary"
               >
                 Start Shopping
               </Button>

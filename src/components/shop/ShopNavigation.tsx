@@ -17,7 +17,6 @@ import {
 
 const navigationItems = [
   { title: "Shop Home", url: "/", icon: Home },
-  { title: "Browse Categories", url: "/categories", icon: Grid },
   { title: "Shopping Cart", url: "/cart", icon: ShoppingCart, showBadge: true },
   { title: "Place Order", url: "/order", icon: Package },
   { title: "How It Works", url: "/how-it-works", icon: Info },

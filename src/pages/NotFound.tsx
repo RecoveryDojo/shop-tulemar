@@ -33,7 +33,7 @@ const NotFound = () => {
                 <Link to="/">Back to Shop Home</Link>
               </Button>
               <Button variant="outline" className="w-full" asChild>
-                <Link to="/categories">Browse Categories</Link>
+                <Link to="/">Browse Categories</Link>
               </Button>
             </div>
           </CardContent>

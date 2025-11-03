@@ -57,7 +57,7 @@ export function Footer() {
               <Link to="/" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Shop Home
               </Link>
-              <Link to="/categories" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/" className="block text-sm text-muted-foreground hover:text-primary transition-colors">
                 Browse Categories
               </Link>
               <Link to="/how-it-works" className="block text-sm text-muted-foreground hover:text-primary transition-colors">

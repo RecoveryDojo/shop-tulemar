@@ -197,7 +197,7 @@ export default function ShopCheckout() {
             <p className="text-muted-foreground mb-8">
               Add some items to your cart before proceeding to checkout.
             </p>
-            <Link to="/categories">
+            <Link to="/">
               <Button className="bg-gradient-tropical hover:opacity-90 text-white">
                 Browse Categories
               </Button>

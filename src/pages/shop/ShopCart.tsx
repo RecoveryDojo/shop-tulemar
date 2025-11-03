@@ -50,7 +50,7 @@ export default function ShopCart() {
             <p className="text-muted-foreground mb-8">
               Looks like you haven't added any items to your cart yet. Start shopping to fill it up!
             </p>
-            <Link to="/categories">
+            <Link to="/">
               <Button className="bg-gradient-tropical hover:opacity-90 text-white">
                 Browse Categories
               </Button>
@@ -196,7 +196,7 @@ export default function ShopCart() {
                     </Button>
                   </Link>
                   
-                  <Link to="/categories" className="block">
+                  <Link to="/" className="block">
                     <Button variant="outline" className="w-full" size="lg">
                       Continue Shopping
                     </Button>

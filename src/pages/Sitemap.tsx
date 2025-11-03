@@ -224,7 +224,7 @@ export default function Sitemap() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button variant="secondary" size="lg" asChild>
-                    <Link to="/categories">Browse All Categories</Link>
+                    <Link to="/">Browse All Categories</Link>
                   </Button>
                   <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary" asChild>
                     <Link to="/cart">View Cart</Link>
