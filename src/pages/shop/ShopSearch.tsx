@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,22 @@ import { useCart } from '@/contexts/CartContext';
 export default function ShopSearch() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
-  const { searchProducts, categories, products, searchLoading } = useProducts({ autoLoad: false });
+  const { searchProducts, categories, products, searchLoading, getCategoryProductCounts } = useProducts({ autoLoad: false });
   const { itemCount } = useCart();
+  const [productCounts, setProductCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (categories.length > 0) {
+        const counts = await getCategoryProductCounts();
+        setProductCounts(counts);
+      }
+    };
+    loadCounts();
+  }, [categories, getCategoryProductCounts]);
+
+  // Only show categories with at least one product
+  const categoriesWithProducts = categories.filter(cat => (productCounts[cat.id] || 0) > 0);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -66,7 +80,7 @@ export default function ShopSearch() {
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-foreground mb-4">Browse by Category</h3>
             <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
+              {categoriesWithProducts.map((category) => (
                 <Link key={category.id} to={`/category/${category.id}`}>
                   <Badge 
                     variant="outline" 

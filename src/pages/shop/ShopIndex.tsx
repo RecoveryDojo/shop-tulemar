@@ -52,8 +52,8 @@ export default function ShopIndex() {
     return count === 1 ? '1 product' : `${count} products`;
   };
 
-  // Show all active categories, regardless of product count
-  const categoriesWithProducts = categories;
+  // Only show categories with at least one product
+  const categoriesWithProducts = categories.filter(cat => (productCounts[cat.id] || 0) > 0);
   
   const features = [
     {
