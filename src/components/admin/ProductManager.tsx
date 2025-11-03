@@ -108,6 +108,30 @@ const ProductManager = () => {
     }
   };
 
+  const handleCategoryChange = async (productId: string, newCategoryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ category_id: newCategoryId })
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Category updated",
+        description: "Product category has been changed successfully.",
+      });
+
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: "Failed to update product category. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const ProductForm = ({ 
     product, 
     onChange, 
@@ -319,12 +343,31 @@ const ProductManager = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {category && (
-                              <div className="flex items-center gap-1">
-                                <span>{category.icon}</span>
-                                <span>{category.name}</span>
-                              </div>
-                            )}
+                            <Select 
+                              value={product.category_id} 
+                              onValueChange={(value) => handleCategoryChange(product.id, value)}
+                            >
+                              <SelectTrigger className="w-[180px]">
+                                <SelectValue>
+                                  {category && (
+                                    <div className="flex items-center gap-1">
+                                      <span>{category.icon}</span>
+                                      <span>{category.name}</span>
+                                    </div>
+                                  )}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id}>
+                                    <div className="flex items-center gap-2">
+                                      <span>{cat.icon}</span>
+                                      <span>{cat.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>${product.price.toFixed(2)}</TableCell>
                           <TableCell>{product.stock_quantity}</TableCell>
