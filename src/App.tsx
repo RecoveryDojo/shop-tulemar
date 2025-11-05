@@ -90,6 +90,43 @@ function AppRouter() {
       } />
       <Route path="/categories" element={<Navigate to="/" replace />} />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
+      
+      {/* Shop Mockup Routes */}
+      <Route path="/shop-mockups" element={
+        <AsyncBoundary loadingText="Loading mockups...">
+          <Suspense fallback={<LoadingSpinner />}>
+            {(() => { const ShopMockups = require('@/pages/shop/ShopMockups').default; return <ShopMockups />; })()}
+          </Suspense>
+        </AsyncBoundary>
+      } />
+      <Route path="/shop-v1" element={
+        <AsyncBoundary loadingText="Loading version 1...">
+          <Suspense fallback={<LoadingSpinner />}>
+            {(() => { const ShopV1 = require('@/pages/shop/ShopV1').default; return <ShopV1 />; })()}
+          </Suspense>
+        </AsyncBoundary>
+      } />
+      <Route path="/shop-v2" element={
+        <AsyncBoundary loadingText="Loading version 2...">
+          <Suspense fallback={<LoadingSpinner />}>
+            {(() => { const ShopV2 = require('@/pages/shop/ShopV2').default; return <ShopV2 />; })()}
+          </Suspense>
+        </AsyncBoundary>
+      } />
+      <Route path="/shop-v3" element={
+        <AsyncBoundary loadingText="Loading version 3...">
+          <Suspense fallback={<LoadingSpinner />}>
+            {(() => { const ShopV3 = require('@/pages/shop/ShopV3').default; return <ShopV3 />; })()}
+          </Suspense>
+        </AsyncBoundary>
+      } />
+      <Route path="/shop-v4" element={
+        <AsyncBoundary loadingText="Loading version 4...">
+          <Suspense fallback={<LoadingSpinner />}>
+            {(() => { const ShopV4 = require('@/pages/shop/ShopV4').default; return <ShopV4 />; })()}
+          </Suspense>
+        </AsyncBoundary>
+      } />
       <Route path="/cart" element={
         <AsyncBoundary loadingText="Loading cart...">
           <LazyShopCart />
