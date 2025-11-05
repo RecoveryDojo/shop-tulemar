@@ -16,6 +16,7 @@ import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
 import { addResourceHints } from "@/utils/performance";
 // Lazy load non-critical pages for better performance
+import { lazy } from 'react';
 import { 
   LazyHomepage,
   LazyShopCart,
@@ -40,6 +41,13 @@ import {
   LazySitemap,
   LazyNotFound
 } from './App.lazy';
+
+// Lazy load mockup pages
+const LazyShopMockups = lazy(() => import('@/pages/shop/ShopMockups'));
+const LazyShopV1 = lazy(() => import('@/pages/shop/ShopV1'));
+const LazyShopV2 = lazy(() => import('@/pages/shop/ShopV2'));
+const LazyShopV3 = lazy(() => import('@/pages/shop/ShopV3'));
+const LazyShopV4 = lazy(() => import('@/pages/shop/ShopV4'));
 
 // Keep critical components as direct imports for immediate loading
 import ShopIndex from "@/pages/shop/ShopIndex";
@@ -94,37 +102,27 @@ function AppRouter() {
       {/* Shop Mockup Routes */}
       <Route path="/shop-mockups" element={
         <AsyncBoundary loadingText="Loading mockups...">
-          <Suspense fallback={<LoadingSpinner />}>
-            {(() => { const ShopMockups = require('@/pages/shop/ShopMockups').default; return <ShopMockups />; })()}
-          </Suspense>
+          <LazyShopMockups />
         </AsyncBoundary>
       } />
       <Route path="/shop-v1" element={
         <AsyncBoundary loadingText="Loading version 1...">
-          <Suspense fallback={<LoadingSpinner />}>
-            {(() => { const ShopV1 = require('@/pages/shop/ShopV1').default; return <ShopV1 />; })()}
-          </Suspense>
+          <LazyShopV1 />
         </AsyncBoundary>
       } />
       <Route path="/shop-v2" element={
         <AsyncBoundary loadingText="Loading version 2...">
-          <Suspense fallback={<LoadingSpinner />}>
-            {(() => { const ShopV2 = require('@/pages/shop/ShopV2').default; return <ShopV2 />; })()}
-          </Suspense>
+          <LazyShopV2 />
         </AsyncBoundary>
       } />
       <Route path="/shop-v3" element={
         <AsyncBoundary loadingText="Loading version 3...">
-          <Suspense fallback={<LoadingSpinner />}>
-            {(() => { const ShopV3 = require('@/pages/shop/ShopV3').default; return <ShopV3 />; })()}
-          </Suspense>
+          <LazyShopV3 />
         </AsyncBoundary>
       } />
       <Route path="/shop-v4" element={
         <AsyncBoundary loadingText="Loading version 4...">
-          <Suspense fallback={<LoadingSpinner />}>
-            {(() => { const ShopV4 = require('@/pages/shop/ShopV4').default; return <ShopV4 />; })()}
-          </Suspense>
+          <LazyShopV4 />
         </AsyncBoundary>
       } />
       <Route path="/cart" element={
