@@ -38,7 +38,7 @@ const Admin = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
   const [isCreatingJessica, setIsCreatingJessica] = useState(false);
 
-  const roles: UserRole[] = ['admin', 'driver', 'client', 'concierge', 'sysadmin'];
+  const roles: UserRole[] = ['admin', 'driver', 'client', 'concierge', 'sysadmin', 'store_manager', 'shopper'];
 
   const handleCreateJessicaAccount = async () => {
     setIsCreatingJessica(true);
