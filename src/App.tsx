@@ -48,6 +48,7 @@ const LazyShopV1 = lazy(() => import('@/pages/shop/ShopV1'));
 const LazyShopV2 = lazy(() => import('@/pages/shop/ShopV2'));
 const LazyShopV3 = lazy(() => import('@/pages/shop/ShopV3'));
 const LazyShopV4 = lazy(() => import('@/pages/shop/ShopV4'));
+const LazyStore = lazy(() => import('@/pages/shop/Store'));
 
 // Keep critical components as direct imports for immediate loading
 import ShopIndex from "@/pages/shop/ShopIndex";
@@ -98,6 +99,13 @@ function AppRouter() {
       } />
       <Route path="/categories" element={<Navigate to="/" replace />} />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
+      
+      {/* Store Page */}
+      <Route path="/store" element={
+        <AsyncBoundary loadingText="Loading store...">
+          <LazyStore />
+        </AsyncBoundary>
+      } />
       
       {/* Shop Mockup Routes */}
       <Route path="/shop-mockups" element={
