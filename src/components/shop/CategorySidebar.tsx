@@ -19,12 +19,12 @@ export function CategorySidebar({
   const categoriesWithProducts = categories.filter(cat => (productCounts[cat.id] || 0) > 0);
 
   return (
-    <aside className="hidden lg:block w-56 border-r border-border bg-card sticky top-0 h-screen">
+    <aside className="hidden lg:block w-64 border-r border-border bg-card sticky top-16 h-[calc(100vh-4rem)]">
       <div className="p-4 border-b border-border">
         <h2 className="font-bold text-lg text-foreground">Categories</h2>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-5rem)]">
+      <ScrollArea className="h-[calc(100vh-9rem)]">
         <nav className="p-2">
           {categoriesWithProducts.map((category) => (
             <button
