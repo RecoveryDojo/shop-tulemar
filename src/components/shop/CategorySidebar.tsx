@@ -31,7 +31,7 @@ export function CategorySidebar({
               key={category.id}
               onClick={() => onCategoryClick(category.id)}
               className={cn(
-                "w-full flex items-center gap-2.5 p-3.5 rounded-lg transition-all text-left",
+                "w-full flex items-center gap-2 p-3 rounded-lg transition-all text-left",
                 "hover:bg-muted",
                 activeCategory === category.id && "bg-primary/10 text-primary font-semibold"
               )}
