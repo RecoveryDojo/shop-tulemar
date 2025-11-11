@@ -19,7 +19,7 @@ export function CategorySidebar({
   const categoriesWithProducts = categories.filter(cat => (productCounts[cat.id] || 0) > 0);
 
   return (
-    <aside className="hidden lg:block w-60 border-r border-border bg-card sticky top-0 h-screen">
+    <aside className="hidden lg:block w-52 border-r border-border bg-card sticky top-0 h-screen">
       <div className="p-4 border-b border-border">
         <h2 className="font-bold text-lg text-foreground">Categories</h2>
       </div>
@@ -31,12 +31,12 @@ export function CategorySidebar({
               key={category.id}
               onClick={() => onCategoryClick(category.id)}
               className={cn(
-                "w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left",
+                "w-full flex items-center gap-2 p-2.5 rounded-lg transition-all text-left",
                 "hover:bg-muted",
                 activeCategory === category.id && "bg-primary/10 text-primary font-semibold"
               )}
             >
-              <span className="text-2xl">{category.icon}</span>
+              <span className="text-xl">{category.icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate text-sm">
                   {category.name}
