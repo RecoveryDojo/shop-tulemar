@@ -66,7 +66,7 @@ export default function CategoryPage() {
           <p className="text-xl text-muted-foreground mb-8">
             The category you're looking for doesn't exist.
           </p>
-          <Link to="/">
+          <Link to="/store">
             <Button>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Categories
@@ -84,7 +84,7 @@ export default function CategoryPage() {
         <section className="bg-gradient-tropical text-white py-16">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center mb-4">
-              <Link to="/" className="mr-4">
+              <Link to="/store" className="mr-4">
                 <Button variant="ghost" className="text-white hover:bg-white/20">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Categories
@@ -146,7 +146,7 @@ export default function CategoryPage() {
                         Clear search
                       </Button>
                     ) : (
-                      <Link to="/">
+                      <Link to="/store">
                         <Button variant="outline">
                           Browse Other Categories
                         </Button>

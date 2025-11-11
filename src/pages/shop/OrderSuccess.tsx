@@ -103,7 +103,7 @@ export default function OrderSuccess() {
             <p className="text-muted-foreground mb-8">
               The order you're looking for doesn't exist or has been removed.
             </p>
-            <Link to="/">
+            <Link to="/store">
               <Button className="bg-gradient-tropical hover:opacity-90 text-white">
                 Continue Shopping
               </Button>
@@ -292,7 +292,7 @@ export default function OrderSuccess() {
                   </div>
 
                   <div className="border-t border-border pt-4">
-                    <Link to="/">
+                    <Link to="/store">
                       <Button className="w-full bg-gradient-tropical hover:opacity-90 text-white">
                         Continue Shopping
                       </Button>
