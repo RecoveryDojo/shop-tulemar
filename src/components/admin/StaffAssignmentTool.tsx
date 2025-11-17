@@ -202,7 +202,17 @@ export function StaffAssignmentTool() {
         orders.map(async (order) => {
           const { data: assignments } = await supabase
             .from('stakeholder_assignments')
-            .select('id,user_id,role,status,accepted_at')
+            .select(`
+              id,
+              user_id,
+              role,
+              status,
+              accepted_at,
+              profiles:user_id (
+                display_name,
+                email
+              )
+            `)
             .eq('order_id', order.id);
 
           // Count items using SECURITY DEFINER RPC (admin-only) to bypass RLS safely
@@ -227,7 +237,7 @@ export function StaffAssignmentTool() {
             assigned_stakeholders: assignments?.map((sa: any) => ({
               role: sa.role,
               user_id: sa.user_id,
-              user_name: (staff.find(s => s.id === sa.user_id)?.display_name) || 'Unknown',
+              user_name: sa.profiles?.display_name || sa.profiles?.email || 'Unknown User',
               status: sa.status
             })) || []
           };
