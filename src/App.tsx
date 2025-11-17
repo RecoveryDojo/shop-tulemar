@@ -14,6 +14,7 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { UserOnboarding } from "@/components/onboarding/UserOnboarding";
 import { RoleBasedRedirect } from "@/components/auth/RoleBasedRedirect";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { addResourceHints } from "@/utils/performance";
 // Lazy load non-critical pages for better performance
 import { lazy } from 'react';
@@ -268,6 +269,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ImpersonationBanner />
       <AppRouter />
       
