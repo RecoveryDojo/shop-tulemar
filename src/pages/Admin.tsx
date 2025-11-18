@@ -37,44 +37,8 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
-  const [isCreatingJessica, setIsCreatingJessica] = useState(false);
 
   const roles: UserRole[] = ['admin', 'driver', 'client', 'concierge', 'sysadmin', 'store_manager', 'shopper'];
-
-  const handleCreateJessicaAccount = async () => {
-    setIsCreatingJessica(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-jessica-account', {
-        body: {}
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data.alreadyExists) {
-        toast({
-          title: "Account Status",
-          description: "Jessica's account already exists!",
-        });
-      } else {
-        toast({
-          title: "Account Created",
-          description: `Jessica's account created! Temp password: ${data.tempPassword}`,
-        });
-      }
-      fetchUsers(); // Refresh the user list
-    } catch (error) {
-      console.error('Failed to create Jessica\'s account:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to create account',
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingJessica(false);
-    }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -297,13 +261,6 @@ const Admin = () => {
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 mb-4">
-              <Button 
-                onClick={handleCreateJessicaAccount}
-                disabled={isCreatingJessica}
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                {isCreatingJessica ? 'Creating...' : 'Create Jessica\'s Account'}
-              </Button>
               <Button 
                 onClick={fetchUsers}
                 variant="outline"
