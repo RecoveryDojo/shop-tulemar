@@ -22,6 +22,7 @@ import { AdminImpersonation } from '@/components/admin/AdminImpersonation';
 import { SimpleRegressionTest } from '@/components/testing/SimpleRegressionTest';
 import { OrderConfirmationPanel } from '@/components/workflow/OrderConfirmationPanel';
 import { SubstitutionApprovalPanel } from '@/components/workflow/SubstitutionApprovalPanel';
+import { ProductDocumentation } from '@/components/admin/ProductDocumentation';
 
 interface UserWithRoles {
   id: string;
@@ -234,14 +235,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="documentation">
-            <Card>
-              <CardHeader>
-                <CardTitle>Import Guidelines</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Product documentation deferred to post-beta.</p>
-              </CardContent>
-            </Card>
+            <ProductDocumentation />
           </TabsContent>
 
           <TabsContent value="users">
