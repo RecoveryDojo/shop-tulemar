@@ -347,6 +347,45 @@ export function StaffAssignmentTool() {
 
       if (assignmentError) throw assignmentError;
 
+      // Immediately update local state with the new assignment
+      setOrders(prevOrders => 
+        prevOrders.map(o => {
+          if (o.id === orderId) {
+            // Find if this role already has an assignment for this user
+            const existingAssignment = o.assigned_stakeholders?.find(
+              sa => sa.role === role && sa.user_id === staffId
+            );
+            
+            if (existingAssignment) {
+              // Update existing
+              return {
+                ...o,
+                assigned_stakeholders: o.assigned_stakeholders?.map(sa =>
+                  sa.role === role && sa.user_id === staffId
+                    ? { ...sa, status: 'assigned' }
+                    : sa
+                ) || []
+              };
+            } else {
+              // Add new assignment
+              return {
+                ...o,
+                assigned_stakeholders: [
+                  ...(o.assigned_stakeholders || []),
+                  {
+                    role,
+                    user_id: staffId,
+                    user_name: selectedStaff.display_name || selectedStaff.email || 'Unknown',
+                    status: 'assigned'
+                  }
+                ]
+              };
+            }
+          }
+          return o;
+        })
+      );
+
       // Event logging handled by:
       // - Shopper: rpc_assign_shopper inserts to new_order_events automatically
       // - Concierge: manually inserted to new_order_events above (lines 293-300)
